@@ -136,8 +136,9 @@ export class PointRenderEngine extends BaseRenderEngine {
     private renderPoint(labelPoint: LabelPoint, isActive: boolean, data: EditorData) {
         const pointOnImage: IPoint = RenderEngineUtil.transferPointFromImageToViewPortContent(labelPoint.point, data);
         const pointBetweenPixels = RenderEngineUtil.setPointBetweenPixels(pointOnImage);
-        const anchorColor: string = BaseRenderEngine.resolveLabelAnchorColor(isActive);
-        DrawUtil.drawCircleWithFill(this.canvas, pointBetweenPixels, Settings.RESIZE_HANDLE_DIMENSION_PX/2, anchorColor)
+        const anchorColor: string = BaseRenderEngine.resolveLabelAnchorColor(labelPoint.id, isActive);
+        console.log('anchorColor', anchorColor)
+        DrawUtil.drawCircleWithFill(this.canvas, pointBetweenPixels, Settings.RESIZE_HANDLE_DIMENSION_PX/2, anchorColor);
     }
 
     private updateCursorStyle(data: EditorData) {

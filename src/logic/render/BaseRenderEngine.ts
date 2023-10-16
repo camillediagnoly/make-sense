@@ -51,10 +51,12 @@ export abstract class BaseRenderEngine {
         }
     }
 
-    protected static resolveLabelAnchorColor(isActive: boolean): string {
+    protected static resolveLabelAnchorColor(labelId: string, isActive: boolean): string {
         const perClassColor: boolean = GeneralSelector.getEnablePerClassColorationStatus();
         if (perClassColor) {
-            return RenderEngineSettings.DEFAULT_ANCHOR_COLOR;
+            const labelName: LabelName | null = LabelsSelector.getLabelNameById(labelId);
+            return labelName ? labelName.color : RenderEngineSettings.DEFAULT_ANCHOR_COLOR;
+            // return RenderEngineSettings.DEFAULT_ANCHOR_COLOR;
         } else {
             return isActive ? RenderEngineSettings.ACTIVE_ANCHOR_COLOR : RenderEngineSettings.INACTIVE_ANCHOR_COLOR;
         }
