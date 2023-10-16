@@ -61,7 +61,7 @@ export class DrawUtil {
         const endAngleRad = UnitUtil.deg2rad(360);
         ctx.fillStyle = color;
         ctx.beginPath();
-        ctx.arc(anchorPoint.x, anchorPoint.y, radius*3, startAngleRad, endAngleRad, false);
+        ctx.arc(anchorPoint.x, anchorPoint.y, radius*2, startAngleRad, endAngleRad, false);
         ctx.fill();
         ctx.restore();
     }

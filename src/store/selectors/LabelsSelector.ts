@@ -9,7 +9,7 @@ export class LabelsSelector {
     }
 
     public static getLabelNameById(id: string): LabelName | undefined {
-        const labelName: LabelName[] = LabelsSelector.getLabelNames()
+        const labelName: LabelName[] = LabelsSelector.getLabelNames();
         return find(labelName, {id});
     }
 

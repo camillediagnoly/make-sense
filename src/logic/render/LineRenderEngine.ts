@@ -153,7 +153,7 @@ export class LineRenderEngine extends BaseRenderEngine {
 
     private drawLine(labelId: string, line: ILine, isActive: boolean) {
         const lineColor: string = BaseRenderEngine.resolveLabelLineColor(labelId, isActive)
-        const anchorColor = BaseRenderEngine.resolveLabelAnchorColor(isActive)
+        const anchorColor = BaseRenderEngine.resolveLabelAnchorColor("", isActive)
         const standardizedLine: ILine = {
             start: RenderEngineUtil.setPointBetweenPixels(line.start),
             end: RenderEngineUtil.setPointBetweenPixels(line.end)
