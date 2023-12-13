@@ -19,6 +19,14 @@ import { NotificationsDataMap } from '../../../data/info/NotificationsData';
 import { DocumentParsingError } from '../../../logic/import/voc/VOCImporter';
 import { Notification } from '../../../data/enums/Notification';
 import {LabelNamesNotUniqueError} from '../../../logic/import/yolo/YOLOErrors';
+import {LabelsSelector} from '../../../store/selectors/LabelsSelector';
+import {store} from '../../../index';
+import {
+    updateActiveImageIndex,
+    updateActiveLabelId,
+  } from "../../../store/labels/actionCreators";
+import {ImageActions} from "../../../logic/actions/ImageActions";
+
 
 interface IProps {
     activeLabelType: LabelType,
@@ -90,12 +98,28 @@ const ImportLabelPopup: React.FC<IProps> = (
         }
     });
 
-    const onAccept = (type: LabelType) => {
+    function sleep(ms) {
+        return new Promise(resolve => setTimeout(resolve, ms));
+    }
+
+    const onAccept = async (type: LabelType) => {
         if (loadedLabelNames.length !== 0 && loadedImageData.length !== 0) {
             updateImageDataAction(loadedImageData);
             updateLabelNamesAction(loadedLabelNames);
             updateActiveLabelTypeAction(type);
             PopupActions.close();
+
+            // Add artificial loop to load all labels
+            const imageCount: number = LabelsSelector.getImagesData().length;
+
+            for (let i = 0; i < imageCount; i++) {
+                ImageActions.getNextImage();
+                await sleep(20);
+            }
+            for (let i = 0; i < imageCount; i++) {
+                ImageActions.getPreviousImage();
+                await sleep(20);
+            }
         }
     };
 
