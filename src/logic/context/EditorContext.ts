@@ -11,6 +11,11 @@ import {Direction} from "../../data/enums/Direction";
 import {PlatformUtil} from "../../utils/PlatformUtil";
 import {LabelActions} from "../actions/LabelActions";
 import {LineRenderEngine} from "../render/LineRenderEngine";
+import {LabelsSelector} from "../../../src/store/selectors/LabelsSelector";
+
+function sleep(ms) {
+    return new Promise(resolve => setTimeout(resolve, ms));
+}
 
 export class EditorContext extends BaseContext {
     public static actions: HotKeyAction[] = [
@@ -50,6 +55,22 @@ export class EditorContext extends BaseContext {
             keyCombo: PlatformUtil.isMac(window.navigator.userAgent) ? ["Alt", "ArrowRight"] : ["Control", "ArrowRight"],
             action: (event: KeyboardEvent) => {
                 ImageActions.getNextImage();
+            }
+        },
+        {
+            keyCombo: PlatformUtil.isMac(window.navigator.userAgent) ? ["Alt", "*"] : ["Control", "*"],
+            action: async (event: KeyboardEvent) => {
+                // Add artificial loop to load all labels
+                const imageCount: number = LabelsSelector.getImagesData().length;
+
+                for (let i = 0; i < imageCount; i++) {
+                    ImageActions.getNextImage();
+                    await sleep(20);
+                }
+                for (let i = 0; i < imageCount; i++) {
+                    ImageActions.getPreviousImage();
+                    await sleep(20);
+                }
             }
         },
         {
