@@ -48,6 +48,8 @@ export type ImageData = {
     labelLines: LabelLine[];
     labelPolygons: LabelPolygon[];
     labelNameIds: string[];
+    imgWidth: number;
+    imgHeight: number;
 
     // YOLO
     isVisitedByYOLOObjectDetector: boolean;

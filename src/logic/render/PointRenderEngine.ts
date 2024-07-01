@@ -119,7 +119,7 @@ export class PointRenderEngine extends BaseRenderEngine {
                         if (this.isInProgress()) {
                             const pointSnapped: IPoint = RectUtil.snapPointToRect(data.mousePositionOnViewPortContent, data.viewPortContentImageRect);
                             const pointBetweenPixels: IPoint = RenderEngineUtil.setPointBetweenPixels(pointSnapped);
-                            const anchorColor: string = BaseRenderEngine.resolveLabelAnchorColor("", true);
+                            const anchorColor: string = BaseRenderEngine.resolveLabelAnchorColor(true);
                             DrawUtil.drawCircleWithFill(this.canvas, pointBetweenPixels, Settings.RESIZE_HANDLE_DIMENSION_PX/2, anchorColor)
                         } else {
                             this.renderPoint(labelPoint, true, data);
@@ -136,8 +136,8 @@ export class PointRenderEngine extends BaseRenderEngine {
     private renderPoint(labelPoint: LabelPoint, isActive: boolean, data: EditorData) {
         const pointOnImage: IPoint = RenderEngineUtil.transferPointFromImageToViewPortContent(labelPoint.point, data);
         const pointBetweenPixels = RenderEngineUtil.setPointBetweenPixels(pointOnImage);
-        const anchorColor: string = BaseRenderEngine.resolveLabelAnchorColor(labelPoint.labelId, isActive);
-        DrawUtil.drawCircleWithFill(this.canvas, pointBetweenPixels, Settings.RESIZE_HANDLE_DIMENSION_PX/2, anchorColor);
+        const anchorColor: string = BaseRenderEngine.resolveLabelAnchorColor(isActive);
+        DrawUtil.drawCircleWithFill(this.canvas, pointBetweenPixels, Settings.RESIZE_HANDLE_DIMENSION_PX/2, anchorColor)
     }
 
     private updateCursorStyle(data: EditorData) {

@@ -94,7 +94,16 @@ export class COCOImporter extends AnnotationImporter {
 
     protected static partitionImageData(items: ImageData[], images: COCOImage[]): PartitionResult<ImageData> {
         const imageNames: string[] = images.map((item: COCOImage) => item.file_name);
+        const imageDict = Object.fromEntries(images.map(x => [x.file_name, x]));
+
         const predicate = (item: ImageData) => imageNames.includes(item.fileData.name);
+        items = items.map((item: ImageData) => {
+            if (imageNames.includes(item.fileData.name)) {
+                item.imgHeight = imageDict[item.fileData.name].height;
+                item.imgWidth = imageDict[item.fileData.name].width;
+            }
+            return item;
+        });
         return ArrayUtil.partition<ImageData>(items, predicate);
     }
 

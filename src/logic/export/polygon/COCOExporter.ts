@@ -57,14 +57,14 @@ export class COCOExporter {
 
     public static getImagesComponent(imagesData: ImageData[]): COCOImage[] {
         return imagesData
-            .filter((imagesData: ImageData) => imagesData.loadStatus)
+            // .filter((imagesData: ImageData) => imagesData.loadStatus) // this was removed to allow export of all annotations
             .filter((imagesData: ImageData) => imagesData.labelPolygons.length !== 0)
             .map((imageData: ImageData, index: number) => {
                 const image: HTMLImageElement = ImageRepository.getById(imageData.id);
                 return {
                     "id": index + 1,
-                    "width": image.width,
-                    "height": image.height,
+                    "width": image ? image.width : imageData.imgWidth ?  imageData.imgWidth : -1,
+                    "height": image ? image.height : imageData.imgHeight ?  imageData.imgHeight : -1,
                     "file_name": imageData.fileData.name
                 }
             })
@@ -74,7 +74,7 @@ export class COCOExporter {
         const labelsMap: LabelDataMap = COCOExporter.mapLabelsData(labelNames);
         let id = 0;
         const annotations: COCOAnnotation[][] = imagesData
-            .filter((imagesData: ImageData) => imagesData.loadStatus)
+            // .filter((imagesData: ImageData) => imagesData.loadStatus)
             .filter((imagesData: ImageData) => imagesData.labelPolygons.length !== 0)
             .map((imageData: ImageData, index: number) => {
                 return imageData.labelPolygons.map((labelPolygon: LabelPolygon) => {
