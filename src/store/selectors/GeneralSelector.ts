@@ -25,6 +25,10 @@ export class GeneralSelector {
         return store.getState().general.crossHairVisible;
     }
 
+    public static getFixedZoom(): boolean {
+        return store.getState().general.fixedZoom;
+    }
+
     public static getCustomCursorStyle(): CustomCursorStyle {
         return store.getState().general.customCursorStyle;
     }

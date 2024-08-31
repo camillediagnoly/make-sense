@@ -11,6 +11,7 @@ const initialState: GeneralState = {
     preventCustomCursor: false,
     imageDragMode: false,
     crossHairVisible: true,
+    fixedZoom: true,
     enablePerClassColoration: true,
     projectData: {
         type: null,
@@ -64,6 +65,12 @@ export function generalReducer(
             return {
                 ...state,
                 crossHairVisible: action.payload.crossHairVisible
+            }
+        }
+        case Action.UPDATE_FIXED_ZOOM: {
+            return {
+                ...state,
+                fixedZoom: action.payload.fixedZoom
             }
         }
         case Action.UPDATE_PROJECT_DATA: {

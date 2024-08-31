@@ -4,7 +4,7 @@ import React from 'react';
 import classNames from 'classnames';
 import { AppState } from '../../../store';
 import { connect } from 'react-redux';
-import { updateCrossHairVisibleStatus, updateImageDragModeStatus } from '../../../store/general/actionCreators';
+import { updateCrossHairVisibleStatus, updateImageDragModeStatus, updateFixedZoomStatus } from '../../../store/general/actionCreators';
 import { GeneralSelector } from '../../../store/selectors/GeneralSelector';
 import { ViewPointSettings } from '../../../settings/ViewPointSettings';
 import { ImageButton } from '../../Common/ImageButton/ImageButton';
@@ -66,8 +66,10 @@ interface IProps {
     activeContext: ContextType;
     updateImageDragModeStatusAction: (imageDragMode: boolean) => any;
     updateCrossHairVisibleStatusAction: (crossHairVisible: boolean) => any;
+    updateFixedZoomStatusAction: (fixedZoom: boolean) => any;
     imageDragMode: boolean;
     crossHairVisible: boolean;
+    fixedZoom: boolean;
     activeLabelType: LabelType;
 }
 
@@ -76,8 +78,10 @@ const EditorTopNavigationBar: React.FC<IProps> = (
         activeContext,
         updateImageDragModeStatusAction,
         updateCrossHairVisibleStatusAction,
+        updateFixedZoomStatusAction,
         imageDragMode,
         crossHairVisible,
+        fixedZoom,
         activeLabelType
     }) => {
     const getClassName = () => {
@@ -100,6 +104,10 @@ const EditorTopNavigationBar: React.FC<IProps> = (
 
     const crossHairOnClick = () => {
         updateCrossHairVisibleStatusAction(!crossHairVisible);
+    };
+
+    const fixedZoomOnClick = () => {
+        updateFixedZoomStatusAction(!fixedZoom);
     };
 
     const withAI = (
@@ -180,6 +188,17 @@ const EditorTopNavigationBar: React.FC<IProps> = (
                         crossHairOnClick
                     )
                 }
+                {
+                    getButtonWithTooltip(
+                        'zoom-fixed',
+                        fixedZoom ? 'turn-off persistent zoom' : 'turn-on persistent zoom',
+                        'ico/zoom-fixed.png',
+                        'zoom-fixed',
+                        fixedZoom,
+                        undefined,
+                        fixedZoomOnClick
+                    )
+                }
             </div>
             {withAI && <div className='ButtonWrapper'>
                     {
@@ -211,13 +230,15 @@ const EditorTopNavigationBar: React.FC<IProps> = (
 
 const mapDispatchToProps = {
     updateImageDragModeStatusAction: updateImageDragModeStatus,
-    updateCrossHairVisibleStatusAction: updateCrossHairVisibleStatus
+    updateCrossHairVisibleStatusAction: updateCrossHairVisibleStatus,
+    updateFixedZoomStatusAction: updateFixedZoomStatus
 };
 
 const mapStateToProps = (state: AppState) => ({
     activeContext: state.general.activeContext,
     imageDragMode: state.general.imageDragMode,
     crossHairVisible: state.general.crossHairVisible,
+    fixedZoom: state.general.fixedZoom,
     activeLabelType: state.labels.activeLabelType
 });
 

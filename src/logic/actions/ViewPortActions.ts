@@ -72,6 +72,8 @@ export class ViewPortActions {
         if (!!newCanvasSize && !!EditorModel.canvas) {
             EditorModel.canvas.width = newCanvasSize.width;
             EditorModel.canvas.height = newCanvasSize.height;
+            const currentZoom: number = GeneralSelector.getZoom();
+            ViewPortActions.setZoom(currentZoom);
         }
     };
 

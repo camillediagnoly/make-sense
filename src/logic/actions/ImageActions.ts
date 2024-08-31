@@ -18,6 +18,7 @@ import {
 } from "../../store/labels/types";
 import { LabelStatus } from "../../data/enums/LabelStatus";
 import { remove } from "lodash";
+import { GeneralSelector } from "../../store/selectors/GeneralSelector";
 
 export class ImageActions {
   public static getPreviousImage(): void {
@@ -38,7 +39,9 @@ export class ImageActions {
     if (index < 0 || index > imageCount - 1) {
       return;
     } else {
-      ViewPortActions.setZoom(1);
+      if (GeneralSelector.getFixedZoom()) {
+        ViewPortActions.setZoom(1);
+      }
       store.dispatch(updateActiveImageIndex(index));
       store.dispatch(updateActiveLabelId(null));
     }

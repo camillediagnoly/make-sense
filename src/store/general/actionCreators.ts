@@ -68,6 +68,15 @@ export function updateCrossHairVisibleStatus(crossHairVisible: boolean): General
     };
 }
 
+export function updateFixedZoomStatus(fixedZoom: boolean): GeneralActionTypes {
+    return {
+        type: Action.UPDATE_FIXED_ZOOM,
+        payload: {
+            fixedZoom,
+        },
+    };
+}
+
 export function updateProjectData(projectData: ProjectData): GeneralActionTypes {
     return {
         type: Action.UPDATE_PROJECT_DATA,
