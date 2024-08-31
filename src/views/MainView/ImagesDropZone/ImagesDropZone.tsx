@@ -21,6 +21,11 @@ interface IProps {
     projectData: ProjectData;
 }
 
+function naturalSort(a, b) {
+    const collator = new Intl.Collator(undefined, { numeric: true, sensitivity: 'base' });
+    return collator.compare(a.name, b.name);  // Access the filename property
+}
+
 const ImagesDropZone: React.FC<IProps> = (props: PropsWithChildren<IProps>) => {
     const {acceptedFiles, getRootProps, getInputProps} = useDropzone({
         accept: {
@@ -30,7 +35,8 @@ const ImagesDropZone: React.FC<IProps> = (props: PropsWithChildren<IProps>) => {
 
     const startEditor = (projectType: ProjectType) => {
         if (acceptedFiles.length > 0) {
-            const files = sortBy(acceptedFiles, (item: File) => item.name)
+            const files = sortBy(acceptedFiles, (item: File) => item.name);
+            files.sort(naturalSort);
             props.updateProjectDataAction({
                 ...props.projectData,
                 type: projectType
