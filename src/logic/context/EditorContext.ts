@@ -1,16 +1,16 @@
-import {HotKeyAction} from "../../data/HotKeyAction";
-import {EditorModel} from "../../staticModels/EditorModel";
-import {LabelType} from "../../data/enums/LabelType";
-import {EditorData} from "../../data/EditorData";
-import {EditorActions} from "../actions/EditorActions";
-import {PolygonRenderEngine} from "../render/PolygonRenderEngine";
-import {BaseContext} from "./BaseContext";
-import {ImageActions} from "../actions/ImageActions";
-import {ViewPortActions} from "../actions/ViewPortActions";
-import {Direction} from "../../data/enums/Direction";
-import {PlatformUtil} from "../../utils/PlatformUtil";
-import {LabelActions} from "../actions/LabelActions";
-import {LineRenderEngine} from "../render/LineRenderEngine";
+import { HotKeyAction } from "../../data/HotKeyAction";
+import { EditorModel } from "../../staticModels/EditorModel";
+import { LabelType } from "../../data/enums/LabelType";
+import { EditorData } from "../../data/EditorData";
+import { EditorActions } from "../actions/EditorActions";
+import { PolygonRenderEngine } from "../render/PolygonRenderEngine";
+import { BaseContext } from "./BaseContext";
+import { ImageActions } from "../actions/ImageActions";
+import { ViewPortActions } from "../actions/ViewPortActions";
+import { Direction } from "../../data/enums/Direction";
+import { PlatformUtil } from "../../utils/PlatformUtil";
+import { LabelActions } from "../actions/LabelActions";
+import { LineRenderEngine } from "../render/LineRenderEngine";
 
 export class EditorContext extends BaseContext {
     public static actions: HotKeyAction[] = [

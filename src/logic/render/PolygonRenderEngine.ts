@@ -1,32 +1,32 @@
-import {store} from '../../index';
-import {RectUtil} from '../../utils/RectUtil';
-import {updateCustomCursorStyle} from '../../store/general/actionCreators';
-import {CustomCursorStyle} from '../../data/enums/CustomCursorStyle';
-import {EditorData} from '../../data/EditorData';
-import {BaseRenderEngine} from './BaseRenderEngine';
-import {RenderEngineSettings} from '../../settings/RenderEngineSettings';
-import {IPoint} from '../../interfaces/IPoint';
-import {ILine} from '../../interfaces/ILine';
-import {DrawUtil} from '../../utils/DrawUtil';
-import {IRect} from '../../interfaces/IRect';
-import {ImageData, LabelPolygon} from '../../store/labels/types';
-import {LabelsSelector} from '../../store/selectors/LabelsSelector';
+import { store } from '../../index';
+import { RectUtil } from '../../utils/RectUtil';
+import { updateCustomCursorStyle } from '../../store/general/actionCreators';
+import { CustomCursorStyle } from '../../data/enums/CustomCursorStyle';
+import { EditorData } from '../../data/EditorData';
+import { BaseRenderEngine } from './BaseRenderEngine';
+import { RenderEngineSettings } from '../../settings/RenderEngineSettings';
+import { IPoint } from '../../interfaces/IPoint';
+import { ILine } from '../../interfaces/ILine';
+import { DrawUtil } from '../../utils/DrawUtil';
+import { IRect } from '../../interfaces/IRect';
+import { ImageData, LabelPolygon } from '../../store/labels/types';
+import { LabelsSelector } from '../../store/selectors/LabelsSelector';
 import {
     updateActiveLabelId,
     updateFirstLabelCreatedFlag,
     updateHighlightedLabelId,
     updateImageDataById
 } from '../../store/labels/actionCreators';
-import {LineUtil} from '../../utils/LineUtil';
-import {MouseEventUtil} from '../../utils/MouseEventUtil';
-import {EventType} from '../../data/enums/EventType';
-import {RenderEngineUtil} from '../../utils/RenderEngineUtil';
-import {LabelType} from '../../data/enums/LabelType';
-import {EditorActions} from '../actions/EditorActions';
-import {GeneralSelector} from '../../store/selectors/GeneralSelector';
-import {Settings} from '../../settings/Settings';
-import {LabelUtil} from '../../utils/LabelUtil';
-import {PolygonUtil} from '../../utils/PolygonUtil';
+import { LineUtil } from '../../utils/LineUtil';
+import { MouseEventUtil } from '../../utils/MouseEventUtil';
+import { EventType } from '../../data/enums/EventType';
+import { RenderEngineUtil } from '../../utils/RenderEngineUtil';
+import { LabelType } from '../../data/enums/LabelType';
+import { EditorActions } from '../actions/EditorActions';
+import { GeneralSelector } from '../../store/selectors/GeneralSelector';
+import { Settings } from '../../settings/Settings';
+import { LabelUtil } from '../../utils/LabelUtil';
+import { PolygonUtil } from '../../utils/PolygonUtil';
 
 export class PolygonRenderEngine extends BaseRenderEngine {
 
@@ -50,6 +50,7 @@ export class PolygonRenderEngine extends BaseRenderEngine {
 
     public update(data: EditorData): void {
         if (!!data.event) {
+            // console.log(data)
             switch (MouseEventUtil.getEventType(data.event)) {
                 case EventType.MOUSE_MOVE:
                     this.mouseMoveHandler(data);
@@ -74,7 +75,7 @@ export class PolygonRenderEngine extends BaseRenderEngine {
                     data.mousePositionOnViewPortContent, this.activePath[0]);
                 if (isMouseOverStartAnchor) {
                     this.addLabelAndFinishCreation(data);
-                } else  {
+                } else {
                     this.updateActivelyCreatedLabel(data);
                 }
             } else {
@@ -82,14 +83,14 @@ export class PolygonRenderEngine extends BaseRenderEngine {
                 if (!!polygonUnderMouse) {
                     const anchorIndex: number = polygonUnderMouse.vertices.reduce(
                         (indexUnderMouse: number, anchor: IPoint, index: number) => {
-                        if (indexUnderMouse === null) {
-                            const anchorOnCanvas: IPoint = RenderEngineUtil.transferPointFromImageToViewPortContent(anchor, data);
-                            if (this.isMouseOverAnchor(data.mousePositionOnViewPortContent, anchorOnCanvas)) {
-                                return index;
+                            if (indexUnderMouse === null) {
+                                const anchorOnCanvas: IPoint = RenderEngineUtil.transferPointFromImageToViewPortContent(anchor, data);
+                                if (this.isMouseOverAnchor(data.mousePositionOnViewPortContent, anchorOnCanvas)) {
+                                    return index;
+                                }
                             }
-                        }
-                        return indexUnderMouse;
-                    }, null);
+                            return indexUnderMouse;
+                        }, null);
 
                     if (anchorIndex !== null) {
                         this.startExistingLabelResize(data, polygonUnderMouse.id, anchorIndex);
@@ -202,7 +203,7 @@ export class PolygonRenderEngine extends BaseRenderEngine {
             DrawUtil.drawLine(this.canvas, line.start, line.end, lineColor, RenderEngineSettings.LINE_THICKNESS);
         });
         standardizedPoints.forEach((point: IPoint) => {
-            DrawUtil.drawCircleWithFill(this.canvas, point, Settings.RESIZE_HANDLE_DIMENSION_PX/2, anchorColor);
+            DrawUtil.drawCircleWithFill(this.canvas, point, Settings.RESIZE_HANDLE_DIMENSION_PX / 2, anchorColor);
         })
     }
 
@@ -242,7 +243,7 @@ export class PolygonRenderEngine extends BaseRenderEngine {
         DrawUtil.drawPolygon(this.canvas, standardizedPoints, lineColor, RenderEngineSettings.LINE_THICKNESS);
         if (isActive) {
             standardizedPoints.forEach((point: IPoint) => {
-                DrawUtil.drawCircleWithFill(this.canvas, point, Settings.RESIZE_HANDLE_DIMENSION_PX/2, anchorColor);
+                DrawUtil.drawCircleWithFill(this.canvas, point, Settings.RESIZE_HANDLE_DIMENSION_PX / 2, anchorColor);
             })
         }
     }
@@ -256,7 +257,7 @@ export class PolygonRenderEngine extends BaseRenderEngine {
 
             if (isMouseOverSuggestedAnchor) {
                 DrawUtil.drawCircleWithFill(
-                    this.canvas, this.suggestedAnchorPositionOnCanvas, Settings.RESIZE_HANDLE_DIMENSION_PX/2, anchorColor);
+                    this.canvas, this.suggestedAnchorPositionOnCanvas, Settings.RESIZE_HANDLE_DIMENSION_PX / 2, anchorColor);
             }
         }
     }
@@ -294,6 +295,13 @@ export class PolygonRenderEngine extends BaseRenderEngine {
             const polygonOnImage: IPoint[] = RenderEngineUtil.transferPolygonFromViewPortContentToImage(this.activePath, data);
             this.addPolygonLabel(polygonOnImage);
             this.finishLabelCreation();
+        } else if (this.isCreationInProgress() && this.activePath.length == 1) {
+            const scaleFactor = 0.01;
+            const polygonOnImage: IPoint[] = RenderEngineUtil.transferPolygonFromViewPortContentToImage(this.activePath, data);
+            const radius = Math.min(...Object.values(data.realImageSize)) * scaleFactor;
+            const generatedPolygonFromKeypoint = this.generatePolygonFromKeypoint(polygonOnImage[0], radius, 8);
+            this.addPolygonLabel(generatedPolygonFromKeypoint);
+            this.finishLabelCreation();
         }
     }
 
@@ -306,6 +314,23 @@ export class PolygonRenderEngine extends BaseRenderEngine {
         store.dispatch(updateFirstLabelCreatedFlag(true));
         store.dispatch(updateActiveLabelId(labelPolygon.id));
     };
+
+    private generatePolygonFromKeypoint(point: IPoint, radius: number, numberOfVertices: number) {
+        const polygonVertices = [];
+        const angleStep = 2 * Math.PI / numberOfVertices;
+
+        for (let i = 0; i < numberOfVertices; i++) {
+            const angle = i * angleStep;
+            const x = point.x + radius * Math.cos(angle);
+            const y = point.y + radius * Math.sin(angle);
+            polygonVertices.push({ x, y });
+        }
+
+        return polygonVertices;
+
+    };
+
+
 
     // =================================================================================================================
     // TRANSFER
