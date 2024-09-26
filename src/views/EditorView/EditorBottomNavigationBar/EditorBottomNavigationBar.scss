@@ -5,7 +5,7 @@
   height: $editorBottomNavigationBarHeight;
   border-top: solid 1px $darkThemeFirstColor;
   background-color: $darkThemeSecondColor;
-  user-select: all;
+  user-select: text;
 
   display: flex;
   flex-direction: row;
@@ -16,6 +16,12 @@
 
   &.with-context {
     background-color: $darkThemeForthColor;
+  }
+
+  // Optional: customize text selection color
+  ::selection {
+    background-color: #007bff; // Blue selection background
+    color: white; // White text color when selected
   }
 
   .ImageButton {
