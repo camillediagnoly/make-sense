@@ -1,13 +1,14 @@
 import React from 'react';
 import './EditorBottomNavigationBar.scss';
-import {ImageData} from "../../../store/labels/types";
-import {AppState} from "../../../store";
-import {connect} from "react-redux";
-import {ImageButton} from "../../Common/ImageButton/ImageButton";
-import {ISize} from "../../../interfaces/ISize";
-import {ContextType} from "../../../data/enums/ContextType";
+import { ImageData } from "../../../store/labels/types";
+import { AppState } from "../../../store";
+import { connect } from "react-redux";
+import { ImageButton } from "../../Common/ImageButton/ImageButton";
+import { ISize } from "../../../interfaces/ISize";
+import { ContextType } from "../../../data/enums/ContextType";
 import classNames from "classnames";
-import {ImageActions} from "../../../logic/actions/ImageActions";
+import { ImageActions } from "../../../logic/actions/ImageActions";
+import { KeypointUtils } from "../../../logic/render/PolygonRenderEngine";
 
 interface IProps {
     size: ISize;
@@ -17,8 +18,8 @@ interface IProps {
     activeContext: ContextType;
 }
 
-const EditorBottomNavigationBar: React.FC<IProps> = ({size, imageData, totalImageCount, activeImageIndex, activeContext}) => {
-    const minWidth:number = 400;
+const EditorBottomNavigationBar: React.FC<IProps> = ({ size, imageData, totalImageCount, activeImageIndex, activeContext }) => {
+    const minWidth: number = 400;
 
     const getImageCounter = () => {
         return (activeImageIndex + 1) + " / " + totalImageCount;
@@ -32,13 +33,17 @@ const EditorBottomNavigationBar: React.FC<IProps> = ({size, imageData, totalImag
             }
         );
     };
+    const keypointUtilsInstance = new KeypointUtils();
+    const asymRatio = keypointUtilsInstance.getRatioFromKeypointPolygons()
+
+
 
     return (
         <div className={getClassName()}>
             <ImageButton
                 image={"ico/left.png"}
                 imageAlt={"previous"}
-                buttonSize={{width: 25, height: 25}}
+                buttonSize={{ width: 25, height: 25 }}
                 onClick={() => ImageActions.getPreviousImage()}
                 isDisabled={activeImageIndex === 0}
                 externalClassName={"left"}
@@ -50,11 +55,12 @@ const EditorBottomNavigationBar: React.FC<IProps> = ({size, imageData, totalImag
             <ImageButton
                 image={"ico/right.png"}
                 imageAlt={"next"}
-                buttonSize={{width: 25, height: 25}}
+                buttonSize={{ width: 25, height: 25 }}
                 onClick={() => ImageActions.getNextImage()}
                 isDisabled={activeImageIndex === totalImageCount - 1}
                 externalClassName={"right"}
             />
+            <div className="RatioMeasurement"> Asym ratio = {asymRatio?.toFixed(2) ?? 'null'} </div>
         </div>
     );
 };

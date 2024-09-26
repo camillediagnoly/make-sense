@@ -5,7 +5,7 @@
   height: $editorBottomNavigationBarHeight;
   border-top: solid 1px $darkThemeFirstColor;
   background-color: $darkThemeSecondColor;
-  user-select: none;
+  user-select: all;
 
   display: flex;
   flex-direction: row;
@@ -33,9 +33,11 @@
     &:not(.disabled):hover {
       filter: brightness(35%) sepia(100%) hue-rotate(172deg) saturate(2000%); // fallback if new css variables are not supported by browser
       filter: brightness(35%) sepia(100%) hue-rotate(var(--hue-value)) saturate(2000%);
+
       &.right {
         transform: translate(2px);
       }
+
       &.left {
         transform: translate(-2px);
       }
@@ -67,6 +69,20 @@
     min-width: 80px;
     padding: 0 20px;
     color: white;
+
+    display: flex;
+    flex-direction: row;
+    flex-wrap: nowrap;
+    justify-content: center;
+    align-items: center;
+    align-content: center;
+  }
+
+  .RatioMeasurement {
+    min-width: 10px;
+    padding: 0 10px;
+    color: white;
+    font-size: 14px;
 
     display: flex;
     flex-direction: row;

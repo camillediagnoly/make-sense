@@ -9,7 +9,7 @@ import { IPoint } from '../../interfaces/IPoint';
 import { ILine } from '../../interfaces/ILine';
 import { DrawUtil } from '../../utils/DrawUtil';
 import { IRect } from '../../interfaces/IRect';
-import { ImageData, LabelPolygon } from '../../store/labels/types';
+import { ImageData, LabelPolygon, LabelName } from '../../store/labels/types';
 import { LabelsSelector } from '../../store/selectors/LabelsSelector';
 import {
     updateActiveLabelId,
@@ -27,7 +27,6 @@ import { GeneralSelector } from '../../store/selectors/GeneralSelector';
 import { Settings } from '../../settings/Settings';
 import { LabelUtil } from '../../utils/LabelUtil';
 import { PolygonUtil } from '../../utils/PolygonUtil';
-
 export class PolygonRenderEngine extends BaseRenderEngine {
 
     // =================================================================================================================
@@ -262,6 +261,9 @@ export class PolygonRenderEngine extends BaseRenderEngine {
         }
     }
 
+
+
+
     // =================================================================================================================
     // CREATION
     // =================================================================================================================
@@ -329,7 +331,6 @@ export class PolygonRenderEngine extends BaseRenderEngine {
         return polygonVertices;
 
     };
-
 
 
     // =================================================================================================================
@@ -471,5 +472,102 @@ export class PolygonRenderEngine extends BaseRenderEngine {
             }
         }
         return null;
+    }
+}
+
+export class KeypointUtils {
+    public getRatioFromKeypointPolygons() {
+        const imageData: ImageData = LabelsSelector.getActiveImageData();
+        const labelNames: LabelName[] = LabelsSelector.getLabelNames();
+
+        // Create a map of labelId to label name for easy lookup
+        const labelMap = labelNames.reduce((map, label) => {
+            map[label.id] = label.name; // key: label id, value: label name
+            return map;
+        }, {});
+
+        // Map labelId in annotations to the corresponding name and filters only keypoints
+        const asymKeypointNames = ['p-b.Asym-kp1', 'p-b.Asym-kp2', 'p-b.Asym-kp3'];
+        const asymKeypointAnnotations = imageData.labelPolygons.map(annotation => ({
+            ...annotation,
+            labelName: annotation.labelId ? labelMap[annotation.labelId] || null : null // Find the name based on labelId
+        }))
+            .filter(annotation => annotation.labelName && asymKeypointNames.includes(annotation.labelName)); // Filter by specific names
+
+        // Compute centroids
+        const asymKeypointCenters = asymKeypointAnnotations.map(annotation => ({
+            id: annotation.id,
+            labelName: annotation.labelName,
+            centroid: this.computeCentroid(annotation)
+        }));
+
+        const asymRatio = this.computeDistanceRatio(asymKeypointCenters, asymKeypointNames)
+        return asymRatio
+    }
+
+    private computeCentroid(polygon: LabelPolygon): IPoint {
+        const { vertices } = polygon;
+
+        if (vertices.length === 0) {
+            throw new Error('No vertices in the polygon');
+        }
+
+        // Summing up the x and y coordinates of the vertices
+        const sum = vertices.reduce((acc, point) => {
+            acc.x += point.x;
+            acc.y += point.y;
+            return acc;
+        }, { x: 0, y: 0 });
+
+        // Calculate the average to find the centroid
+        const centroid = {
+            x: sum.x / vertices.length,
+            y: sum.y / vertices.length
+        };
+
+        return centroid;
+    }
+
+    private computeDistance(point1: IPoint, point2: IPoint): number {
+        const dx = point2.x - point1.x;
+        const dy = point2.y - point1.y;
+        return Math.sqrt(dx * dx + dy * dy);
+    }
+
+    // Function to compute the ratio of distances between kp1, kp2, and kp3 polygons
+    private computeDistanceRatio(keypointCenters: {
+        id: string;
+        labelName: string;
+        centroid: IPoint;
+    }[], keypointNames: string[]): number | null {
+        const keypoints = [];
+        for (let i = 0; i < keypointNames.length; i++) {
+            const selectedCenter = keypointCenters.find(polygon => polygon.labelName === keypointNames[i]);
+            keypoints.push(selectedCenter)
+        }
+
+        // Ensure kp1, kp2, and kp3 are present
+        if (keypoints.includes(undefined)) {
+            console.error('There are not enough keypoints')
+            return null;
+        }
+
+        // Compute distances
+        if (keypoints.length === 3) {
+            const distance_kp2_kp3 = this.computeDistance(keypoints[1].centroid, keypoints[2].centroid);
+            const distance_kp1_kp2 = this.computeDistance(keypoints[0].centroid, keypoints[1].centroid);
+            const ratio = distance_kp2_kp3 / (distance_kp1_kp2 + 1e-6);
+            console.log('ratio', ratio)
+            return ratio
+        } else if (keypoints.length === 4) {
+            const distance_kp3_kp4 = this.computeDistance(keypoints[2].centroid, keypoints[3].centroid);
+            const distance_kp1_kp2 = this.computeDistance(keypoints[0].centroid, keypoints[1].centroid);
+            const ratio = distance_kp3_kp4 / (distance_kp1_kp2 + 1e-6);
+            console.log('ratio', ratio)
+            return ratio
+        } else {
+            console.error('There are an unexpected number of keypoints (${keypoints.length})')
+            return null
+        }
     }
 }
