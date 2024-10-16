@@ -60,7 +60,7 @@ const EditorBottomNavigationBar: React.FC<IProps> = ({ size, imageData, totalIma
                 isDisabled={activeImageIndex === totalImageCount - 1}
                 externalClassName={"right"}
             />
-            <div className="RatioMeasurement"> B-Asym ratio = {asymRatio_B?.toFixed(2) ?? 'null'}, E-Asym ratio = {asymRatio_E?.toFixed(2) ?? 'null'} </div>
+            <div className="RatioMeasurement"> B-Asym = {asymRatio_B?.toFixed(2) ?? 'null'} -|- E-Asym = {asymRatio_E?.toFixed(2) ?? 'null'} </div>
         </div>
     );
 };
