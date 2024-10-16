@@ -34,7 +34,7 @@ const EditorBottomNavigationBar: React.FC<IProps> = ({ size, imageData, totalIma
         );
     };
     const keypointUtilsInstance = new KeypointUtils();
-    const asymRatio = keypointUtilsInstance.getRatioFromKeypointPolygons()
+    const [asymRatio_B, asymRatio_E] = keypointUtilsInstance.getRatioFromKeypointPolygons()
 
 
 
@@ -60,7 +60,7 @@ const EditorBottomNavigationBar: React.FC<IProps> = ({ size, imageData, totalIma
                 isDisabled={activeImageIndex === totalImageCount - 1}
                 externalClassName={"right"}
             />
-            <div className="RatioMeasurement"> Asym ratio = {asymRatio?.toFixed(2) ?? 'null'} </div>
+            <div className="RatioMeasurement"> B-Asym ratio = {asymRatio_B?.toFixed(2) ?? 'null'}, E-Asym ratio = {asymRatio_E?.toFixed(2) ?? 'null'} </div>
         </div>
     );
 };

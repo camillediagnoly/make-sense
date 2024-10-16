@@ -482,12 +482,15 @@ export class KeypointUtils {
 
         // Create a map of labelId to label name for easy lookup
         const labelMap = labelNames.reduce((map, label) => {
-            map[label.id] = label.name; // key: label id, value: label name
+            map[label.id] = label.name; // label id: label name
             return map;
         }, {});
 
         // Map labelId in annotations to the corresponding name and filters only keypoints
-        const asymKeypointNames = ['p-b.Asym-kp1', 'p-b.Asym-kp2', 'p-b.Asym-kp3'];
+        const asymKeypointNames_B = ['p-b.k:Asym-1', 'p-b.k:Asym-2', 'p-b.k:Asym-3'];
+        const asymKeypointNames_E = ['p-e.k:VxAsym-1', 'p-e.k:VxAsym-2', 'p-e.k:VxAsym-3', 'p-e.k:VxAsym-4'];
+        const asymKeypointNames = [...asymKeypointNames_B, ...asymKeypointNames_E]
+
         const asymKeypointAnnotations = imageData.labelPolygons.map(annotation => ({
             ...annotation,
             labelName: annotation.labelId ? labelMap[annotation.labelId] || null : null // Find the name based on labelId
@@ -501,8 +504,10 @@ export class KeypointUtils {
             centroid: this.computeCentroid(annotation)
         }));
 
-        const asymRatio = this.computeDistanceRatio(asymKeypointCenters, asymKeypointNames)
-        return asymRatio
+        const asymRatio_B = this.computeDistanceRatio(asymKeypointCenters, asymKeypointNames_B)
+        const asymRatio_E = this.computeDistanceRatio(asymKeypointCenters, asymKeypointNames_E)
+
+        return [asymRatio_B, asymRatio_E]
     }
 
     private computeCentroid(polygon: LabelPolygon): IPoint {
@@ -541,12 +546,13 @@ export class KeypointUtils {
         centroid: IPoint;
     }[], keypointNames: string[]): number | null {
         const keypoints = [];
+
         for (let i = 0; i < keypointNames.length; i++) {
             const selectedCenter = keypointCenters.find(polygon => polygon.labelName === keypointNames[i]);
             keypoints.push(selectedCenter)
         }
 
-        // Ensure kp1, kp2, and kp3 are present
+        // Ensure all selected keypoints are present
         if (keypoints.includes(undefined)) {
             console.error('There are not enough keypoints')
             return null;
