@@ -488,9 +488,9 @@ export class KeypointUtils {
 
         // Map labelId in annotations to the corresponding name and filters only keypoints
         const asymKeypointNames_B = ['p-b.k:Asym-1', 'p-b.k:Asym-2', 'p-b.k:Asym-3'];
-        const tgaKeypointNames_D = ['p-d.k:TGA-1', 'p-d.k:TGA-2', 'p-d.k:TGA-3'];
+        const tgaKeypointNames_D = ['p-d.k:TGA-3', 'p-d.k:TGA-2', 'p-d.k:TGA-1'];
         const asymKeypointNames_E = ['p-e.k:VxAsym-1', 'p-e.k:VxAsym-2', 'p-e.k:VxAsym-3', 'p-e.k:VxAsym-4'];
-        const asymKeypointNames = [...asymKeypointNames_B, ...asymKeypointNames_E]
+        const asymKeypointNames = [...asymKeypointNames_B, ...tgaKeypointNames_D, ...asymKeypointNames_E]
 
         const asymKeypointAnnotations = imageData.labelPolygons.map(annotation => ({
             ...annotation,
