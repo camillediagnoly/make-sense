@@ -298,7 +298,7 @@ export class PolygonRenderEngine extends BaseRenderEngine {
             this.addPolygonLabel(polygonOnImage);
             this.finishLabelCreation();
         } else if (this.isCreationInProgress() && this.activePath.length == 1) {
-            const scaleFactor = 0.01;
+            const scaleFactor = 0.005;
             const polygonOnImage: IPoint[] = RenderEngineUtil.transferPolygonFromViewPortContentToImage(this.activePath, data);
             const radius = Math.min(...Object.values(data.realImageSize)) * scaleFactor;
             const generatedPolygonFromKeypoint = this.generatePolygonFromKeypoint(polygonOnImage[0], radius, 8);
