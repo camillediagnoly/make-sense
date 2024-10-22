@@ -488,6 +488,7 @@ export class KeypointUtils {
 
         // Map labelId in annotations to the corresponding name and filters only keypoints
         const asymKeypointNames_B = ['p-b.k:Asym-1', 'p-b.k:Asym-2', 'p-b.k:Asym-3'];
+        const tgaKeypointNames_D = ['p-d.k:TGA-1', 'p-d.k:TGA-2', 'p-d.k:TGA-3'];
         const asymKeypointNames_E = ['p-e.k:VxAsym-1', 'p-e.k:VxAsym-2', 'p-e.k:VxAsym-3', 'p-e.k:VxAsym-4'];
         const asymKeypointNames = [...asymKeypointNames_B, ...asymKeypointNames_E]
 
@@ -505,9 +506,10 @@ export class KeypointUtils {
         }));
 
         const asymRatio_B = this.computeDistanceRatio(asymKeypointCenters, asymKeypointNames_B)
+        const tgaRatio_D = this.computeDistanceRatio(asymKeypointCenters, tgaKeypointNames_D)
         const asymRatio_E = this.computeDistanceRatio(asymKeypointCenters, asymKeypointNames_E)
 
-        return [asymRatio_B, asymRatio_E]
+        return [asymRatio_B, tgaRatio_D, asymRatio_E]
     }
 
     private computeCentroid(polygon: LabelPolygon): IPoint {
