@@ -1,10 +1,10 @@
-import {LabelsSelector} from '../../store/selectors/LabelsSelector';
-import {ImageData, LabelLine, LabelName, LabelPoint, LabelPolygon, LabelRect} from '../../store/labels/types';
-import {filter} from 'lodash';
-import {store} from '../../index';
-import {updateImageData, updateImageDataById} from '../../store/labels/actionCreators';
-import {LabelType} from '../../data/enums/LabelType';
-import {LabelUtil} from '../../utils/LabelUtil';
+import { LabelsSelector } from '../../store/selectors/LabelsSelector';
+import { ImageData, LabelLine, LabelName, LabelPoint, LabelPolygon, LabelRect } from '../../store/labels/types';
+import { filter } from 'lodash';
+import { store } from '../../index';
+import { updateImageData, updateImageDataById } from '../../store/labels/actionCreators';
+import { LabelType } from '../../data/enums/LabelType';
+import { LabelUtil } from '../../utils/LabelUtil';
 
 export class LabelActions {
     public static deleteActiveLabel() {
@@ -69,6 +69,32 @@ export class LabelActions {
             })
         };
         store.dispatch(updateImageDataById(imageData.id, newImageData));
+    }
+
+    public static toggleMeasurementLabelVisibility() {
+        const activeImageData: ImageData = LabelsSelector.getActiveImageData();
+        const labelNames: LabelName[] = LabelsSelector.getLabelNames();
+
+        // Create a map of labelId to label name for easy lookup
+        const labelMap = labelNames.reduce((map, label) => {
+            map[label.id] = label.name; // label id: label name
+            return map;
+        }, {});
+
+
+        // Map labelId in annotations to the corresponding name and filters only keypoints
+        const measurementNames = ['p-b.m:Asym-P', 'p-b.m:Asym-N', 'p-b.m:Asym-U', 'p-d.m:TGA-P', 'p-d.m:TGA-N', 'p-d.m:TGA-U']
+
+        const measurementAnnotations = activeImageData.labelPolygons.map(annotation => ({
+            ...annotation,
+            labelName: annotation.labelId ? labelMap[annotation.labelId] || null : null // Find the name based on labelId
+        }))
+            .filter(annotation => annotation.labelName && measurementNames.includes(annotation.labelName)); // Filter by specific names
+
+        for (let i = 0; i < measurementAnnotations.length; i++) {
+            LabelActions.toggleLabelVisibilityById(activeImageData.id, measurementAnnotations[i].id);
+        }
+
     }
 
     public static toggleLabelVisibilityById(imageId: string, labelId: string) {
