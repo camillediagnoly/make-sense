@@ -1,4 +1,5 @@
 import { store } from '../../index';
+import { find } from 'lodash';
 import { RectUtil } from '../../utils/RectUtil';
 import { updateCustomCursorStyle } from '../../store/general/actionCreators';
 import { CustomCursorStyle } from '../../data/enums/CustomCursorStyle';
@@ -37,6 +38,8 @@ export class PolygonRenderEngine extends BaseRenderEngine {
     private resizeAnchorIndex: number = null;
     private suggestedAnchorPositionOnCanvas: IPoint = null;
     private suggestedAnchorIndexInPolygon: number = null;
+    private scaleFactor = 0.005;
+    private kptNameEndPattern = /(\d+)$/;
 
     public constructor(canvas: HTMLCanvasElement) {
         super(canvas);
@@ -298,11 +301,21 @@ export class PolygonRenderEngine extends BaseRenderEngine {
             this.addPolygonLabel(polygonOnImage);
             this.finishLabelCreation();
         } else if (this.isCreationInProgress() && this.activePath.length == 1) {
-            const scaleFactor = 0.005;
             const polygonOnImage: IPoint[] = RenderEngineUtil.transferPolygonFromViewPortContentToImage(this.activePath, data);
-            const radius = Math.min(...Object.values(data.realImageSize)) * scaleFactor;
+            const radius = Math.min(...Object.values(data.realImageSize)) * this.scaleFactor;
             const generatedPolygonFromKeypoint = this.generatePolygonFromKeypoint(polygonOnImage[0], radius, 8);
             this.addPolygonLabel(generatedPolygonFromKeypoint);
+            this.finishLabelCreation();
+        } else if (this.isCreationInProgress() && this.activePath.length == 2) {
+            const polygonOnImage: IPoint[] = RenderEngineUtil.transferPolygonFromViewPortContentToImage(this.activePath, data);
+            const radius = Math.min(...Object.values(data.realImageSize)) * this.scaleFactor;
+
+            const generatedPolygons = []
+            for (let i = 0; i < polygonOnImage.length; i++) {
+                const generatedPolygonFromKeypoint = this.generatePolygonFromKeypoint(polygonOnImage[i], radius, 8);
+                generatedPolygons.push(generatedPolygonFromKeypoint)
+            }
+            this.addPolygonLabel2Keypoints(generatedPolygons);
             this.finishLabelCreation();
         }
     }
@@ -315,6 +328,50 @@ export class PolygonRenderEngine extends BaseRenderEngine {
         store.dispatch(updateImageDataById(imageData.id, imageData));
         store.dispatch(updateFirstLabelCreatedFlag(true));
         store.dispatch(updateActiveLabelId(labelPolygon.id));
+    };
+
+    private addPolygonLabel2Keypoints(polygons) {
+        const activeLabelId = LabelsSelector.getActiveLabelNameId();
+        const labelNames: LabelName[] = LabelsSelector.getLabelNames();
+        const imageData: ImageData = LabelsSelector.getActiveImageData();
+
+        // Create a map of labelId to label name for easy lookup
+        const labelIdToNameMap = labelNames.reduce((map, label) => {
+            map[label.id] = label.name; // label id: label name
+            return map;
+        }, {});
+        const labelNameToIdMap = labelNames.reduce((map, label) => {
+            map[label.name] = label.id; // label name: label id
+            return map;
+        }, {});
+        const activeLabelName = labelIdToNameMap[activeLabelId];
+
+        if (activeLabelName) {
+            if (this.kptNameEndPattern.test(activeLabelName)) {
+                const labelPolygon0: LabelPolygon = LabelUtil.createLabelPolygon(activeLabelId, polygons[0]);
+
+                const adjacentLabelName = activeLabelName.replace(this.kptNameEndPattern, (match) => (parseInt(match, 10) + 1).toString());
+                const adjacentLabelId = labelNameToIdMap[adjacentLabelName];
+                if (adjacentLabelId) {
+                    const labelPolygon1: LabelPolygon = LabelUtil.createLabelPolygon(adjacentLabelId, polygons[1]);
+                    imageData.labelPolygons.push(labelPolygon0);
+                    imageData.labelPolygons.push(labelPolygon1);
+                }
+                store.dispatch(updateImageDataById(imageData.id, imageData));
+                store.dispatch(updateFirstLabelCreatedFlag(true));
+                store.dispatch(updateActiveLabelId(labelPolygon0.id));
+
+            }
+        }
+
+
+
+
+        // const labelPolygon: LabelPolygon = LabelUtil.createLabelPolygon(activeLabelId, polygon);
+        // imageData.labelPolygons.push(labelPolygon);
+        // store.dispatch(updateImageDataById(imageData.id, imageData));
+        // store.dispatch(updateFirstLabelCreatedFlag(true));
+        // store.dispatch(updateActiveLabelId(labelPolygon.id));
     };
 
     private generatePolygonFromKeypoint(point: IPoint, radius: number, numberOfVertices: number) {
@@ -556,7 +613,7 @@ export class KeypointUtils {
 
         // Ensure all selected keypoints are present
         if (keypoints.includes(undefined)) {
-            console.error('There are not enough keypoints')
+            // console.error('There are not enough keypoints')
             return null;
         }
 
@@ -565,16 +622,16 @@ export class KeypointUtils {
             const distance_kp2_kp3 = this.computeDistance(keypoints[1].centroid, keypoints[2].centroid);
             const distance_kp1_kp2 = this.computeDistance(keypoints[0].centroid, keypoints[1].centroid);
             const ratio = distance_kp2_kp3 / (distance_kp1_kp2 + 1e-6);
-            console.log('ratio', ratio)
+            // console.log('ratio', ratio)
             return ratio
         } else if (keypoints.length === 4) {
             const distance_kp3_kp4 = this.computeDistance(keypoints[2].centroid, keypoints[3].centroid);
             const distance_kp1_kp2 = this.computeDistance(keypoints[0].centroid, keypoints[1].centroid);
             const ratio = distance_kp3_kp4 / (distance_kp1_kp2 + 1e-6);
-            console.log('ratio', ratio)
+            // console.log('ratio', ratio)
             return ratio
         } else {
-            console.error('There are an unexpected number of keypoints (${keypoints.length})')
+            // console.error('There are an unexpected number of keypoints (${keypoints.length})')
             return null
         }
     }
