@@ -28,6 +28,13 @@ import { GeneralSelector } from '../../store/selectors/GeneralSelector';
 import { Settings } from '../../settings/Settings';
 import { LabelUtil } from '../../utils/LabelUtil';
 import { PolygonUtil } from '../../utils/PolygonUtil';
+
+const asymKeypointNames_B = ['p-b.k:Asym-1', 'p-b.k:Asym-2', 'p-b.k:Asym-3'];
+const angleKeypointNames_B = ['p-b.k:Angle-1', 'p-b.k:Angle-2', 'p-b.k:Angle-3', 'p-b.k:Angle-4'];
+const tgaKeypointNames_D = ['p-d.k:TGA-3', 'p-d.k:TGA-1', 'p-d.k:TGA-2'];
+const asymKeypointNames_E = ['p-e.k:VxAsym-1', 'p-e.k:VxAsym-2', 'p-e.k:VxAsym-3', 'p-e.k:VxAsym-4'];
+const allKeypointNames = [...asymKeypointNames_B, ...angleKeypointNames_B, ...tgaKeypointNames_D, ...asymKeypointNames_E]
+
 export class PolygonRenderEngine extends BaseRenderEngine {
 
     // =================================================================================================================
@@ -40,6 +47,8 @@ export class PolygonRenderEngine extends BaseRenderEngine {
     private suggestedAnchorIndexInPolygon: number = null;
     private scaleFactor = 0.005;
     private kptNameEndPattern = /(\d+)$/;
+
+    private keypointUtils = new KeypointUtils();
 
     public constructor(canvas: HTMLCanvasElement) {
         super(canvas);
@@ -224,6 +233,7 @@ export class PolygonRenderEngine extends BaseRenderEngine {
         const activeLabelId: string = LabelsSelector.getActiveLabelId();
         const highlightedLabelId: string = LabelsSelector.getHighlightedLabelId();
         const imageData: ImageData = LabelsSelector.getActiveImageData();
+
         imageData.labelPolygons.forEach((labelPolygon: LabelPolygon) => {
             if (labelPolygon.isVisible) {
                 const isActive: boolean = labelPolygon.id === activeLabelId || labelPolygon.id === highlightedLabelId;
@@ -233,7 +243,34 @@ export class PolygonRenderEngine extends BaseRenderEngine {
                 }
             }
         });
+
+        // Create a map of keypoints' centers
+        const allKeypointCenters = this.keypointUtils.getKeypointsFromPolygons()
+        const keypoints = [];
+        for (let i = 0; i < angleKeypointNames_B.length; i++) {
+            const selectedCenter = allKeypointCenters.find(polygon => polygon.labelName === angleKeypointNames_B[i]);
+            keypoints.push(selectedCenter)
+        }
+        for (let i = 0; i < angleKeypointNames_B.length - 1; i += 2) {
+            const subset = [angleKeypointNames_B[i], angleKeypointNames_B[i + 1]]
+            if (subset.every((name) => keypoints.some((kpt) => kpt?.labelName === name))) {
+                const matchingKpts = keypoints.filter((item) =>
+                    subset.includes(item?.labelName ?? "")
+                );
+                const lineToDraw: ILine = {
+                    start: matchingKpts[0].centroid,
+                    end: matchingKpts[1].centroid
+                }
+                const lineOnCanvas = RenderEngineUtil.transferLineFromImageToViewPortContent(lineToDraw, data)
+                const standardizedLine: ILine = {
+                    start: RenderEngineUtil.setPointBetweenPixels(lineOnCanvas.start),
+                    end: RenderEngineUtil.setPointBetweenPixels(lineOnCanvas.end)
+                }
+                DrawUtil.drawLine(this.canvas, standardizedLine.start, standardizedLine.end, RenderEngineSettings.defaultAnchorColor, RenderEngineSettings.LINE_THICKNESS);
+            }
+        }
     }
+
 
     private drawPolygon(labelId: string | null, polygon: IPoint[], isActive: boolean) {
         const lineColor: string = BaseRenderEngine.resolveLabelLineColor(labelId, true)
@@ -263,8 +300,6 @@ export class PolygonRenderEngine extends BaseRenderEngine {
             }
         }
     }
-
-
 
 
     // =================================================================================================================
@@ -303,6 +338,8 @@ export class PolygonRenderEngine extends BaseRenderEngine {
         } else if (this.isCreationInProgress() && this.activePath.length == 1) {
             const polygonOnImage: IPoint[] = RenderEngineUtil.transferPolygonFromViewPortContentToImage(this.activePath, data);
             const radius = Math.min(...Object.values(data.realImageSize)) * this.scaleFactor;
+
+            // Draw kpt polygon
             const generatedPolygonFromKeypoint = this.generatePolygonFromKeypoint(polygonOnImage[0], radius, 8);
             this.addPolygonLabel(generatedPolygonFromKeypoint);
             this.finishLabelCreation();
@@ -310,12 +347,21 @@ export class PolygonRenderEngine extends BaseRenderEngine {
             const polygonOnImage: IPoint[] = RenderEngineUtil.transferPolygonFromViewPortContentToImage(this.activePath, data);
             const radius = Math.min(...Object.values(data.realImageSize)) * this.scaleFactor;
 
+            // Draw 2 kpt polygons
             const generatedPolygons = []
             for (let i = 0; i < polygonOnImage.length; i++) {
                 const generatedPolygonFromKeypoint = this.generatePolygonFromKeypoint(polygonOnImage[i], radius, 8);
                 generatedPolygons.push(generatedPolygonFromKeypoint)
             }
             this.addPolygonLabel2Keypoints(generatedPolygons);
+
+            // Draw the line between 2 kpts
+            const lineToDraw: ILine = {
+                start: RenderEngineUtil.setPointBetweenPixels(polygonOnImage[0]),
+                end: RenderEngineUtil.setPointBetweenPixels(polygonOnImage[1])
+            }
+            DrawUtil.drawLine(this.canvas, lineToDraw.start, lineToDraw.end, RenderEngineSettings.defaultAnchorColor, RenderEngineSettings.LINE_THICKNESS);
+            // DrawUtil.drawCircleWithFill(this.canvas, lineToDraw.start, radius / 2, RenderEngineSettings.defaultAnchorColor)
             this.finishLabelCreation();
         }
     }
@@ -363,15 +409,6 @@ export class PolygonRenderEngine extends BaseRenderEngine {
 
             }
         }
-
-
-
-
-        // const labelPolygon: LabelPolygon = LabelUtil.createLabelPolygon(activeLabelId, polygon);
-        // imageData.labelPolygons.push(labelPolygon);
-        // store.dispatch(updateImageDataById(imageData.id, imageData));
-        // store.dispatch(updateFirstLabelCreatedFlag(true));
-        // store.dispatch(updateActiveLabelId(labelPolygon.id));
     };
 
     private generatePolygonFromKeypoint(point: IPoint, radius: number, numberOfVertices: number) {
@@ -386,8 +423,8 @@ export class PolygonRenderEngine extends BaseRenderEngine {
         }
 
         return polygonVertices;
-
     };
+
 
 
     // =================================================================================================================
@@ -533,7 +570,7 @@ export class PolygonRenderEngine extends BaseRenderEngine {
 }
 
 export class KeypointUtils {
-    public getRatioFromKeypointPolygons() {
+    public getKeypointsFromPolygons() {
         const imageData: ImageData = LabelsSelector.getActiveImageData();
         const labelNames: LabelName[] = LabelsSelector.getLabelNames();
 
@@ -544,29 +581,31 @@ export class KeypointUtils {
         }, {});
 
         // Map labelId in annotations to the corresponding name and filters only keypoints
-        const asymKeypointNames_B = ['p-b.k:Asym-1', 'p-b.k:Asym-2', 'p-b.k:Asym-3'];
-        const tgaKeypointNames_D = ['p-d.k:TGA-3', 'p-d.k:TGA-1', 'p-d.k:TGA-2'];
-        const asymKeypointNames_E = ['p-e.k:VxAsym-1', 'p-e.k:VxAsym-2', 'p-e.k:VxAsym-3', 'p-e.k:VxAsym-4'];
-        const asymKeypointNames = [...asymKeypointNames_B, ...tgaKeypointNames_D, ...asymKeypointNames_E]
 
-        const asymKeypointAnnotations = imageData.labelPolygons.map(annotation => ({
+        const allKeypointAnnotations = imageData.labelPolygons.map(annotation => ({
             ...annotation,
             labelName: annotation.labelId ? labelMap[annotation.labelId] || null : null // Find the name based on labelId
         }))
-            .filter(annotation => annotation.labelName && asymKeypointNames.includes(annotation.labelName)); // Filter by specific names
+            .filter(annotation => annotation.labelName && allKeypointNames.includes(annotation.labelName)); // Filter by specific names
 
         // Compute centroids
-        const asymKeypointCenters = asymKeypointAnnotations.map(annotation => ({
+        const allKeypointCenters = allKeypointAnnotations.map(annotation => ({
             id: annotation.id,
             labelName: annotation.labelName,
             centroid: this.computeCentroid(annotation)
         }));
 
-        const asymRatio_B = this.computeDistanceRatio(asymKeypointCenters, asymKeypointNames_B)
-        const tgaRatio_D = this.computeDistanceRatio(asymKeypointCenters, tgaKeypointNames_D)
-        const asymRatio_E = this.computeDistanceRatio(asymKeypointCenters, asymKeypointNames_E)
+        return allKeypointCenters
+    }
 
-        return [asymRatio_B, tgaRatio_D, asymRatio_E]
+    public buildMeasurements() {
+        const allKeypointCenters = this.getKeypointsFromPolygons()
+        const asymRatio_B = this.computeDistanceRatio(allKeypointCenters, asymKeypointNames_B)
+        const angle_B = this.computeAngle(allKeypointCenters, angleKeypointNames_B)
+        const tgaRatio_D = this.computeDistanceRatio(allKeypointCenters, tgaKeypointNames_D)
+        const asymRatio_E = this.computeDistanceRatio(allKeypointCenters, asymKeypointNames_E)
+
+        return [asymRatio_B, angle_B, tgaRatio_D, asymRatio_E]
     }
 
     private computeCentroid(polygon: LabelPolygon): IPoint {
@@ -634,5 +673,39 @@ export class KeypointUtils {
             // console.error('There are an unexpected number of keypoints (${keypoints.length})')
             return null
         }
+    }
+
+    private computeVector(point1: IPoint, point2: IPoint): IPoint {
+        const vector: IPoint = {
+            x: point1.x - point2.x,
+            y: point1.y - point2.y,
+        };
+        return vector;
+    }
+
+    // Function to compute the angle between the vectors formed by kp1, kp2, and kp3, kp4
+    private computeAngle(keypointCenters: {
+        id: string;
+        labelName: string;
+        centroid: IPoint;
+    }[], keypointNames: string[]): number | null {
+        const keypoints = [];
+
+        for (let i = 0; i < keypointNames.length; i++) {
+            const selectedCenter = keypointCenters.find(polygon => polygon.labelName === keypointNames[i]);
+            keypoints.push(selectedCenter)
+        }
+
+        // Ensure all selected keypoints are present
+        if (keypoints.includes(undefined)) {
+            // console.error('There are not enough keypoints')
+            return null;
+        }
+
+        const vect1 = this.computeVector(keypoints[0].centroid, keypoints[1].centroid)
+        const vect2 = this.computeVector(keypoints[2].centroid, keypoints[3].centroid)
+
+        const angle = -(Math.atan2(vect1.x * vect2.y - vect1.y * vect2.x, vect1.x * vect2.x + vect1.y * vect2.y) * 180) / Math.PI;
+        return angle
     }
 }

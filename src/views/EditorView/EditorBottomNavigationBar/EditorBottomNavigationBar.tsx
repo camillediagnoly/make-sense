@@ -34,33 +34,38 @@ const EditorBottomNavigationBar: React.FC<IProps> = ({ size, imageData, totalIma
         );
     };
     const keypointUtilsInstance = new KeypointUtils();
-    const [asymRatio_B, tgaRatio_D, asymRatio_E] = keypointUtilsInstance.getRatioFromKeypointPolygons()
+    const [asymRatio_B, angle_B, tgaRatio_D, asymRatio_E] = keypointUtilsInstance.buildMeasurements()
 
 
 
     return (
         <div className={getClassName()}>
-            <ImageButton
-                image={"ico/left.png"}
-                imageAlt={"previous"}
-                buttonSize={{ width: 25, height: 25 }}
-                onClick={() => ImageActions.getPreviousImage()}
-                isDisabled={activeImageIndex === 0}
-                externalClassName={"left"}
-            />
-            {size.width > minWidth ?
-                <div className="CurrentImageName"> {imageData.fileData.name} </div> :
-                <div className="CurrentImageCount"> {getImageCounter()} </div>
-            }
-            <ImageButton
-                image={"ico/right.png"}
-                imageAlt={"next"}
-                buttonSize={{ width: 25, height: 25 }}
-                onClick={() => ImageActions.getNextImage()}
-                isDisabled={activeImageIndex === totalImageCount - 1}
-                externalClassName={"right"}
-            />
-            <div className="RatioMeasurement"> B-Asym = {asymRatio_B?.toFixed(2) ?? 'null'} -|- D-TGA = {tgaRatio_D?.toFixed(2) ?? 'null'} -|- E-Asym = {asymRatio_E?.toFixed(2) ?? 'null'} </div>
+            <div className="TopRow">
+                <ImageButton
+                    image={"ico/left.png"}
+                    imageAlt={"previous"}
+                    buttonSize={{ width: 25, height: 25 }}
+                    onClick={() => ImageActions.getPreviousImage()}
+                    isDisabled={activeImageIndex === 0}
+                    externalClassName={"left"}
+                />
+                {size.width > minWidth ?
+                    <div className="CurrentImageName"> {imageData.fileData.name} </div> :
+                    <div className="CurrentImageCount"> {getImageCounter()} </div>
+                }
+                <ImageButton
+                    image={"ico/right.png"}
+                    imageAlt={"next"}
+                    buttonSize={{ width: 25, height: 25 }}
+                    onClick={() => ImageActions.getNextImage()}
+                    isDisabled={activeImageIndex === totalImageCount - 1}
+                    externalClassName={"right"}
+                />
+            </div>
+            <div className="BottomRow">
+                <div className="RatioMeasurement"> B-Asym = {asymRatio_B?.toFixed(2) ?? 'null'} -|- D-TGA = {tgaRatio_D?.toFixed(2) ?? 'null'} -|- E-Asym = {asymRatio_E?.toFixed(2) ?? 'null'} </div>
+                <div className="AngleMeasurement"> B-Angle = {angle_B != null ? `${angle_B.toFixed(2)}°` : 'null'} </div>
+            </div>
         </div>
     );
 };
