@@ -30,7 +30,7 @@ import { LabelUtil } from '../../utils/LabelUtil';
 import { PolygonUtil } from '../../utils/PolygonUtil';
 
 const asymKeypointNames_B = ['p-b.k:Asym-1', 'p-b.k:Asym-2', 'p-b.k:Asym-3'];
-const angleKeypointNames_B = ['p-b.k:Angle-1', 'p-b.k:Angle-2', 'p-b.k:Angle-3', 'p-b.k:Angle-4'];
+const angleKeypointNames_B = ['p-b.k:Angle-1', 'p-b.k:Angle-2', 'p-b.k:Angle-3', 'p-b.k:Angle-4', 'p-b.k:Angle-5'];
 const tgaKeypointNames_D = ['p-d.k:TGA-3', 'p-d.k:TGA-1', 'p-d.k:TGA-2'];
 const asymKeypointNames_E = ['p-e.k:VxAsym-1', 'p-e.k:VxAsym-2', 'p-e.k:VxAsym-3', 'p-e.k:VxAsym-4'];
 const allKeypointNames = [...asymKeypointNames_B, ...angleKeypointNames_B, ...tgaKeypointNames_D, ...asymKeypointNames_E]
@@ -697,15 +697,24 @@ export class KeypointUtils {
         }
 
         // Ensure all selected keypoints are present
-        if (keypoints.includes(undefined)) {
+        if (keypoints.slice(0, 4).includes(undefined)) {
             // console.error('There are not enough keypoints')
             return null;
         }
 
+        // Angle values
         const vect1 = this.computeVector(keypoints[0].centroid, keypoints[1].centroid)
         const vect2 = this.computeVector(keypoints[2].centroid, keypoints[3].centroid)
+        const angle = Math.atan2(vect1.x * vect2.y - vect1.y * vect2.x, vect1.x * vect2.x + vect1.y * vect2.y) * 180 / Math.PI;
 
-        const angle = -(Math.atan2(vect1.x * vect2.y - vect1.y * vect2.x, vect1.x * vect2.x + vect1.y * vect2.y) * 180) / Math.PI;
-        return angle
+        // Sign
+        // Check if the 5th keypoint is defined
+        if (keypoints[4] !== undefined) {
+            const vect3 = this.computeVector(keypoints[4].centroid, keypoints[3].centroid);
+            const sign = Math.sign(vect2.x * vect3.y - vect2.y * vect3.x);
+            return sign * angle;
+        }
+
+        return Math.abs(angle);
     }
 }
