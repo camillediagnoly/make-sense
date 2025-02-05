@@ -28,12 +28,25 @@ import { GeneralSelector } from '../../store/selectors/GeneralSelector';
 import { Settings } from '../../settings/Settings';
 import { LabelUtil } from '../../utils/LabelUtil';
 import { PolygonUtil } from '../../utils/PolygonUtil';
+import { start } from 'repl';
 
 const asymKeypointNames_B = ['p-b.k:Asym-1', 'p-b.k:Asym-2', 'p-b.k:Asym-3'];
 const angleKeypointNames_B = ['p-b.k:Angle-1', 'p-b.k:Angle-2', 'p-b.k:Angle-3', 'p-b.k:Angle-4', 'p-b.k:Angle-5'];
+const surfaceKeypointNames_B = ['p-b.k:Surface-1', 'p-b.k:Surface-2', 'p-b.k:Surface-3', 'p-b.k:Surface-4', 'p-b.k:Surface-5', 'p-b.k:Surface-6'];
 const tgaKeypointNames_D = ['p-d.k:TGA-3', 'p-d.k:TGA-1', 'p-d.k:TGA-2'];
 const asymKeypointNames_E = ['p-e.k:VxAsym-1', 'p-e.k:VxAsym-2', 'p-e.k:VxAsym-3', 'p-e.k:VxAsym-4'];
-const allKeypointNames = [...asymKeypointNames_B, ...angleKeypointNames_B, ...tgaKeypointNames_D, ...asymKeypointNames_E]
+const asymCSPKeypointNames_F = ['p-f.k:CSP-1', 'p-f.k:CSP-2', 'p-f.k:CSP-3', 'p-f.k:CSP-4'];
+const asymCIKeypointNames_F = ['p-f.k:CI-1', 'p-f.k:CI-2', 'p-f.k:CI-3', 'p-f.k:CI-4'];
+
+const allKeypointNames = [
+    ...asymKeypointNames_B,
+    ...angleKeypointNames_B,
+    ...surfaceKeypointNames_B,
+    ...tgaKeypointNames_D,
+    ...asymKeypointNames_E,
+    ...asymCSPKeypointNames_F,
+    ...asymCIKeypointNames_F
+];
 
 export class PolygonRenderEngine extends BaseRenderEngine {
 
@@ -49,10 +62,12 @@ export class PolygonRenderEngine extends BaseRenderEngine {
     private kptNameEndPattern = /(\d+)$/;
 
     private keypointUtils = new KeypointUtils();
+    private surfaceAnnotator: KeypointSurfaceAnnotation;
 
     public constructor(canvas: HTMLCanvasElement) {
         super(canvas);
         this.labelType = LabelType.POLYGON;
+        this.surfaceAnnotator = new KeypointSurfaceAnnotation()
     }
 
     // =================================================================================================================
@@ -216,6 +231,8 @@ export class PolygonRenderEngine extends BaseRenderEngine {
         standardizedPoints.forEach((point: IPoint) => {
             DrawUtil.drawCircleWithFill(this.canvas, point, Settings.RESIZE_HANDLE_DIMENSION_PX / 2, anchorColor);
         })
+        this.surfaceAnnotator.processCircle(this.canvas, data, standardizedPoints);
+
     }
 
     private drawActivelyResizeLabel(data: EditorData) {
@@ -244,9 +261,9 @@ export class PolygonRenderEngine extends BaseRenderEngine {
             }
         });
 
-        // Create a map of keypoints' centers
+        // Create a map of keypoints' centers for Angle annotations
         const allKeypointCenters = this.keypointUtils.getKeypointsFromPolygons()
-        const keypoints = [];
+        let keypoints = [];
         for (let i = 0; i < angleKeypointNames_B.length; i++) {
             const selectedCenter = allKeypointCenters.find(polygon => polygon.labelName === angleKeypointNames_B[i]);
             keypoints.push(selectedCenter)
@@ -267,6 +284,27 @@ export class PolygonRenderEngine extends BaseRenderEngine {
                     end: RenderEngineUtil.setPointBetweenPixels(lineOnCanvas.end)
                 }
                 DrawUtil.drawLine(this.canvas, standardizedLine.start, standardizedLine.end, RenderEngineSettings.defaultAnchorColor, RenderEngineSettings.LINE_THICKNESS);
+            }
+        }
+
+        // Create a map of keypoints' centers for Surface annotations
+        keypoints = [];
+        for (let i = 0; i < surfaceKeypointNames_B.length; i++) {
+            const selectedCenter = allKeypointCenters.find(polygon => polygon.labelName === surfaceKeypointNames_B[i]);
+            keypoints.push(selectedCenter)
+        }
+        for (let i = 0; i < surfaceKeypointNames_B.length - 2; i += 3) {
+            const subset = [surfaceKeypointNames_B[i], surfaceKeypointNames_B[i + 1], surfaceKeypointNames_B[i + 2]]
+            if (subset.every((name) => keypoints.some((kpt) => kpt?.labelName === name))) {
+                const matchingKpts = keypoints.filter((item) =>
+                    subset.includes(item?.labelName ?? "")
+                );
+                const centroids = matchingKpts.map(x => x.centroid)
+                const pointsOnCanvas = RenderEngineUtil.transferPolygonFromImageToViewPortContent(centroids, data);
+                let startPoint = RenderEngineUtil.setPointBetweenPixels(pointsOnCanvas[0]);
+                let endPoint = RenderEngineUtil.setPointBetweenPixels(pointsOnCanvas[1]);
+                let constrainPoint = RenderEngineUtil.setPointBetweenPixels(pointsOnCanvas[2]);
+                this.surfaceAnnotator.drawEllipse(this.canvas, startPoint, endPoint, constrainPoint);
             }
         }
     }
@@ -366,6 +404,29 @@ export class PolygonRenderEngine extends BaseRenderEngine {
         }
     }
 
+    public addLabelAndFinishCreationEllipse(data: EditorData) {
+        if (this.isCreationInProgress() && this.activePath.length == 3) {
+            const polygonOnImage: IPoint[] = RenderEngineUtil.transferPolygonFromViewPortContentToImage(this.activePath, data);
+            const radius = Math.min(...Object.values(data.realImageSize)) * this.scaleFactor;
+
+            // Draw 2 kpt polygons
+            const generatedPolygons = []
+            for (let i = 0; i < polygonOnImage.length; i++) {
+                const generatedPolygonFromKeypoint = this.generatePolygonFromKeypoint(polygonOnImage[i], radius, 8);
+                generatedPolygons.push(generatedPolygonFromKeypoint)
+            }
+            this.addPolygonLabel3Keypoints(generatedPolygons);
+
+            // Draw the ellipse
+            // let startPoint = RenderEngineUtil.setPointBetweenPixels(polygonOnImage[0]);
+            // let endPoint = RenderEngineUtil.setPointBetweenPixels(polygonOnImage[1]);
+            // let constrainPoint = RenderEngineUtil.setPointBetweenPixels(polygonOnImage[2]);
+
+            // this.surfaceAnnotator.drawCircle(this.canvas, startPoint, endPoint);
+            this.finishLabelCreation();
+        }
+    }
+
     private addPolygonLabel(polygon: IPoint[]) {
         const activeLabelId = LabelsSelector.getActiveLabelNameId();
         const imageData: ImageData = LabelsSelector.getActiveImageData();
@@ -402,6 +463,45 @@ export class PolygonRenderEngine extends BaseRenderEngine {
                     const labelPolygon1: LabelPolygon = LabelUtil.createLabelPolygon(adjacentLabelId, polygons[1]);
                     imageData.labelPolygons.push(labelPolygon0);
                     imageData.labelPolygons.push(labelPolygon1);
+                }
+                store.dispatch(updateImageDataById(imageData.id, imageData));
+                store.dispatch(updateFirstLabelCreatedFlag(true));
+                store.dispatch(updateActiveLabelId(labelPolygon0.id));
+
+            }
+        }
+    };
+
+    private addPolygonLabel3Keypoints(polygons) {
+        const activeLabelId = LabelsSelector.getActiveLabelNameId();
+        const labelNames: LabelName[] = LabelsSelector.getLabelNames();
+        const imageData: ImageData = LabelsSelector.getActiveImageData();
+
+        // Create a map of labelId to label name for easy lookup
+        const labelIdToNameMap = labelNames.reduce((map, label) => {
+            map[label.id] = label.name; // label id: label name
+            return map;
+        }, {});
+        const labelNameToIdMap = labelNames.reduce((map, label) => {
+            map[label.name] = label.id; // label name: label id
+            return map;
+        }, {});
+        const activeLabelName = labelIdToNameMap[activeLabelId];
+
+        if (activeLabelName) {
+            if (this.kptNameEndPattern.test(activeLabelName)) {
+                const labelPolygon0: LabelPolygon = LabelUtil.createLabelPolygon(activeLabelId, polygons[0]);
+
+                const nextLabelName1 = activeLabelName.replace(this.kptNameEndPattern, (match) => (parseInt(match, 10) + 1).toString());
+                const nextLabelId1 = labelNameToIdMap[nextLabelName1];
+                const nextLabelName2 = activeLabelName.replace(this.kptNameEndPattern, (match) => (parseInt(match, 10) + 2).toString());
+                const nextLabelId2 = labelNameToIdMap[nextLabelName2];
+                if (nextLabelId1) {
+                    const labelPolygon1: LabelPolygon = LabelUtil.createLabelPolygon(nextLabelId1, polygons[1]);
+                    const labelPolygon2: LabelPolygon = LabelUtil.createLabelPolygon(nextLabelId2, polygons[2]);
+                    imageData.labelPolygons.push(labelPolygon0);
+                    imageData.labelPolygons.push(labelPolygon1);
+                    imageData.labelPolygons.push(labelPolygon2);
                 }
                 store.dispatch(updateImageDataById(imageData.id, imageData));
                 store.dispatch(updateFirstLabelCreatedFlag(true));
@@ -569,6 +669,157 @@ export class PolygonRenderEngine extends BaseRenderEngine {
     }
 }
 
+export interface CircleData {
+    startPoint: IPoint,
+    endPoint: IPoint
+}
+
+export class KeypointSurfaceAnnotation {
+    /*
+        Draw circle and ellipse for surface measurements, 
+        --> each clicked point is a polygon keypoint
+        Click 1st point: create the point on canvas then draw a dynamic circle whose diameter
+            is the clicked point and the tip of the mouse
+        Click 2nd point: create the 2nd point on the canvas 
+            --> create 2 keypoint polygons
+            --> draw the final circle whose diameter is formed by 2 points on the canvas 
+            --> save and erase the circle to create a moving ellipse 
+                whose major axis is point1-point2, and passing through the tip of the mouse
+                (if cannot find the satisfying ellipse, stop drawing)
+        Click 3rd point: create the 3rd keypoint polygon 
+            --> create a fixed ellipse if ellipse exists else keep the circle
+    */
+    public activeAnchorPoints: IPoint[] = [];
+    // public activeConstrainPoint: IPoint = {};
+    private isMoving = false;
+    private currentMousePos = { x: 0, y: 0 };
+    private finalCircles = [];
+
+    public handleMouseDown(canvas: HTMLCanvasElement, points: IPoint[]) {
+        /*
+            - Click 1 point --> do nothing (bc makesense already handles 1 click)
+            - Moving: see handleMouseMove
+            - Click 2 points --> draw 2 keypoint polygons (see)
+        */
+        console.log('handleMouseDown')
+        console.log('points', points.length, "points[0]", points[0])
+        if (points.length === 2) {
+            this.activeAnchorPoints.push(...points);
+            console.log('this.anchorPoints', this.activeAnchorPoints)
+
+            // this.drawCircle(canvas);
+            this.activeAnchorPoints = []
+        }
+
+    }
+
+    public handleMouseMove(canvas: HTMLCanvasElement, data: EditorData) {
+        console.log('handleMouseMove')
+        console.log('this.isMoving', this.isMoving)
+
+        if (!this.isMoving) return;
+
+        this.currentMousePos = data.mousePositionOnViewPortContent;
+        // this.drawCircle(canvas);
+    }
+
+    public processCircle(canvas: HTMLCanvasElement, data: EditorData, points: IPoint[]) {
+        if (points.length > 0) {
+            this.activeAnchorPoints = points;
+        }
+        else this.reset();
+
+        if (this.activeAnchorPoints.length > 0 && this.activeAnchorPoints.length <= 3) {
+            let startPoint = this.activeAnchorPoints[0];
+            let endPoint = this.activeAnchorPoints.length >= 2 ? this.activeAnchorPoints[1] : data.mousePositionOnViewPortContent;
+            let mousePosition = RenderEngineUtil.setPointBetweenPixels(data.mousePositionOnViewPortContent);
+            if (
+                (this.activeAnchorPoints.length == 1) ||
+                (this.activeAnchorPoints.length == 2
+                    && this.arePointsEqual(endPoint, mousePosition))
+            ) {
+                this.drawCircle(canvas, startPoint, endPoint)
+            }
+            else if (this.activeAnchorPoints.length == 2 && !this.arePointsEqual(endPoint, mousePosition)) {
+                this.drawEllipse(canvas, startPoint, endPoint, data.mousePositionOnViewPortContent);
+            }
+            else if (this.activeAnchorPoints.length == 3) {
+                this.drawEllipse(canvas, startPoint, endPoint, this.activeAnchorPoints[2]);
+            }
+
+        }
+        else {
+            this.reset();
+        }
+    }
+
+    public drawCircle(canvas: HTMLCanvasElement, startPoint: IPoint, endPoint: IPoint) {
+        // Calculate circle properties
+        const dx = endPoint.x - startPoint.x;
+        const dy = endPoint.y - startPoint.y;
+        const diameter = Math.sqrt(dx * dx + dy * dy);
+        const radius = diameter / 2;
+        const center: IPoint = {
+            x: startPoint.x + dx / 2,
+            y: startPoint.y + dy / 2
+        };
+
+        // Draw circle
+        DrawUtil.drawDashCircle(
+            canvas,
+            center,
+            radius,
+            0,
+            360,
+            1);
+    }
+
+    public drawEllipse(canvas: HTMLCanvasElement, startPoint: IPoint, endPoint: IPoint, constrainPoint: IPoint) {
+        // Calculate circle properties
+        const dx = endPoint.x - startPoint.x;
+        const dy = endPoint.y - startPoint.y;
+        const diameter = Math.sqrt(dx * dx + dy * dy);
+        const majorAxis = diameter / 2;
+        const center: IPoint = {
+            x: startPoint.x + dx / 2,
+            y: startPoint.y + dy / 2
+        };
+        const rotateAngle = Math.atan2(dy, dx);
+        const rotateCosine = Math.cos(-rotateAngle);
+        const rotateSine = Math.sin(-rotateAngle);
+        const constrainPointToCenter: IPoint = {
+            x: constrainPoint.x - center.x,
+            y: constrainPoint.y - center.y
+        }
+        const mappedConstrainPoint: IPoint = {
+            x: rotateCosine * constrainPointToCenter.x - rotateSine * constrainPointToCenter.y,
+            y: rotateSine * constrainPointToCenter.x + rotateCosine * constrainPointToCenter.y
+        }
+
+        // constrainPoint is on the ellipse with formula (x/a)^2 + (y/b)^2 = 1 --> compute b
+        const minorAxis = Math.abs(mappedConstrainPoint.y) / Math.sqrt(1 - (mappedConstrainPoint.x / majorAxis) ** 2);
+        // Draw ellipse
+        DrawUtil.drawDashEllipse(
+            canvas,
+            center,
+            majorAxis,
+            minorAxis,
+            rotateAngle,
+            0,
+            360,
+            1);
+    }
+
+    private arePointsEqual(point1: IPoint, point2: IPoint) {
+        return point1.x === point2.x && point1.y === point2.y;
+    }
+    private reset() {
+        this.activeAnchorPoints = []
+    }
+
+
+}
+
 export class KeypointUtils {
     public getKeypointsFromPolygons() {
         const imageData: ImageData = LabelsSelector.getActiveImageData();
@@ -604,8 +855,10 @@ export class KeypointUtils {
         const angle_B = this.computeAngle(allKeypointCenters, angleKeypointNames_B)
         const tgaRatio_D = this.computeDistanceRatio(allKeypointCenters, tgaKeypointNames_D)
         const asymRatio_E = this.computeDistanceRatio(allKeypointCenters, asymKeypointNames_E)
+        const asymRatioCSP_F = this.computeDistanceRatio(allKeypointCenters, asymCSPKeypointNames_F)
+        const asymRatioCI_F = this.computeDistanceRatio(allKeypointCenters, asymCIKeypointNames_F)
 
-        return [asymRatio_B, angle_B, tgaRatio_D, asymRatio_E]
+        return [asymRatio_B, angle_B, tgaRatio_D, asymRatio_E, asymRatioCSP_F, asymRatioCI_F]
     }
 
     private computeCentroid(polygon: LabelPolygon): IPoint {

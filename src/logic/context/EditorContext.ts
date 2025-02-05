@@ -19,7 +19,9 @@ export class EditorContext extends BaseContext {
             action: (event: KeyboardEvent) => {
                 if (EditorModel.supportRenderingEngine && EditorModel.supportRenderingEngine.labelType === LabelType.POLYGON) {
                     const editorData: EditorData = EditorActions.getEditorData();
-                    (EditorModel.supportRenderingEngine as PolygonRenderEngine).addLabelAndFinishCreation(editorData);
+                    // (EditorModel.supportRenderingEngine as PolygonRenderEngine).addLabelAndFinishCreation(editorData);
+                    (EditorModel.supportRenderingEngine as PolygonRenderEngine).addLabelAndFinishCreationEllipse(editorData);
+
                 }
                 EditorActions.fullRender();
             }

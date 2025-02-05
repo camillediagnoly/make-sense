@@ -1,17 +1,17 @@
 
-import {IPoint} from '../interfaces/IPoint';
-import {IRect} from '../interfaces/IRect';
-import {UnitUtil} from './UnitUtil';
+import { IPoint } from '../interfaces/IPoint';
+import { IRect } from '../interfaces/IRect';
+import { UnitUtil } from './UnitUtil';
 
 export class DrawUtil {
 
-    public static clearCanvas(canvas:HTMLCanvasElement): void {
-        const ctx:CanvasRenderingContext2D = canvas.getContext('2d');
+    public static clearCanvas(canvas: HTMLCanvasElement): void {
+        const ctx: CanvasRenderingContext2D = canvas.getContext('2d');
         ctx.clearRect(0, 0, canvas.width, canvas.height);
     }
 
-    public static drawLine(canvas:HTMLCanvasElement, startPoint:IPoint, endPoint:IPoint, color = '#111111', thickness = 1): void {
-        const ctx:CanvasRenderingContext2D = canvas.getContext('2d');
+    public static drawLine(canvas: HTMLCanvasElement, startPoint: IPoint, endPoint: IPoint, color = '#111111', thickness = 1): void {
+        const ctx: CanvasRenderingContext2D = canvas.getContext('2d');
         ctx.save();
         ctx.strokeStyle = color;
         ctx.lineWidth = thickness;
@@ -23,8 +23,8 @@ export class DrawUtil {
         ctx.restore();
     }
 
-    public static drawRect(canvas:HTMLCanvasElement, rect:IRect, color = '#fff', thickness = 1): void {
-        const ctx:CanvasRenderingContext2D = canvas.getContext('2d');
+    public static drawRect(canvas: HTMLCanvasElement, rect: IRect, color = '#fff', thickness = 1): void {
+        const ctx: CanvasRenderingContext2D = canvas.getContext('2d');
         ctx.save();
         ctx.strokeStyle = color;
         ctx.lineWidth = thickness;
@@ -34,8 +34,8 @@ export class DrawUtil {
         ctx.restore();
     }
 
-    public static drawRectWithFill(canvas:HTMLCanvasElement, rect:IRect, color = '#fff'): void {
-        const ctx:CanvasRenderingContext2D = canvas.getContext('2d');
+    public static drawRectWithFill(canvas: HTMLCanvasElement, rect: IRect, color = '#fff'): void {
+        const ctx: CanvasRenderingContext2D = canvas.getContext('2d');
         ctx.save();
         ctx.fillStyle = color;
         ctx.beginPath();
@@ -44,8 +44,8 @@ export class DrawUtil {
         ctx.restore();
     }
 
-    public static shadeEverythingButRect(canvas:HTMLCanvasElement, rect:IRect, color = 'rgba(0, 0, 0, 0.7)'): void {
-        const ctx:CanvasRenderingContext2D = canvas.getContext('2d');
+    public static shadeEverythingButRect(canvas: HTMLCanvasElement, rect: IRect, color = 'rgba(0, 0, 0, 0.7)'): void {
+        const ctx: CanvasRenderingContext2D = canvas.getContext('2d');
         ctx.save();
         ctx.fillStyle = color;
         ctx.fillRect(0, 0, canvas.width, canvas.height);
@@ -54,8 +54,8 @@ export class DrawUtil {
         ctx.restore();
     }
 
-    public static drawCircleWithFill(canvas:HTMLCanvasElement, anchorPoint:IPoint, radius:number, color = '#ffffff'):void {
-        const ctx:CanvasRenderingContext2D = canvas.getContext('2d');
+    public static drawCircleWithFill(canvas: HTMLCanvasElement, anchorPoint: IPoint, radius: number, color = '#ffffff'): void {
+        const ctx: CanvasRenderingContext2D = canvas.getContext('2d');
         ctx.save();
         const startAngleRad = UnitUtil.deg2rad(0);
         const endAngleRad = UnitUtil.deg2rad(360);
@@ -66,11 +66,10 @@ export class DrawUtil {
         ctx.restore();
     }
 
-    public static drawCircle(canvas:HTMLCanvasElement, anchorPoint:IPoint, radius:number, startAngleDeg:number, endAngleDeg:number, thickness = 20, color = '#ffffff'): void {
-        const ctx:CanvasRenderingContext2D = canvas.getContext('2d');
+    public static drawCircle(canvas: HTMLCanvasElement, anchorPoint: IPoint, radius: number, startAngleDeg: number, endAngleDeg: number, thickness = 20, color = '#ffffff'): void {
+        const ctx: CanvasRenderingContext2D = canvas.getContext('2d');
         const startAngleRad = UnitUtil.deg2rad(startAngleDeg);
         const endAngleRad = UnitUtil.deg2rad(endAngleDeg);
-        ctx.save();
         ctx.strokeStyle = color;
         ctx.lineWidth = thickness;
         ctx.beginPath();
@@ -79,14 +78,46 @@ export class DrawUtil {
         ctx.restore();
     }
 
-    public static drawPolygon(canvas:HTMLCanvasElement, anchors: IPoint[], color = '#fff', thickness = 1): void {
-        const ctx:CanvasRenderingContext2D = canvas.getContext('2d');
+    public static drawDashCircle(canvas: HTMLCanvasElement, anchorPoint: IPoint, radius: number, startAngleDeg: number, endAngleDeg: number, thickness = 20, color = '#ffffff'): void {
+        const ctx: CanvasRenderingContext2D = canvas.getContext('2d');
+        const startAngleRad = UnitUtil.deg2rad(startAngleDeg);
+        const endAngleRad = UnitUtil.deg2rad(endAngleDeg);
+        ctx.strokeStyle = color;
+        // Set line dash pattern
+        ctx.setLineDash([10, 5]); // 10px dash, 5px gap
+        ctx.lineWidth = thickness;
+        ctx.beginPath();
+        ctx.arc(anchorPoint.x, anchorPoint.y, radius, startAngleRad, endAngleRad, false);
+        ctx.stroke();
+        // Reset line dash to solid (optional)
+        ctx.setLineDash([]);
+        ctx.restore();
+    }
+
+    public static drawDashEllipse(canvas: HTMLCanvasElement, centerPoint: IPoint, majorAxis: number, minorAxis: number, rotationRad: number, startAngleDeg: number, endAngleDeg: number, thickness = 20, color = '#ffffff'): void {
+        const ctx: CanvasRenderingContext2D = canvas.getContext('2d');
+        const startAngleRad = UnitUtil.deg2rad(startAngleDeg);
+        const endAngleRad = UnitUtil.deg2rad(endAngleDeg);
+        ctx.strokeStyle = color;
+        // Set line dash pattern
+        ctx.setLineDash([10, 5]); // 10px dash, 5px gap
+        ctx.lineWidth = thickness;
+        ctx.beginPath();
+        ctx.ellipse(centerPoint.x, centerPoint.y, majorAxis, minorAxis, rotationRad, startAngleRad, endAngleRad, false);
+        ctx.stroke();
+        // Reset line dash to solid (optional)
+        ctx.setLineDash([]);
+        ctx.restore();
+    }
+
+    public static drawPolygon(canvas: HTMLCanvasElement, anchors: IPoint[], color = '#fff', thickness = 1): void {
+        const ctx: CanvasRenderingContext2D = canvas.getContext('2d');
         ctx.save();
         ctx.strokeStyle = color;
         ctx.lineWidth = thickness;
         ctx.beginPath();
         ctx.moveTo(anchors[0].x, anchors[0].y);
-        for (let i = 1; i < anchors.length; i ++) {
+        for (let i = 1; i < anchors.length; i++) {
             ctx.lineTo(anchors[i].x, anchors[i].y);
         }
         ctx.closePath();
@@ -94,13 +125,13 @@ export class DrawUtil {
         ctx.restore();
     }
 
-    public static drawPolygonWithFill(canvas:HTMLCanvasElement, anchors: IPoint[], color = '#fff'): void {
-        const ctx:CanvasRenderingContext2D = canvas.getContext('2d');
+    public static drawPolygonWithFill(canvas: HTMLCanvasElement, anchors: IPoint[], color = '#fff'): void {
+        const ctx: CanvasRenderingContext2D = canvas.getContext('2d');
         ctx.save();
         ctx.fillStyle = color;
         ctx.beginPath();
         ctx.moveTo(anchors[0].x, anchors[0].y);
-        for (let i = 1; i < anchors.length; i ++) {
+        for (let i = 1; i < anchors.length; i++) {
             ctx.lineTo(anchors[i].x, anchors[i].y);
         }
         ctx.closePath();
@@ -108,12 +139,12 @@ export class DrawUtil {
         ctx.restore();
     }
 
-    public static drawText(canvas:HTMLCanvasElement, text:string, textSize:number, anchorPoint:IPoint, color = '#ffffff', bold = false, align = 'center'):void {
-        const ctx:CanvasRenderingContext2D = canvas.getContext('2d');
+    public static drawText(canvas: HTMLCanvasElement, text: string, textSize: number, anchorPoint: IPoint, color = '#ffffff', bold = false, align = 'center'): void {
+        const ctx: CanvasRenderingContext2D = canvas.getContext('2d');
         ctx.save();
         ctx.fillStyle = color;
         ctx.textAlign = align as CanvasTextAlign;
-        ctx.textBaseline='middle';
+        ctx.textBaseline = 'middle';
         ctx.font = (bold ? 'bold ' : '') + textSize + 'px Arial';
         ctx.fillText(text, anchorPoint.x, anchorPoint.y);
         ctx.restore();
