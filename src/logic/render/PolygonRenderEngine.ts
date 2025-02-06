@@ -63,6 +63,7 @@ export class PolygonRenderEngine extends BaseRenderEngine {
 
     private keypointUtils = new KeypointUtils();
     private surfaceAnnotator: KeypointSurfaceAnnotation;
+    public isDrawingEllipse: boolean;
 
     public constructor(canvas: HTMLCanvasElement) {
         super(canvas);
@@ -76,7 +77,6 @@ export class PolygonRenderEngine extends BaseRenderEngine {
 
     public update(data: EditorData): void {
         if (!!data.event) {
-            // console.log(data)
             switch (MouseEventUtil.getEventType(data.event)) {
                 case EventType.MOUSE_MOVE:
                     this.mouseMoveHandler(data);
@@ -179,6 +179,7 @@ export class PolygonRenderEngine extends BaseRenderEngine {
 
     public render(data: EditorData): void {
         const imageData: ImageData = LabelsSelector.getActiveImageData();
+        this.isDrawingEllipse = GeneralSelector.getEllipseDrawStatus();
         if (imageData) {
             this.drawExistingLabels(data);
             this.drawActivelyCreatedLabel(data);
@@ -231,7 +232,8 @@ export class PolygonRenderEngine extends BaseRenderEngine {
         standardizedPoints.forEach((point: IPoint) => {
             DrawUtil.drawCircleWithFill(this.canvas, point, Settings.RESIZE_HANDLE_DIMENSION_PX / 2, anchorColor);
         })
-        this.surfaceAnnotator.processCircle(this.canvas, data, standardizedPoints);
+        if (this.isDrawingEllipse)
+            this.surfaceAnnotator.processAnnotation(this.canvas, data, standardizedPoints);
 
     }
 
@@ -723,7 +725,7 @@ export class KeypointSurfaceAnnotation {
         // this.drawCircle(canvas);
     }
 
-    public processCircle(canvas: HTMLCanvasElement, data: EditorData, points: IPoint[]) {
+    public processAnnotation(canvas: HTMLCanvasElement, data: EditorData, points: IPoint[]) {
         if (points.length > 0) {
             this.activeAnchorPoints = points;
         }

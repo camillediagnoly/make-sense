@@ -1,9 +1,9 @@
-import {ISize} from '../../interfaces/ISize';
-import {Action} from '../Actions';
-import {PopupWindowType} from '../../data/enums/PopupWindowType';
-import {CustomCursorStyle} from '../../data/enums/CustomCursorStyle';
-import {ContextType} from '../../data/enums/ContextType';
-import {ProjectType} from '../../data/enums/ProjectType';
+import { ISize } from '../../interfaces/ISize';
+import { Action } from '../Actions';
+import { PopupWindowType } from '../../data/enums/PopupWindowType';
+import { CustomCursorStyle } from '../../data/enums/CustomCursorStyle';
+import { ContextType } from '../../data/enums/ContextType';
+import { ProjectType } from '../../data/enums/ProjectType';
 
 export type ProjectData = {
     type: ProjectType;
@@ -18,6 +18,7 @@ export type GeneralState = {
     imageDragMode: boolean;
     crossHairVisible: boolean;
     fixedZoom: boolean;
+    ellipseDraw: boolean;
     enablePerClassColoration: boolean;
     activeContext: ContextType;
     projectData: ProjectData;
@@ -87,6 +88,13 @@ interface UpdateFixedZoomStatus {
     }
 }
 
+interface UpdateEllipseDrawStatus {
+    type: typeof Action.UPDATE_ELLIPSE_DRAW_STATUS;
+    payload: {
+        ellipseDraw: boolean;
+    }
+}
+
 interface UpdateZoom {
     type: typeof Action.UPDATE_ZOOM,
     payload: {
@@ -109,6 +117,7 @@ export type GeneralActionTypes = UpdateProjectData
     | UpdatePreventCustomCursorStatus
     | UpdateImageDragModeStatus
     | UpdateCrossHairVisibleStatus
+    | UpdateEllipseDrawStatus
     | UpdateFixedZoomStatus
     | UpdateZoom
     | UpdatePerClassColoration

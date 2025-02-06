@@ -11,6 +11,7 @@ import { Direction } from "../../data/enums/Direction";
 import { PlatformUtil } from "../../utils/PlatformUtil";
 import { LabelActions } from "../actions/LabelActions";
 import { LineRenderEngine } from "../render/LineRenderEngine";
+import { GeneralSelector } from '../../store/selectors/GeneralSelector';
 
 export class EditorContext extends BaseContext {
     public static actions: HotKeyAction[] = [
@@ -19,8 +20,11 @@ export class EditorContext extends BaseContext {
             action: (event: KeyboardEvent) => {
                 if (EditorModel.supportRenderingEngine && EditorModel.supportRenderingEngine.labelType === LabelType.POLYGON) {
                     const editorData: EditorData = EditorActions.getEditorData();
-                    (EditorModel.supportRenderingEngine as PolygonRenderEngine).addLabelAndFinishCreation(editorData);
-                    // (EditorModel.supportRenderingEngine as PolygonRenderEngine).addLabelAndFinishCreationEllipse(editorData);
+                    const isDrawingEllipse: boolean = (EditorModel.supportRenderingEngine as PolygonRenderEngine).isDrawingEllipse;
+                    if (!isDrawingEllipse)
+                        (EditorModel.supportRenderingEngine as PolygonRenderEngine).addLabelAndFinishCreation(editorData);
+                    else
+                        (EditorModel.supportRenderingEngine as PolygonRenderEngine).addLabelAndFinishCreationEllipse(editorData);
 
                 }
                 EditorActions.fullRender();

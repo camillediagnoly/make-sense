@@ -1,7 +1,7 @@
-import {GeneralActionTypes, GeneralState} from './types';
-import {Action} from '../Actions';
-import {CustomCursorStyle} from '../../data/enums/CustomCursorStyle';
-import {ViewPointSettings} from '../../settings/ViewPointSettings';
+import { GeneralActionTypes, GeneralState } from './types';
+import { Action } from '../Actions';
+import { CustomCursorStyle } from '../../data/enums/CustomCursorStyle';
+import { ViewPointSettings } from '../../settings/ViewPointSettings';
 
 const initialState: GeneralState = {
     windowSize: null,
@@ -12,6 +12,7 @@ const initialState: GeneralState = {
     imageDragMode: false,
     crossHairVisible: true,
     fixedZoom: true,
+    ellipseDraw: false,
     enablePerClassColoration: true,
     projectData: {
         type: null,
@@ -71,6 +72,12 @@ export function generalReducer(
             return {
                 ...state,
                 fixedZoom: action.payload.fixedZoom
+            }
+        }
+        case Action.UPDATE_ELLIPSE_DRAW_STATUS: {
+            return {
+                ...state,
+                ellipseDraw: action.payload.ellipseDraw
             }
         }
         case Action.UPDATE_PROJECT_DATA: {

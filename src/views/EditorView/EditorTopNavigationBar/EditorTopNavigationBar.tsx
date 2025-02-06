@@ -4,7 +4,7 @@ import React from 'react';
 import classNames from 'classnames';
 import { AppState } from '../../../store';
 import { connect } from 'react-redux';
-import { updateCrossHairVisibleStatus, updateImageDragModeStatus, updateFixedZoomStatus } from '../../../store/general/actionCreators';
+import { updateCrossHairVisibleStatus, updateImageDragModeStatus, updateFixedZoomStatus, updateEllipseDrawStatus } from '../../../store/general/actionCreators';
 import { GeneralSelector } from '../../../store/selectors/GeneralSelector';
 import { ViewPointSettings } from '../../../settings/ViewPointSettings';
 import { ImageButton } from '../../Common/ImageButton/ImageButton';
@@ -20,7 +20,7 @@ const BUTTON_PADDING: number = 10;
 
 const StyledTooltip = styled(({ className, ...props }: TooltipProps) => (
     <Tooltip {...props} classes={{ popper: className }} />
-  ))(({ theme }) => ({
+))(({ theme }) => ({
     [`& .${tooltipClasses.tooltip}`]: {
         backgroundColor: '#171717',
         color: '#ffffff',
@@ -29,7 +29,7 @@ const StyledTooltip = styled(({ className, ...props }: TooltipProps) => (
         maxWidth: 200,
         textAlign: 'center'
     },
-  }));
+}));
 
 const getButtonWithTooltip = (
     key: string,
@@ -67,9 +67,11 @@ interface IProps {
     updateImageDragModeStatusAction: (imageDragMode: boolean) => any;
     updateCrossHairVisibleStatusAction: (crossHairVisible: boolean) => any;
     updateFixedZoomStatusAction: (fixedZoom: boolean) => any;
+    updateEllipseDrawAction: (ellipseDraw: boolean) => any;
     imageDragMode: boolean;
     crossHairVisible: boolean;
     fixedZoom: boolean;
+    ellipseDraw: boolean;
     activeLabelType: LabelType;
 }
 
@@ -79,9 +81,11 @@ const EditorTopNavigationBar: React.FC<IProps> = (
         updateImageDragModeStatusAction,
         updateCrossHairVisibleStatusAction,
         updateFixedZoomStatusAction,
+        updateEllipseDrawAction,
         imageDragMode,
         crossHairVisible,
         fixedZoom,
+        ellipseDraw,
         activeLabelType
     }) => {
     const getClassName = () => {
@@ -108,6 +112,10 @@ const EditorTopNavigationBar: React.FC<IProps> = (
 
     const fixedZoomOnClick = () => {
         updateFixedZoomStatusAction(!fixedZoom);
+    };
+
+    const ellipseDrawOnClick = () => {
+        updateEllipseDrawAction(!ellipseDraw);
     };
 
     const withAI = (
@@ -199,31 +207,42 @@ const EditorTopNavigationBar: React.FC<IProps> = (
                         fixedZoomOnClick
                     )
                 }
+                {
+                    getButtonWithTooltip(
+                        'ellipse-draw',
+                        ellipseDraw ? 'turn-off ellipse draw' : 'turn-on ellipse draw',
+                        'ico/ellipse.png',
+                        'ellipse',
+                        ellipseDraw,
+                        undefined,
+                        ellipseDrawOnClick
+                    )
+                }
             </div>
             {withAI && <div className='ButtonWrapper'>
-                    {
-                        getButtonWithTooltip(
-                            'accept-all',
-                            'accept all proposed detections',
-                            'ico/accept-all.png',
-                            'accept-all',
-                            false,
-                            undefined,
-                            () => AIActions.acceptAllSuggestedLabels(LabelsSelector.getActiveImageData())
-                        )
-                    }
-                    {
-                        getButtonWithTooltip(
-                            'reject-all',
-                            'reject all proposed detections',
-                            'ico/reject-all.png',
-                            'reject-all',
-                            false,
-                            undefined,
-                            () => AIActions.rejectAllSuggestedLabels(LabelsSelector.getActiveImageData())
-                        )
-                    }
-                </div>}
+                {
+                    getButtonWithTooltip(
+                        'accept-all',
+                        'accept all proposed detections',
+                        'ico/accept-all.png',
+                        'accept-all',
+                        false,
+                        undefined,
+                        () => AIActions.acceptAllSuggestedLabels(LabelsSelector.getActiveImageData())
+                    )
+                }
+                {
+                    getButtonWithTooltip(
+                        'reject-all',
+                        'reject all proposed detections',
+                        'ico/reject-all.png',
+                        'reject-all',
+                        false,
+                        undefined,
+                        () => AIActions.rejectAllSuggestedLabels(LabelsSelector.getActiveImageData())
+                    )
+                }
+            </div>}
         </div>
     );
 };
@@ -231,7 +250,8 @@ const EditorTopNavigationBar: React.FC<IProps> = (
 const mapDispatchToProps = {
     updateImageDragModeStatusAction: updateImageDragModeStatus,
     updateCrossHairVisibleStatusAction: updateCrossHairVisibleStatus,
-    updateFixedZoomStatusAction: updateFixedZoomStatus
+    updateFixedZoomStatusAction: updateFixedZoomStatus,
+    updateEllipseDrawAction: updateEllipseDrawStatus,
 };
 
 const mapStateToProps = (state: AppState) => ({
@@ -239,6 +259,7 @@ const mapStateToProps = (state: AppState) => ({
     imageDragMode: state.general.imageDragMode,
     crossHairVisible: state.general.crossHairVisible,
     fixedZoom: state.general.fixedZoom,
+    ellipseDraw: state.general.ellipseDraw,
     activeLabelType: state.labels.activeLabelType
 });
 
