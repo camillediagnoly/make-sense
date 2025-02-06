@@ -1,5 +1,5 @@
 import { store } from '../../index';
-import { find } from 'lodash';
+import { find, min } from 'lodash';
 import { RectUtil } from '../../utils/RectUtil';
 import { updateCustomCursorStyle } from '../../store/general/actionCreators';
 import { CustomCursorStyle } from '../../data/enums/CustomCursorStyle';
@@ -418,11 +418,11 @@ export class PolygonRenderEngine extends BaseRenderEngine {
             this.addPolygonLabel3Keypoints(generatedPolygons);
 
             // Draw the ellipse
-            // let startPoint = RenderEngineUtil.setPointBetweenPixels(polygonOnImage[0]);
-            // let endPoint = RenderEngineUtil.setPointBetweenPixels(polygonOnImage[1]);
-            // let constrainPoint = RenderEngineUtil.setPointBetweenPixels(polygonOnImage[2]);
+            let startPoint = RenderEngineUtil.setPointBetweenPixels(polygonOnImage[0]);
+            let endPoint = RenderEngineUtil.setPointBetweenPixels(polygonOnImage[1]);
+            let constrainPoint = RenderEngineUtil.setPointBetweenPixels(polygonOnImage[2]);
 
-            // this.surfaceAnnotator.drawCircle(this.canvas, startPoint, endPoint);
+            this.surfaceAnnotator.drawCircle(this.canvas, startPoint, endPoint);
             this.finishLabelCreation();
         }
     }
@@ -774,7 +774,7 @@ export class KeypointSurfaceAnnotation {
             1);
     }
 
-    public drawEllipse(canvas: HTMLCanvasElement, startPoint: IPoint, endPoint: IPoint, constrainPoint: IPoint) {
+    public static computeEllipse(startPoint: IPoint, endPoint: IPoint, constrainPoint: IPoint) {
         // Calculate circle properties
         const dx = endPoint.x - startPoint.x;
         const dy = endPoint.y - startPoint.y;
@@ -798,16 +798,29 @@ export class KeypointSurfaceAnnotation {
 
         // constrainPoint is on the ellipse with formula (x/a)^2 + (y/b)^2 = 1 --> compute b
         const minorAxis = Math.abs(mappedConstrainPoint.y) / Math.sqrt(1 - (mappedConstrainPoint.x / majorAxis) ** 2);
+        const ellipseProperties = {
+            "center": center,
+            "majorAxis": majorAxis,
+            "minorAxis": minorAxis,
+            "rotateAngle": rotateAngle
+        }
+        return ellipseProperties;
+
+    }
+
+    public drawEllipse(canvas: HTMLCanvasElement, startPoint: IPoint, endPoint: IPoint, constrainPoint: IPoint) {
+        const ellipseProperties = KeypointSurfaceAnnotation.computeEllipse(startPoint, endPoint, constrainPoint);
         // Draw ellipse
         DrawUtil.drawDashEllipse(
             canvas,
-            center,
-            majorAxis,
-            minorAxis,
-            rotateAngle,
+            ellipseProperties.center,
+            ellipseProperties.majorAxis,
+            ellipseProperties.minorAxis,
+            ellipseProperties.rotateAngle,
             0,
             360,
             1);
+
     }
 
     private arePointsEqual(point1: IPoint, point2: IPoint) {
@@ -816,11 +829,10 @@ export class KeypointSurfaceAnnotation {
     private reset() {
         this.activeAnchorPoints = []
     }
-
-
 }
 
 export class KeypointUtils {
+
     public getKeypointsFromPolygons() {
         const imageData: ImageData = LabelsSelector.getActiveImageData();
         const labelNames: LabelName[] = LabelsSelector.getLabelNames();
@@ -853,12 +865,13 @@ export class KeypointUtils {
         const allKeypointCenters = this.getKeypointsFromPolygons()
         const asymRatio_B = this.computeDistanceRatio(allKeypointCenters, asymKeypointNames_B)
         const angle_B = this.computeAngle(allKeypointCenters, angleKeypointNames_B)
+        const areaRatio_B = this.computeSurfaceRatio(allKeypointCenters, surfaceKeypointNames_B)
         const tgaRatio_D = this.computeDistanceRatio(allKeypointCenters, tgaKeypointNames_D)
         const asymRatio_E = this.computeDistanceRatio(allKeypointCenters, asymKeypointNames_E)
         const asymRatioCSP_F = this.computeDistanceRatio(allKeypointCenters, asymCSPKeypointNames_F)
         const asymRatioCI_F = this.computeDistanceRatio(allKeypointCenters, asymCIKeypointNames_F)
 
-        return [asymRatio_B, angle_B, tgaRatio_D, asymRatio_E, asymRatioCSP_F, asymRatioCI_F]
+        return [asymRatio_B, angle_B, areaRatio_B, tgaRatio_D, asymRatio_E, asymRatioCSP_F, asymRatioCI_F]
     }
 
     private computeCentroid(polygon: LabelPolygon): IPoint {
@@ -969,5 +982,48 @@ export class KeypointUtils {
         }
 
         return Math.abs(angle);
+    }
+
+    private computeEllipseArea(majorAxis: number, minorAxis: number) {
+        return Math.PI * majorAxis * minorAxis;
+    }
+    private computeEllipseCircumference(majorAxis: number, minorAxis: number) {
+        const h = (majorAxis - minorAxis) ** 2 / (majorAxis + minorAxis) ** 2;
+        const approxCircumference = Math.PI * (majorAxis + minorAxis) * (1 + 3 * h / (10 + Math.sqrt(4 - 3 * h)));
+        return approxCircumference;
+    }
+
+    // Function to compute the surface ratio between the ellipse formed by kp1, kp2, kp3 and kp4, kp5, kp6
+    private computeSurfaceRatio(keypointCenters: {
+        id: string;
+        labelName: string;
+        centroid: IPoint;
+    }[], keypointNames: string[]): number | null {
+        const keypoints = [];
+
+        for (let i = 0; i < keypointNames.length; i++) {
+            const selectedCenter = keypointCenters.find(polygon => polygon.labelName === keypointNames[i]);
+            keypoints.push(selectedCenter)
+        }
+
+        // Ensure all selected keypoints are present
+        if (keypoints.includes(undefined)) {
+            // console.error('There are not enough keypoints')
+            return null;
+        }
+
+        // Compute ellipse properties
+        if (keypoints.length === 6) {
+            const propertiesEllipse1 = KeypointSurfaceAnnotation.computeEllipse(keypoints[0].centroid, keypoints[1].centroid, keypoints[2].centroid);
+            const propertiesEllipse2 = KeypointSurfaceAnnotation.computeEllipse(keypoints[3].centroid, keypoints[4].centroid, keypoints[5].centroid);
+            // const circumferenceEllipse1 = this.computeEllipseCircumference(propertiesEllipse1.majorAxis, propertiesEllipse1.minorAxis);
+            // const circumferenceEllipse2 = this.computeEllipseCircumference(propertiesEllipse2.majorAxis, propertiesEllipse2.minorAxis);
+            const areaEllipse1 = this.computeEllipseArea(propertiesEllipse1.majorAxis, propertiesEllipse1.minorAxis);
+            const areaEllipse2 = this.computeEllipseArea(propertiesEllipse2.majorAxis, propertiesEllipse2.minorAxis);
+            const areaRatio = areaEllipse1 / (areaEllipse2 + 1e-6);
+            return areaRatio;
+        } else {
+            return null;
+        }
     }
 }

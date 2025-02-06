@@ -34,7 +34,7 @@ const EditorBottomNavigationBar: React.FC<IProps> = ({ size, imageData, totalIma
         );
     };
     const keypointUtilsInstance = new KeypointUtils();
-    const [asymRatio_B, angle_B, tgaRatio_D, asymRatio_E, asymRatioCSP_F, asymRatioCI_F] = keypointUtilsInstance.buildMeasurements()
+    const [asymRatio_B, angle_B, areaRatio_B, tgaRatio_D, asymRatio_E, asymRatioCSP_F, asymRatioCI_F] = keypointUtilsInstance.buildMeasurements()
 
 
 
@@ -64,12 +64,18 @@ const EditorBottomNavigationBar: React.FC<IProps> = ({ size, imageData, totalIma
             </div>
             <div className="BottomRow">
                 <div className="RatioMeasurement">
-                    B-Asym = {asymRatio_B?.toFixed(2) ?? 'null'} -|-
-                    D-TGA = {tgaRatio_D?.toFixed(2) ?? 'null'} -|-
-                    E-Asym = {asymRatio_E?.toFixed(2) ?? 'null'} -|-
-                    F-Asym-CSP = {asymRatioCSP_F?.toFixed(2) ?? 'null'} -|-
-                    F-Asym-CI = {asymRatioCI_F?.toFixed(2) ?? 'null'} -|- </div>
-                <div className="AngleMeasurement"> B-Angle = {angle_B != null ? `${angle_B.toFixed(2)}°` : 'null'} </div>
+                    <u>B-Asym</u>&nbsp; = {asymRatio_B?.toFixed(2) ?? 'null'} &nbsp;<b>-|-</b>&nbsp;
+                    <u>B-Area</u>&nbsp; = {areaRatio_B?.toFixed(2) ?? 'null'} &nbsp;<b>-|-</b>&nbsp;
+                    <u>D-TGA</u>&nbsp; = {tgaRatio_D?.toFixed(2) ?? 'null'} &nbsp;<b>-|-</b>&nbsp;
+                    <u>E-Asym</u>&nbsp; = {asymRatio_E?.toFixed(2) ?? 'null'} &nbsp;<b>-|-</b>&nbsp;
+                    <u>F-Asym-CSP</u>&nbsp; = {asymRatioCSP_F?.toFixed(2) ?? 'null'} &nbsp;<b>-|-</b>&nbsp;
+                    <u>F-Asym-CI</u>&nbsp; = {asymRatioCI_F?.toFixed(2) ?? 'null'}
+                </div>
+                <div className="OtherMeasurements">
+                    <div className="Measurement">
+                        B-Angle = {angle_B != null ? `${angle_B.toFixed(2)}°` : 'null'}
+                    </div>
+                </div>
             </div>
         </div>
     );
