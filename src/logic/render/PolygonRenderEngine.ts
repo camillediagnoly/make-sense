@@ -1047,8 +1047,8 @@ export class KeypointUtils {
 
         // Compute ellipse properties
         if (keypoints.length === 6) {
-            const propertiesEllipse1 = KeypointSurfaceAnnotation.computeEllipse(keypoints[0].centroid, keypoints[1].centroid, keypoints[2].centroid);
-            const propertiesEllipse2 = KeypointSurfaceAnnotation.computeEllipse(keypoints[3].centroid, keypoints[4].centroid, keypoints[5].centroid);
+            const propertiesEllipse1 = KeypointSurfaceAnnotation.computeEllipse(keypoints[3].centroid, keypoints[4].centroid, keypoints[5].centroid);
+            const propertiesEllipse2 = KeypointSurfaceAnnotation.computeEllipse(keypoints[0].centroid, keypoints[1].centroid, keypoints[2].centroid);
             // const circumferenceEllipse1 = this.computeEllipseCircumference(propertiesEllipse1.majorAxis, propertiesEllipse1.minorAxis);
             // const circumferenceEllipse2 = this.computeEllipseCircumference(propertiesEllipse2.majorAxis, propertiesEllipse2.minorAxis);
             const areaEllipse1 = this.computeEllipseArea(propertiesEllipse1.majorAxis, propertiesEllipse1.minorAxis);
