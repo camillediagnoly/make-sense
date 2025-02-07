@@ -19,6 +19,8 @@ export type GeneralState = {
     crossHairVisible: boolean;
     fixedZoom: boolean;
     ellipseDraw: boolean;
+    copyPolygons: boolean;
+    pastePolygons: boolean;
     enablePerClassColoration: boolean;
     activeContext: ContextType;
     projectData: ProjectData;
@@ -95,6 +97,20 @@ interface UpdateEllipseDrawStatus {
     }
 }
 
+interface UpdateCopyPolygonsStatus {
+    type: typeof Action.UPDATE_COPY_POLYGONS_STATUS;
+    payload: {
+        copyPolygons: boolean;
+    }
+}
+
+interface UpdatePastePolygonsStatus {
+    type: typeof Action.UPDATE_PASTE_POLYGONS_STATUS;
+    payload: {
+        pastePolygons: boolean;
+    }
+}
+
 interface UpdateZoom {
     type: typeof Action.UPDATE_ZOOM,
     payload: {
@@ -118,6 +134,8 @@ export type GeneralActionTypes = UpdateProjectData
     | UpdateImageDragModeStatus
     | UpdateCrossHairVisibleStatus
     | UpdateEllipseDrawStatus
+    | UpdateCopyPolygonsStatus
+    | UpdatePastePolygonsStatus
     | UpdateFixedZoomStatus
     | UpdateZoom
     | UpdatePerClassColoration

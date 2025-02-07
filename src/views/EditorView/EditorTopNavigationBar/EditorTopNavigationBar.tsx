@@ -4,7 +4,7 @@ import React from 'react';
 import classNames from 'classnames';
 import { AppState } from '../../../store';
 import { connect } from 'react-redux';
-import { updateCrossHairVisibleStatus, updateImageDragModeStatus, updateFixedZoomStatus, updateEllipseDrawStatus } from '../../../store/general/actionCreators';
+import { updateCrossHairVisibleStatus, updateImageDragModeStatus, updateFixedZoomStatus, updateEllipseDrawStatus, updateCopyPolygonsStatus, updatePasteAnnotationsStatus } from '../../../store/general/actionCreators';
 import { GeneralSelector } from '../../../store/selectors/GeneralSelector';
 import { ViewPointSettings } from '../../../settings/ViewPointSettings';
 import { ImageButton } from '../../Common/ImageButton/ImageButton';
@@ -68,10 +68,14 @@ interface IProps {
     updateCrossHairVisibleStatusAction: (crossHairVisible: boolean) => any;
     updateFixedZoomStatusAction: (fixedZoom: boolean) => any;
     updateEllipseDrawAction: (ellipseDraw: boolean) => any;
+    updateCopyPolygonsAction: (copyPolygons: boolean) => any;
+    updatePastePolygonsAction: (pastePolygons: boolean) => any;
     imageDragMode: boolean;
     crossHairVisible: boolean;
     fixedZoom: boolean;
     ellipseDraw: boolean;
+    copyPolygons: boolean;
+    pastePolygons: boolean;
     activeLabelType: LabelType;
 }
 
@@ -82,10 +86,14 @@ const EditorTopNavigationBar: React.FC<IProps> = (
         updateCrossHairVisibleStatusAction,
         updateFixedZoomStatusAction,
         updateEllipseDrawAction,
+        updateCopyPolygonsAction,
+        updatePastePolygonsAction,
         imageDragMode,
         crossHairVisible,
         fixedZoom,
         ellipseDraw,
+        copyPolygons,
+        pastePolygons,
         activeLabelType
     }) => {
     const getClassName = () => {
@@ -116,6 +124,14 @@ const EditorTopNavigationBar: React.FC<IProps> = (
 
     const ellipseDrawOnClick = () => {
         updateEllipseDrawAction(!ellipseDraw);
+    };
+
+    const copyPolygonsOnClick = () => {
+        updateCopyPolygonsAction(!copyPolygons);
+    };
+
+    const pastePolygonsOnClick = () => {
+        updatePastePolygonsAction(!pastePolygons);
     };
 
     const withAI = (
@@ -219,6 +235,31 @@ const EditorTopNavigationBar: React.FC<IProps> = (
                     )
                 }
             </div>
+
+            <div className='ButtonWrapper'>
+                {
+                    getButtonWithTooltip(
+                        'copy-polygons',
+                        copyPolygons ? '' : 'copy all polygons',
+                        'ico/copy-polygons.png',
+                        'copy-polygons',
+                        copyPolygons,
+                        undefined,
+                        copyPolygonsOnClick
+                    )
+                }
+                {
+                    getButtonWithTooltip(
+                        'paste-polygons',
+                        pastePolygons ? '' : 'paste all copied polygons',
+                        'ico/paste-polygons.png',
+                        'paste-polygons',
+                        pastePolygons,
+                        undefined,
+                        pastePolygonsOnClick
+                    )
+                }
+            </div>
             {withAI && <div className='ButtonWrapper'>
                 {
                     getButtonWithTooltip(
@@ -252,6 +293,8 @@ const mapDispatchToProps = {
     updateCrossHairVisibleStatusAction: updateCrossHairVisibleStatus,
     updateFixedZoomStatusAction: updateFixedZoomStatus,
     updateEllipseDrawAction: updateEllipseDrawStatus,
+    updateCopyPolygonsAction: updateCopyPolygonsStatus,
+    updatePastePolygonsAction: updatePasteAnnotationsStatus,
 };
 
 const mapStateToProps = (state: AppState) => ({
@@ -260,6 +303,8 @@ const mapStateToProps = (state: AppState) => ({
     crossHairVisible: state.general.crossHairVisible,
     fixedZoom: state.general.fixedZoom,
     ellipseDraw: state.general.ellipseDraw,
+    copyPolygons: state.general.copyPolygons,
+    pastePolygons: state.general.pastePolygons,
     activeLabelType: state.labels.activeLabelType
 });
 

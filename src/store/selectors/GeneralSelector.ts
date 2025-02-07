@@ -33,6 +33,22 @@ export class GeneralSelector {
         return store.getState().general.ellipseDraw;
     }
 
+    public static getCopyPolygonsStatus(): boolean {
+        return store.getState().general.copyPolygons;
+    }
+
+    public static deactivateCopyPolygons(): void {
+        store.getState().general.copyPolygons = false;
+    }
+
+    public static getPastePolygonsStatus(): boolean {
+        return store.getState().general.pastePolygons;
+    }
+
+    public static deactivatePastePolygons(): void {
+        store.getState().general.pastePolygons = false;
+    }
+
     public static getCustomCursorStyle(): CustomCursorStyle {
         return store.getState().general.customCursorStyle;
     }

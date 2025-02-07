@@ -1,5 +1,5 @@
 import { store } from '../../index';
-import { find, min } from 'lodash';
+import { conforms, find, min } from 'lodash';
 import { RectUtil } from '../../utils/RectUtil';
 import { updateCustomCursorStyle } from '../../store/general/actionCreators';
 import { CustomCursorStyle } from '../../data/enums/CustomCursorStyle';
@@ -64,6 +64,11 @@ export class PolygonRenderEngine extends BaseRenderEngine {
     private keypointUtils = new KeypointUtils();
     private surfaceAnnotator: KeypointSurfaceAnnotation;
     public isDrawingEllipse: boolean;
+    public copyPolygons: boolean;
+    public copyTwoPolygons: boolean;
+    public copyThreePolygons: boolean;
+    public pastePolygons: boolean = true;
+    public annotationsInMemory: LabelPolygon[] = [];
 
     public constructor(canvas: HTMLCanvasElement) {
         super(canvas);
@@ -180,12 +185,16 @@ export class PolygonRenderEngine extends BaseRenderEngine {
     public render(data: EditorData): void {
         const imageData: ImageData = LabelsSelector.getActiveImageData();
         this.isDrawingEllipse = GeneralSelector.getEllipseDrawStatus();
+        this.copyPolygons = GeneralSelector.getCopyPolygonsStatus();
+        this.pastePolygons = GeneralSelector.getPastePolygonsStatus();
+
         if (imageData) {
             this.drawExistingLabels(data);
             this.drawActivelyCreatedLabel(data);
             this.drawActivelyResizeLabel(data);
             this.updateCursorStyle(data);
             this.drawSuggestedAnchor(data);
+            this.copyAndPasteAnnotations(data);
         }
     }
 
@@ -401,7 +410,6 @@ export class PolygonRenderEngine extends BaseRenderEngine {
                 end: RenderEngineUtil.setPointBetweenPixels(polygonOnImage[1])
             }
             DrawUtil.drawLine(this.canvas, lineToDraw.start, lineToDraw.end, RenderEngineSettings.defaultAnchorColor, RenderEngineSettings.LINE_THICKNESS);
-            // DrawUtil.drawCircleWithFill(this.canvas, lineToDraw.start, radius / 2, RenderEngineSettings.defaultAnchorColor)
             this.finishLabelCreation();
         }
     }
@@ -424,7 +432,7 @@ export class PolygonRenderEngine extends BaseRenderEngine {
             let endPoint = RenderEngineUtil.setPointBetweenPixels(polygonOnImage[1]);
             let constrainPoint = RenderEngineUtil.setPointBetweenPixels(polygonOnImage[2]);
 
-            this.surfaceAnnotator.drawCircle(this.canvas, startPoint, endPoint);
+            this.surfaceAnnotator.drawEllipse(this.canvas, startPoint, endPoint, constrainPoint);
             this.finishLabelCreation();
         }
     }
@@ -527,6 +535,65 @@ export class PolygonRenderEngine extends BaseRenderEngine {
         return polygonVertices;
     };
 
+    private copyAndPasteAnnotations(data: EditorData) {
+        const activeLabelId: string = LabelsSelector.getActiveLabelNameId();
+        const imageData: ImageData = LabelsSelector.getActiveImageData();
+        const activeLabelPolygon: LabelPolygon = LabelsSelector.getActivePolygonLabel();
+        const labelPolygonsInImageData = this.getPolygonsOfActiveImage(imageData);
+
+        if (this.copyPolygons)
+            if (labelPolygonsInImageData.length > 0) {
+                for (let i = 0; i < labelPolygonsInImageData.length; i++) {
+                    const labelPolygon = labelPolygonsInImageData[i];
+                    if (!!labelPolygon.labelId && !this.checkPolygonAlreadyInMemory(labelPolygon))
+                        this.copyAnnotationToMemory(labelPolygon);
+                }
+                GeneralSelector.deactivateCopyPolygons();
+            }
+            else GeneralSelector.deactivateCopyPolygons();
+
+        if (this.pastePolygons) {
+            this.pasteAnnotations();
+            GeneralSelector.deactivatePastePolygons();
+        }
+    }
+
+    private copyAnnotationToMemory(labelPolygon: LabelPolygon) {
+        this.annotationsInMemory.push(labelPolygon);
+    }
+
+
+    private getPolygonsOfActiveImage(imageData: ImageData) {
+        if (!!imageData && !!imageData.labelPolygons) {
+            return imageData.labelPolygons;
+        }
+        return [];
+    }
+
+    private checkPolygonAlreadyInMemory(labelPolygon: LabelPolygon): boolean {
+        const polygonId = labelPolygon.id;
+        return this.annotationsInMemory.some(polygon => polygon.id === polygonId);
+    }
+
+    private pasteAnnotations() {
+        const imageData: ImageData = LabelsSelector.getActiveImageData();
+        if (this.annotationsInMemory.length > 0) {
+            for (let i = 0; i < this.annotationsInMemory.length; i++) {
+                const currentLabelPolygon = this.annotationsInMemory[i];
+                const currPolygon = currentLabelPolygon.vertices;
+                const labelId = currentLabelPolygon.labelId;
+                const labelPolygonWithNewId = LabelUtil.createLabelPolygon(labelId, currPolygon);
+                imageData.labelPolygons = this.removePolygonsInImageWithLabelId(imageData, labelId);
+                imageData.labelPolygons.push(labelPolygonWithNewId);
+            }
+            store.dispatch(updateImageDataById(imageData.id, imageData));
+            this.annotationsInMemory = [];
+        }
+    }
+
+    private removePolygonsInImageWithLabelId(imageData: ImageData, labelId: string) {
+        return imageData.labelPolygons.filter(polygon => polygon.labelId != labelId);
+    }
 
 
     // =================================================================================================================
@@ -671,11 +738,6 @@ export class PolygonRenderEngine extends BaseRenderEngine {
     }
 }
 
-export interface CircleData {
-    startPoint: IPoint,
-    endPoint: IPoint
-}
-
 export class KeypointSurfaceAnnotation {
     /*
         Draw circle and ellipse for surface measurements, 
@@ -693,37 +755,6 @@ export class KeypointSurfaceAnnotation {
     */
     public activeAnchorPoints: IPoint[] = [];
     // public activeConstrainPoint: IPoint = {};
-    private isMoving = false;
-    private currentMousePos = { x: 0, y: 0 };
-    private finalCircles = [];
-
-    public handleMouseDown(canvas: HTMLCanvasElement, points: IPoint[]) {
-        /*
-            - Click 1 point --> do nothing (bc makesense already handles 1 click)
-            - Moving: see handleMouseMove
-            - Click 2 points --> draw 2 keypoint polygons (see)
-        */
-        console.log('handleMouseDown')
-        console.log('points', points.length, "points[0]", points[0])
-        if (points.length === 2) {
-            this.activeAnchorPoints.push(...points);
-            console.log('this.anchorPoints', this.activeAnchorPoints)
-
-            // this.drawCircle(canvas);
-            this.activeAnchorPoints = []
-        }
-
-    }
-
-    public handleMouseMove(canvas: HTMLCanvasElement, data: EditorData) {
-        console.log('handleMouseMove')
-        console.log('this.isMoving', this.isMoving)
-
-        if (!this.isMoving) return;
-
-        this.currentMousePos = data.mousePositionOnViewPortContent;
-        // this.drawCircle(canvas);
-    }
 
     public processAnnotation(canvas: HTMLCanvasElement, data: EditorData, points: IPoint[]) {
         if (points.length > 0) {

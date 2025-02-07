@@ -13,6 +13,8 @@ const initialState: GeneralState = {
     crossHairVisible: true,
     fixedZoom: true,
     ellipseDraw: false,
+    copyPolygons: false,
+    pastePolygons: false,
     enablePerClassColoration: true,
     projectData: {
         type: null,
@@ -78,6 +80,18 @@ export function generalReducer(
             return {
                 ...state,
                 ellipseDraw: action.payload.ellipseDraw
+            }
+        }
+        case Action.UPDATE_COPY_POLYGONS_STATUS: {
+            return {
+                ...state,
+                copyPolygons: action.payload.copyPolygons
+            }
+        }
+        case Action.UPDATE_PASTE_POLYGONS_STATUS: {
+            return {
+                ...state,
+                pastePolygons: action.payload.pastePolygons
             }
         }
         case Action.UPDATE_PROJECT_DATA: {

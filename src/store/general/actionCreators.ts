@@ -86,6 +86,24 @@ export function updateEllipseDrawStatus(ellipseDraw: boolean): GeneralActionType
     };
 }
 
+export function updateCopyPolygonsStatus(copyPolygons: boolean): GeneralActionTypes {
+    return {
+        type: Action.UPDATE_COPY_POLYGONS_STATUS,
+        payload: {
+            copyPolygons: copyPolygons,
+        },
+    };
+}
+
+export function updatePasteAnnotationsStatus(pastePolygons: boolean): GeneralActionTypes {
+    return {
+        type: Action.UPDATE_PASTE_POLYGONS_STATUS,
+        payload: {
+            pastePolygons,
+        },
+    };
+}
+
 export function updateProjectData(projectData: ProjectData): GeneralActionTypes {
     return {
         type: Action.UPDATE_PROJECT_DATA,
