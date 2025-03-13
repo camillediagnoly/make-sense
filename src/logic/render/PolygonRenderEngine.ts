@@ -33,6 +33,7 @@ import { start } from 'repl';
 const asymKeypointNames_B = ['p-b.k:Asym-1', 'p-b.k:Asym-2', 'p-b.k:Asym-3'];
 const angleKeypointNames_B = ['p-b.k:Angle-1', 'p-b.k:Angle-2', 'p-b.k:Angle-3', 'p-b.k:Angle-4', 'p-b.k:Angle-5'];
 const surfaceKeypointNames_B = ['p-b.k:Surface-1', 'p-b.k:Surface-2', 'p-b.k:Surface-3', 'p-b.k:Surface-4', 'p-b.k:Surface-5', 'p-b.k:Surface-6'];
+const positionKeypointNames_B = ['p-b.k:Position-1', 'p-b.k:Position-2', 'p-b.k:Position-3', 'p-b.k:Position-4', 'p-b.k:Position-5'];
 const tgaKeypointNames_D = ['p-d.k:TGA-3', 'p-d.k:TGA-1', 'p-d.k:TGA-2'];
 const asymKeypointNames_E = ['p-e.k:VxAsym-1', 'p-e.k:VxAsym-2', 'p-e.k:VxAsym-3', 'p-e.k:VxAsym-4'];
 const asymCSPKeypointNames_F = ['p-f.k:CSP-1', 'p-f.k:CSP-2', 'p-f.k:CSP-3', 'p-f.k:CSP-4'];
@@ -42,6 +43,7 @@ const allKeypointNames = [
     ...asymKeypointNames_B,
     ...angleKeypointNames_B,
     ...surfaceKeypointNames_B,
+    ...positionKeypointNames_B,
     ...tgaKeypointNames_D,
     ...asymKeypointNames_E,
     ...asymCSPKeypointNames_F,
@@ -272,15 +274,40 @@ export class PolygonRenderEngine extends BaseRenderEngine {
             }
         });
 
-        // Create a map of keypoints' centers for Angle annotations
+        // Create a map of keypoints' centers for Angle and Asym annotations
         const allKeypointCenters = this.keypointUtils.getKeypointsFromPolygons()
         let keypoints = [];
-        for (let i = 0; i < angleKeypointNames_B.length; i++) {
-            const selectedCenter = allKeypointCenters.find(polygon => polygon.labelName === angleKeypointNames_B[i]);
+        const keypointNamesAngleBAndAsymE = [...angleKeypointNames_B.slice(0, -1), ...positionKeypointNames_B.slice(0, 2), ...asymKeypointNames_E]
+        for (let i = 0; i < keypointNamesAngleBAndAsymE.length; i++) {
+            const selectedCenter = allKeypointCenters.find(polygon => polygon.labelName === keypointNamesAngleBAndAsymE[i]);
             keypoints.push(selectedCenter)
         }
-        for (let i = 0; i < angleKeypointNames_B.length - 1; i += 2) {
-            const subset = [angleKeypointNames_B[i], angleKeypointNames_B[i + 1]]
+        for (let i = 0; i < keypointNamesAngleBAndAsymE.length - 1; i += 2) {
+            const subset = [keypointNamesAngleBAndAsymE[i], keypointNamesAngleBAndAsymE[i + 1]]
+            if (subset.every((name) => keypoints.some((kpt) => kpt?.labelName === name))) {
+                const matchingKpts = keypoints.filter((item) =>
+                    subset.includes(item?.labelName ?? "")
+                );
+                const lineToDraw: ILine = {
+                    start: matchingKpts[0].centroid,
+                    end: matchingKpts[1].centroid
+                }
+                const lineOnCanvas = RenderEngineUtil.transferLineFromImageToViewPortContent(lineToDraw, data)
+                const standardizedLine: ILine = {
+                    start: RenderEngineUtil.setPointBetweenPixels(lineOnCanvas.start),
+                    end: RenderEngineUtil.setPointBetweenPixels(lineOnCanvas.end)
+                }
+                DrawUtil.drawLine(this.canvas, standardizedLine.start, standardizedLine.end, RenderEngineSettings.defaultAnchorColor, RenderEngineSettings.LINE_THICKNESS);
+            }
+        }
+
+        keypoints = [];
+        for (let i = 0; i < asymKeypointNames_B.length; i++) {
+            const selectedCenter = allKeypointCenters.find(polygon => polygon.labelName === asymKeypointNames_B[i]);
+            keypoints.push(selectedCenter)
+        }
+        for (let i = 0; i < asymKeypointNames_B.length - 1; i += 1) {
+            const subset = [asymKeypointNames_B[i], asymKeypointNames_B[i + 1]]
             if (subset.every((name) => keypoints.some((kpt) => kpt?.labelName === name))) {
                 const matchingKpts = keypoints.filter((item) =>
                     subset.includes(item?.labelName ?? "")
@@ -300,12 +327,13 @@ export class PolygonRenderEngine extends BaseRenderEngine {
 
         // Create a map of keypoints' centers for Surface annotations
         keypoints = [];
-        for (let i = 0; i < surfaceKeypointNames_B.length; i++) {
-            const selectedCenter = allKeypointCenters.find(polygon => polygon.labelName === surfaceKeypointNames_B[i]);
+        const keypointNamesSurfaceAndPositionB = [...surfaceKeypointNames_B, ...positionKeypointNames_B.slice(2)]
+        for (let i = 0; i < keypointNamesSurfaceAndPositionB.length; i++) {
+            const selectedCenter = allKeypointCenters.find(polygon => polygon.labelName === keypointNamesSurfaceAndPositionB[i]);
             keypoints.push(selectedCenter)
         }
-        for (let i = 0; i < surfaceKeypointNames_B.length - 2; i += 3) {
-            const subset = [surfaceKeypointNames_B[i], surfaceKeypointNames_B[i + 1], surfaceKeypointNames_B[i + 2]]
+        for (let i = 0; i < keypointNamesSurfaceAndPositionB.length - 2; i += 3) {
+            const subset = [keypointNamesSurfaceAndPositionB[i], keypointNamesSurfaceAndPositionB[i + 1], keypointNamesSurfaceAndPositionB[i + 2]]
             if (subset.every((name) => keypoints.some((kpt) => kpt?.labelName === name))) {
                 const matchingKpts = keypoints.filter((item) =>
                     subset.includes(item?.labelName ?? "")
