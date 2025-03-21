@@ -36,6 +36,7 @@ const surfaceKeypointNames_B = ['p-b.k:Surface-1', 'p-b.k:Surface-2', 'p-b.k:Sur
 const positionKeypointNames_B = ['p-b.k:Position-1', 'p-b.k:Position-2', 'p-b.k:Position-3', 'p-b.k:Position-4', 'p-b.k:Position-5'];
 const tgaKeypointNames_D = ['p-d.k:TGA-3', 'p-d.k:TGA-1', 'p-d.k:TGA-2'];
 const asymKeypointNames_E = ['p-e.k:VxAsym-1', 'p-e.k:VxAsym-2', 'p-e.k:VxAsym-3', 'p-e.k:VxAsym-4'];
+const tgaKeypointNames_E = ['p-e.k:TGA-3', 'p-e.k:TGA-1', 'p-e.k:TGA-2'];
 const asymCSPKeypointNames_F = ['p-f.k:CSP-1', 'p-f.k:CSP-2', 'p-f.k:CSP-3', 'p-f.k:CSP-4'];
 const asymCIKeypointNames_F = ['p-f.k:CI-1', 'p-f.k:CI-2', 'p-f.k:CI-3', 'p-f.k:CI-4'];
 
@@ -46,6 +47,7 @@ const allKeypointNames = [
     ...positionKeypointNames_B,
     ...tgaKeypointNames_D,
     ...asymKeypointNames_E,
+    ...tgaKeypointNames_E,
     ...asymCSPKeypointNames_F,
     ...asymCIKeypointNames_F
 ];
@@ -277,7 +279,7 @@ export class PolygonRenderEngine extends BaseRenderEngine {
         // Create a map of keypoints' centers for Angle and Asym annotations
         const allKeypointCenters = this.keypointUtils.getKeypointsFromPolygons()
         let keypoints = [];
-        const keypointNamesAngleBAndAsymE = [...angleKeypointNames_B.slice(0, -1), ...positionKeypointNames_B.slice(0, 2), ...asymKeypointNames_E]
+        const keypointNamesAngleBAndAsymE = [...angleKeypointNames_B.slice(0, -1), ...positionKeypointNames_B.slice(0, 2), ...asymKeypointNames_E, ...tgaKeypointNames_E.slice(0, 2)]
         for (let i = 0; i < keypointNamesAngleBAndAsymE.length; i++) {
             const selectedCenter = allKeypointCenters.find(polygon => polygon.labelName === keypointNamesAngleBAndAsymE[i]);
             keypoints.push(selectedCenter)
@@ -929,10 +931,11 @@ export class KeypointUtils {
         const areaRatio_B = this.computeSurfaceRatio(allKeypointCenters, surfaceKeypointNames_B)
         const tgaRatio_D = this.computeDistanceRatio(allKeypointCenters, tgaKeypointNames_D)
         const asymRatio_E = this.computeDistanceRatio(allKeypointCenters, asymKeypointNames_E)
+        const tgaRatio_E = this.computeDistanceRatio(allKeypointCenters, tgaKeypointNames_E)
         const asymRatioCSP_F = this.computeDistanceRatio(allKeypointCenters, asymCSPKeypointNames_F)
         const asymRatioCI_F = this.computeDistanceRatio(allKeypointCenters, asymCIKeypointNames_F)
 
-        return [asymRatio_B, angle_B, areaRatio_B, tgaRatio_D, asymRatio_E, asymRatioCSP_F, asymRatioCI_F]
+        return [asymRatio_B, angle_B, areaRatio_B, tgaRatio_D, asymRatio_E, tgaRatio_E, asymRatioCSP_F, asymRatioCI_F]
     }
 
     private computeCentroid(polygon: LabelPolygon): IPoint {
