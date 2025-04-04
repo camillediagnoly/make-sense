@@ -36,7 +36,7 @@ const surfaceKeypointNames_B = ['p-b.k:Surface-1', 'p-b.k:Surface-2', 'p-b.k:Sur
 const positionKeypointNames_B = ['p-b.k:Position-1', 'p-b.k:Position-2', 'p-b.k:Position-3', 'p-b.k:Position-4', 'p-b.k:Position-5'];
 const tgaKeypointNames_D = ['p-d.k:TGA-3', 'p-d.k:TGA-1', 'p-d.k:TGA-2'];
 const asymKeypointNames_E = ['p-e.k:VxAsym-1', 'p-e.k:VxAsym-2', 'p-e.k:VxAsym-3', 'p-e.k:VxAsym-4'];
-const tgaKeypointNames_E = ['p-e.k:TGA-3', 'p-e.k:TGA-1', 'p-e.k:TGA-2'];
+const tgaKeypointNames_E = ['p-e.k:TGA-2', 'p-e.k:TGA-1', 'p-e.k:TGA-3'];
 const asymCSPKeypointNames_F = ['p-f.k:CSP-1', 'p-f.k:CSP-2', 'p-f.k:CSP-3', 'p-f.k:CSP-4'];
 const asymCIKeypointNames_F = ['p-f.k:CI-1', 'p-f.k:CI-2', 'p-f.k:CI-3', 'p-f.k:CI-4'];
 
