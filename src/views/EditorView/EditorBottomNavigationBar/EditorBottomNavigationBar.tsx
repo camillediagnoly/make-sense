@@ -34,7 +34,7 @@ const EditorBottomNavigationBar: React.FC<IProps> = ({ size, imageData, totalIma
         );
     };
     const keypointUtilsInstance = new KeypointUtils();
-    const [asymRatio_B, angle_B, areaRatio_B, tgaRatio_D, asymRatio_E, tgaRatio_E, asymRatioCSP_F, asymRatioCI_F] = keypointUtilsInstance.buildMeasurements()
+    const [asymRatio_B, angle_B, areaRatio_B, positionRatio_B, tgaRatio_D, asymRatio_E, tgaRatio_E, asymRatioCSP_F, asymRatioCI_F] = keypointUtilsInstance.buildMeasurements()
 
 
 
@@ -66,6 +66,7 @@ const EditorBottomNavigationBar: React.FC<IProps> = ({ size, imageData, totalIma
                 <div className="RatioMeasurement">
                     <u>B-Asym</u>&nbsp; = {asymRatio_B?.toFixed(2) ?? 'null'} &nbsp;<b>-|-</b>&nbsp;
                     <u>B-Area</u>&nbsp; = {areaRatio_B?.toFixed(2) ?? 'null'} &nbsp;<b>-|-</b>&nbsp;
+                    <u>B-Position</u>&nbsp; = {positionRatio_B?.toFixed(2) ?? 'null'} &nbsp;<b>-|-</b>&nbsp;
                     <u>D-TGA</u>&nbsp; = {tgaRatio_D?.toFixed(2) ?? 'null'} &nbsp;<b>-|-</b>&nbsp;
                     <u>E-Asym</u>&nbsp; = {asymRatio_E?.toFixed(2) ?? 'null'} &nbsp;<b>-|-</b>&nbsp;
                     <u>E-TGA</u>&nbsp; = {tgaRatio_E?.toFixed(2) ?? 'null'} &nbsp;<b>-|-</b>&nbsp;

@@ -348,6 +348,16 @@ export class PolygonRenderEngine extends BaseRenderEngine {
                 this.surfaceAnnotator.drawEllipse(this.canvas, startPoint, endPoint, constrainPoint);
             }
         }
+
+        //
+        // const [positionRatio_B, _ellipsePointsForRatio] = this.keypointUtils.computePositionRatio(allKeypointCenters, positionKeypointNames_B);
+        // const ellipsePointsForRatio = _ellipsePointsForRatio.map(([x, y]) => ({ x, y }));
+        // const ellipsePointsForRatioOnCanva = RenderEngineUtil.transferPolygonFromImageToViewPortContent(ellipsePointsForRatio, data);
+        // const standardizedEllipsePoints: IPoint[] = ellipsePointsForRatioOnCanva.map((point: IPoint) => RenderEngineUtil.setPointBetweenPixels(point));
+        // const anchorColor: string = BaseRenderEngine.resolveLabelAnchorColor(true);
+        // standardizedEllipsePoints.forEach((point: IPoint) => {
+        //     DrawUtil.drawCircleWithFill(this.canvas, point, Settings.RESIZE_HANDLE_DIMENSION_PX / 2, anchorColor);
+        // })
     }
 
 
@@ -929,13 +939,14 @@ export class KeypointUtils {
         const asymRatio_B = this.computeDistanceRatio(allKeypointCenters, asymKeypointNames_B)
         const angle_B = this.computeAngle(allKeypointCenters, angleKeypointNames_B)
         const areaRatio_B = this.computeSurfaceRatio(allKeypointCenters, surfaceKeypointNames_B)
+        const positionRatio_B = this.computePositionRatio(allKeypointCenters, positionKeypointNames_B)
         const tgaRatio_D = this.computeDistanceRatio(allKeypointCenters, tgaKeypointNames_D)
         const asymRatio_E = this.computeDistanceRatio(allKeypointCenters, asymKeypointNames_E)
         const tgaRatio_E = this.computeDistanceRatio(allKeypointCenters, tgaKeypointNames_E)
         const asymRatioCSP_F = this.computeDistanceRatio(allKeypointCenters, asymCSPKeypointNames_F)
         const asymRatioCI_F = this.computeDistanceRatio(allKeypointCenters, asymCIKeypointNames_F)
 
-        return [asymRatio_B, angle_B, areaRatio_B, tgaRatio_D, asymRatio_E, tgaRatio_E, asymRatioCSP_F, asymRatioCI_F]
+        return [asymRatio_B, angle_B, areaRatio_B, positionRatio_B, tgaRatio_D, asymRatio_E, tgaRatio_E, asymRatioCSP_F, asymRatioCI_F]
     }
 
     private computeCentroid(polygon: LabelPolygon): IPoint {
@@ -1086,6 +1097,189 @@ export class KeypointUtils {
             const areaEllipse2 = this.computeEllipseArea(propertiesEllipse2.majorAxis, propertiesEllipse2.minorAxis);
             const areaRatio = areaEllipse1 / (areaEllipse2 + 1e-6);
             return areaRatio;
+        } else {
+            return null;
+        }
+    }
+
+    private findEllipseKeypoints(ellipseKp1: IPoint, ellipseKp2: IPoint, ellipseKp3: IPoint, nbPoints: number = 4) {
+        if (nbPoints < 4) {
+            throw new Error("Number of points must be at least 4");
+        }
+        const propertiesEllipse1 = KeypointSurfaceAnnotation.computeEllipse(ellipseKp1, ellipseKp2, ellipseKp3);
+
+        const center = propertiesEllipse1.center;
+        const majorAxis = propertiesEllipse1.majorAxis;
+        const minorAxis = propertiesEllipse1.minorAxis;
+        const angleRad = propertiesEllipse1.rotateAngle;
+
+        // Create inverted rotation matrix
+        const rotMatInverted = [
+            [Math.cos(angleRad), -Math.sin(angleRad)],
+            [Math.sin(angleRad), Math.cos(angleRad)]
+        ];
+
+        // Parametric equation function
+        const parametricEquation = (phi: number) => {
+            const cosVal = Math.cos(phi);
+            const sinVal = Math.sin(phi);
+
+            return [
+                center.x + rotMatInverted[0][0] * majorAxis * cosVal + rotMatInverted[0][1] * minorAxis * sinVal,
+                center.y + rotMatInverted[1][0] * majorAxis * cosVal + rotMatInverted[1][1] * minorAxis * sinVal
+            ];
+        };
+
+        // Calculate key points
+        const kp1 = [ellipseKp1.x, ellipseKp1.y];
+        const kp2 = [ellipseKp2.x, ellipseKp2.y];
+        const kp3 = parametricEquation(Math.PI / 2);
+        const kp4 = parametricEquation(3 * Math.PI / 2);
+
+        // Create ellipse points array
+        const ellipsePoints = [kp1, kp2, kp3, kp4];
+
+        // Add additional points
+        const step = 2 * Math.PI / nbPoints;
+        for (let i = 0; i < nbPoints; i++) {
+            const ang = i * step;
+            if (![0, Math.PI / 2, Math.PI, 3 * Math.PI / 2].includes(ang)) {
+                ellipsePoints.push(parametricEquation(ang));
+            }
+        }
+
+        return [ellipsePoints, majorAxis, minorAxis];
+    }
+
+    private findLineEquation(linePoint1: IPoint, linePoint2: IPoint) {
+        // Solve for line parameters
+        // [x1 y1] [a] = [-1]
+        // [x2 y2] [b]   [-1]
+
+        const a = linePoint2.y - linePoint1.y;
+        const b = linePoint1.x - linePoint2.x;
+        const c = linePoint2.x * linePoint1.y - linePoint1.x * linePoint2.y;
+
+        return [a, b, c]; // Line equation: ax + by + c = 0
+    }
+
+    private orderPointsCounterclockwise(points) {
+        // Calculate centroid
+        let cx = 0, cy = 0;
+        for (const point of points) {
+            cx += point[0];
+            cy += point[1];
+        }
+        cx /= points.length;
+        cy /= points.length;
+
+        // Calculate angles and create pairs
+        const pointsWithAngles = points.map(point => {
+            const angle = Math.atan2(point[1] - cy, point[0] - cx);
+            return { point, angle };
+        });
+        // Sort by angle
+        pointsWithAngles.sort((a, b) => a.angle - b.angle);
+
+        // Extract sorted points
+        return pointsWithAngles.map(item => item.point);
+    }
+
+    private pointsToLineSign(lineParams, points) {
+        // Calculate sign of distance from points to line
+        return points.map(point => {
+            const dotProduct = lineParams[0] * point[0] + lineParams[1] * point[1] + lineParams[2];
+            return dotProduct > 0;
+        });
+    }
+
+    private computePolygonAreaShoelace(points) {
+        if (points.length < 3) {
+            return 0;
+        }
+
+        let area = 0;
+        const n = points.length;
+
+        for (let i = 0; i < n; i++) {
+            const j = (i + 1) % n;
+            area += points[i][0] * points[j][1];
+            area -= points[j][0] * points[i][1];
+        }
+
+        return Math.abs(area) / 2;
+    }
+
+    private calculateEllipseRatioByPolygon(
+        ellipseP1,
+        ellipseP2,
+        ellipseP3,
+        linePoint1,
+        linePoint2,
+        nbApproxPointsEllipse
+    ) {
+        // Find ellipse keypoints
+        const [ellipsePoints, majorAxis, minorAxis] = this.findEllipseKeypoints(
+            ellipseP1, ellipseP2, ellipseP3, nbApproxPointsEllipse
+        );
+
+        const kp1 = ellipsePoints[0];
+        const kp2 = ellipsePoints[1];
+        const kp3 = ellipsePoints[2];
+
+        // Calculate vectors
+        const vectKp2Kp1 = [kp2[0] - kp1[0], kp2[1] - kp1[1]];
+        const vectKp3Kp1 = [kp3[0] - kp1[0], kp3[1] - kp1[1]];
+
+        // Cross product sign
+        const sign = Math.sign(vectKp2Kp1[0] * vectKp3Kp1[1] - vectKp2Kp1[1] * vectKp3Kp1[0]);
+
+        // Find line equation
+        const lineParams = this.findLineEquation(linePoint1, linePoint2);
+
+        // Order points counterclockwise
+        const orderedPoints = this.orderPointsCounterclockwise(ellipsePoints);
+
+        // Calculate signs for each point
+        const signs = this.pointsToLineSign(lineParams, orderedPoints) //.map(s => !!(sign * s));
+
+        // Filter points based on sign
+        const ellipsePointsForRatio = orderedPoints.filter((_, i) => signs[i] === true);
+
+        // Calculate ratio
+        const ratio = this.computePolygonAreaShoelace(ellipsePointsForRatio) / (Math.PI * majorAxis * minorAxis + 1e-6);
+        return ratio;
+    }
+
+    // Function to compute the surface ratio between the ellipse formed by kp1, kp2, kp3 and kp4, kp5, kp6
+    public computePositionRatio(keypointCenters: {
+        id: string;
+        labelName: string;
+        centroid: IPoint;
+    }[], keypointNames: string[]): number | null { // 
+        const keypoints = [];
+
+        for (let i = 0; i < keypointNames.length; i++) {
+            const selectedCenter = keypointCenters.find(polygon => polygon.labelName === keypointNames[i]);
+            keypoints.push(selectedCenter)
+        }
+
+        // Ensure all selected keypoints are present
+        if (keypoints.includes(undefined)) {
+            // console.error('There are not enough keypoints')
+            return null;
+        }
+
+        // Compute ellipse properties
+        if (keypoints.length === 5) {
+            const positionRatio = this.calculateEllipseRatioByPolygon(
+                keypoints[2].centroid,
+                keypoints[3].centroid,
+                keypoints[4].centroid,
+                keypoints[0].centroid,
+                keypoints[1].centroid,
+                1000);
+            return positionRatio;
         } else {
             return null;
         }
