@@ -1249,7 +1249,6 @@ export class KeypointUtils {
         const kp1 = ellipsePoints[0];
         const kp2 = ellipsePoints[1];
         const kp3 = ellipsePoints[2];
-        console.log('kp3', kp3)
 
         // Calculate vectors
         const vectKp2Kp1 = [kp2[0] - kp1[0], kp2[1] - kp1[1]];
