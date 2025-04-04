@@ -875,7 +875,8 @@ export class KeypointSurfaceAnnotation {
             "center": center,
             "majorAxis": majorAxis,
             "minorAxis": minorAxis,
-            "rotateAngle": rotateAngle
+            "rotateAngle": rotateAngle,
+            "mappedConstrainPoint": mappedConstrainPoint,
         }
         return ellipseProperties;
 
@@ -1106,12 +1107,23 @@ export class KeypointUtils {
         if (nbPoints < 4) {
             throw new Error("Number of points must be at least 4");
         }
-        const propertiesEllipse1 = KeypointSurfaceAnnotation.computeEllipse(ellipseKp1, ellipseKp2, ellipseKp3);
+        const propertiesEllipse = KeypointSurfaceAnnotation.computeEllipse(ellipseKp1, ellipseKp2, ellipseKp3);
 
-        const center = propertiesEllipse1.center;
-        const majorAxis = propertiesEllipse1.majorAxis;
-        const minorAxis = propertiesEllipse1.minorAxis;
-        const angleRad = propertiesEllipse1.rotateAngle;
+        const center = propertiesEllipse.center;
+        const majorAxis = propertiesEllipse.majorAxis;
+        const minorAxis = propertiesEllipse.minorAxis;
+        const angleRad = propertiesEllipse.rotateAngle;
+        const mappedConstrainPoint = propertiesEllipse.mappedConstrainPoint;
+
+        let kp3Rotated, kp4Rotated;
+        if (mappedConstrainPoint.y > 0) {
+            kp3Rotated = [0.0, minorAxis];
+            kp4Rotated = [0.0, -minorAxis];
+        }
+        else {
+            kp3Rotated = [0.0, -minorAxis];
+            kp4Rotated = [0.0, minorAxis];
+        }
 
         // Create inverted rotation matrix
         const rotMatInverted = [
@@ -1133,8 +1145,8 @@ export class KeypointUtils {
         // Calculate key points
         const kp1 = [ellipseKp1.x, ellipseKp1.y];
         const kp2 = [ellipseKp2.x, ellipseKp2.y];
-        const kp3 = parametricEquation(Math.PI / 2);
-        const kp4 = parametricEquation(3 * Math.PI / 2);
+        const kp3 = [center.x + rotMatInverted[0][1] * kp3Rotated[1], center.y + rotMatInverted[1][1] * kp3Rotated[1]];
+        const kp4 = [center.x + rotMatInverted[0][1] * kp4Rotated[1], center.y + rotMatInverted[1][1] * kp4Rotated[1]];
 
         // Create ellipse points array
         const ellipsePoints = [kp1, kp2, kp3, kp4];
@@ -1185,13 +1197,24 @@ export class KeypointUtils {
         return pointsWithAngles.map(item => item.point);
     }
 
-    private pointsToLineSign(lineParams, points) {
-        // Calculate sign of distance from points to line
-        return points.map(point => {
-            const dotProduct = lineParams[0] * point[0] + lineParams[1] * point[1] + lineParams[2];
-            return dotProduct > 0;
-        });
+    private pointsToLineSign(linePoint1, linePoint2, points) {
+        // Convert line points to arrays
+        const p1 = [linePoint1.x, linePoint1.y];
+        const p2 = [linePoint2.x, linePoint2.y];
+
+        // Calculate the direction vector of the line
+        const vectLine = [p2[0] - p1[0], p2[1] - p1[1]];
+
+        // Calculate vectors from p1 to each point
+        const vectsPointsP1 = points.map(point => [point[0] - p1[0], point[1] - p1[1]]);
+
+        // Calculate cross product
+        const crossProd = vectsPointsP1.map(vect => vectLine[0] * vect[1] - vectLine[1] * vect[0]);
+
+        // Return the sign of the cross product
+        return crossProd.map(val => Math.sign(val));
     }
+
 
     private computePolygonAreaShoelace(points) {
         if (points.length < 3) {
@@ -1226,6 +1249,7 @@ export class KeypointUtils {
         const kp1 = ellipsePoints[0];
         const kp2 = ellipsePoints[1];
         const kp3 = ellipsePoints[2];
+        console.log('kp3', kp3)
 
         // Calculate vectors
         const vectKp2Kp1 = [kp2[0] - kp1[0], kp2[1] - kp1[1]];
@@ -1234,14 +1258,11 @@ export class KeypointUtils {
         // Cross product sign
         const sign = Math.sign(vectKp2Kp1[0] * vectKp3Kp1[1] - vectKp2Kp1[1] * vectKp3Kp1[0]);
 
-        // Find line equation
-        const lineParams = this.findLineEquation(linePoint1, linePoint2);
-
         // Order points counterclockwise
         const orderedPoints = this.orderPointsCounterclockwise(ellipsePoints);
 
         // Calculate signs for each point
-        const signs = this.pointsToLineSign(lineParams, orderedPoints) //.map(s => !!(sign * s));
+        const signs = this.pointsToLineSign(linePoint1, linePoint2, orderedPoints).map(s => !!(sign * s > 0));
 
         // Filter points based on sign
         const ellipsePointsForRatio = orderedPoints.filter((_, i) => signs[i] === true);
