@@ -444,12 +444,6 @@ export class PolygonRenderEngine extends BaseRenderEngine {
             }
             this.addPolygonLabel2Keypoints(generatedPolygons);
 
-            // Draw the line between 2 kpts
-            const lineToDraw: ILine = {
-                start: RenderEngineUtil.setPointBetweenPixels(polygonOnImage[0]),
-                end: RenderEngineUtil.setPointBetweenPixels(polygonOnImage[1])
-            }
-            DrawUtil.drawLine(this.canvas, lineToDraw.start, lineToDraw.end, RenderEngineSettings.defaultAnchorColor, RenderEngineSettings.LINE_THICKNESS);
             this.finishLabelCreation();
         }
     }
@@ -943,7 +937,7 @@ export class KeypointUtils {
         const positionRatio_B = this.computePositionRatio(allKeypointCenters, positionKeypointNames_B)
         const tgaRatio_D = this.computeDistanceRatio(allKeypointCenters, tgaKeypointNames_D)
         const asymRatio_E = this.computeDistanceRatio(allKeypointCenters, asymKeypointNames_E)
-        const tgaRatio_E = this.computeDistanceRatio(allKeypointCenters, tgaKeypointNames_E)
+        const tgaRatio_E = this.computeDistanceRatioWithProjection(allKeypointCenters, tgaKeypointNames_E)
         const asymRatioCSP_F = this.computeDistanceRatio(allKeypointCenters, asymCSPKeypointNames_F)
         const asymRatioCI_F = this.computeDistanceRatio(allKeypointCenters, asymCIKeypointNames_F)
 
@@ -1060,6 +1054,75 @@ export class KeypointUtils {
         return Math.abs(angle);
     }
 
+    private findLineEquationFrom2Points(linePoint1: IPoint, linePoint2: IPoint) {
+        // Solve for line parameters
+        // [x1 y1] [a] = [-1]
+        // [x2 y2] [b]   [-1]
+
+        const a = linePoint2.y - linePoint1.y;
+        const b = linePoint1.x - linePoint2.x;
+        const c = linePoint2.x * linePoint1.y - linePoint1.x * linePoint2.y;
+
+        return [a, b, c]; // Line equation: ax + by + c = 0
+    }
+
+    private findLineEquationFromNormalVectorAnd1Point(normalVector: IPoint, point: IPoint) {
+        const a = normalVector.x;
+        const b = normalVector.y;
+        const c = -a * point.x - b * point.y;
+
+        return [a, b, c]; // Line equation: ax + by + c = 0
+    }
+
+    private projectPointOntoLine(lineParams: number[], point: IPoint) {
+        const [a1, b1, c1] = lineParams;
+        const a2 = b1;
+        const b2 = -a1;
+        const c2 = -a2 * point.x - b2 * point.y;
+        const x = -(c1 * b2 - c2 * b1) / (a1 * b2 - a2 * b1);
+        const projectedPoint: IPoint = {
+            x: x,
+            y: (-c1 - a1 * x) / b1,
+        };
+        return projectedPoint;
+    }
+
+    // Function to compute the ratio of distances between kp1, kp2, and kp3 polygons
+    private computeDistanceRatioWithProjection(keypointCenters: {
+        id: string;
+        labelName: string;
+        centroid: IPoint;
+    }[], keypointNames: string[]): number | null {
+        const keypoints = [];
+
+        for (let i = 0; i < keypointNames.length; i++) {
+            const selectedCenter = keypointCenters.find(polygon => polygon.labelName === keypointNames[i]);
+            keypoints.push(selectedCenter)
+        }
+
+        // Ensure all selected keypoints are present
+        if (keypoints.includes(undefined)) {
+            // console.error('There are not enough keypoints')
+            return null;
+        }
+
+        // Compute distances
+        if (keypoints.length === 3) {
+            const directionVectorOfLine01 = this.computeVector(keypoints[0].centroid, keypoints[1].centroid);
+            const normalVectorOfLine01: IPoint = { x: directionVectorOfLine01.y, y: -directionVectorOfLine01.x };
+            const lineParamsOfLine2 = this.findLineEquationFromNormalVectorAnd1Point(normalVectorOfLine01, keypoints[2].centroid);
+            const projectedPoint = this.projectPointOntoLine(lineParamsOfLine2, keypoints[1].centroid);
+            const distance_kp3_projectPoint = this.computeDistance(projectedPoint, keypoints[2].centroid);
+            const distance_kp1_kp2 = this.computeDistance(keypoints[0].centroid, keypoints[1].centroid);
+            const ratio = distance_kp3_projectPoint / (distance_kp1_kp2 + 1e-6);
+            // console.log('ratio', ratio)
+            return ratio
+        } else {
+            // console.error('There are an unexpected number of keypoints (${keypoints.length})')
+            return null
+        }
+    }
+
     private computeEllipseArea(majorAxis: number, minorAxis: number) {
         return Math.PI * majorAxis * minorAxis;
     }
@@ -1163,17 +1226,6 @@ export class KeypointUtils {
         return [ellipsePoints, majorAxis, minorAxis];
     }
 
-    private findLineEquation(linePoint1: IPoint, linePoint2: IPoint) {
-        // Solve for line parameters
-        // [x1 y1] [a] = [-1]
-        // [x2 y2] [b]   [-1]
-
-        const a = linePoint2.y - linePoint1.y;
-        const b = linePoint1.x - linePoint2.x;
-        const c = linePoint2.x * linePoint1.y - linePoint1.x * linePoint2.y;
-
-        return [a, b, c]; // Line equation: ax + by + c = 0
-    }
 
     private orderPointsCounterclockwise(points) {
         // Calculate centroid
