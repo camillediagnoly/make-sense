@@ -4,7 +4,7 @@ import React from 'react';
 import classNames from 'classnames';
 import { AppState } from '../../../store';
 import { connect } from 'react-redux';
-import { updateCrossHairVisibleStatus, updateImageDragModeStatus, updateFixedZoomStatus, updateEllipseDrawStatus, updateCopyPolygonsStatus, updatePasteAnnotationsStatus } from '../../../store/general/actionCreators';
+import { updateCrossHairVisibleStatus, updateImageDragModeStatus, updateFixedZoomStatus, updateEllipseDrawStatus, updateMovingAnnotationStatus, updateCopyPolygonsStatus, updatePasteAnnotationsStatus } from '../../../store/general/actionCreators';
 import { GeneralSelector } from '../../../store/selectors/GeneralSelector';
 import { ViewPointSettings } from '../../../settings/ViewPointSettings';
 import { ImageButton } from '../../Common/ImageButton/ImageButton';
@@ -68,12 +68,14 @@ interface IProps {
     updateCrossHairVisibleStatusAction: (crossHairVisible: boolean) => any;
     updateFixedZoomStatusAction: (fixedZoom: boolean) => any;
     updateEllipseDrawAction: (ellipseDraw: boolean) => any;
+    updateMovingAnnotationAction: (movingAnnotation: boolean) => any;
     updateCopyPolygonsAction: (copyPolygons: boolean) => any;
     updatePastePolygonsAction: (pastePolygons: boolean) => any;
     imageDragMode: boolean;
     crossHairVisible: boolean;
     fixedZoom: boolean;
     ellipseDraw: boolean;
+    movingAnnotation: boolean;
     copyPolygons: boolean;
     pastePolygons: boolean;
     activeLabelType: LabelType;
@@ -86,12 +88,14 @@ const EditorTopNavigationBar: React.FC<IProps> = (
         updateCrossHairVisibleStatusAction,
         updateFixedZoomStatusAction,
         updateEllipseDrawAction,
+        updateMovingAnnotationAction,
         updateCopyPolygonsAction,
         updatePastePolygonsAction,
         imageDragMode,
         crossHairVisible,
         fixedZoom,
         ellipseDraw,
+        movingAnnotation,
         copyPolygons,
         pastePolygons,
         activeLabelType
@@ -126,6 +130,10 @@ const EditorTopNavigationBar: React.FC<IProps> = (
         updateEllipseDrawAction(!ellipseDraw);
     };
 
+    const movingAnnotationOnClick = () => {
+        updateMovingAnnotationAction(!movingAnnotation);
+    };
+    
     const copyPolygonsOnClick = () => {
         updateCopyPolygonsAction(!copyPolygons);
     };
@@ -234,6 +242,18 @@ const EditorTopNavigationBar: React.FC<IProps> = (
                         ellipseDrawOnClick
                     )
                 }
+                {
+                    getButtonWithTooltip(
+                        'moving-annotation',
+                        movingAnnotation ? 'turn-off annotation moving' : 'turn-on annotation moving',
+                        'ico/move-100.png',
+                        'move',
+                        movingAnnotation,
+                        undefined,
+                        movingAnnotationOnClick
+                    )
+                }
+                
             </div>
 
             <div className='ButtonWrapper'>
@@ -293,6 +313,7 @@ const mapDispatchToProps = {
     updateCrossHairVisibleStatusAction: updateCrossHairVisibleStatus,
     updateFixedZoomStatusAction: updateFixedZoomStatus,
     updateEllipseDrawAction: updateEllipseDrawStatus,
+    updateMovingAnnotationAction: updateMovingAnnotationStatus,
     updateCopyPolygonsAction: updateCopyPolygonsStatus,
     updatePastePolygonsAction: updatePasteAnnotationsStatus,
 };
@@ -303,6 +324,7 @@ const mapStateToProps = (state: AppState) => ({
     crossHairVisible: state.general.crossHairVisible,
     fixedZoom: state.general.fixedZoom,
     ellipseDraw: state.general.ellipseDraw,
+    movingAnnotation: state.general.movingAnnotation,
     copyPolygons: state.general.copyPolygons,
     pastePolygons: state.general.pastePolygons,
     activeLabelType: state.labels.activeLabelType

@@ -1,9 +1,9 @@
-import { ISize } from '../../interfaces/ISize';
-import { GeneralActionTypes, ProjectData } from './types';
-import { Action } from '../Actions';
-import { PopupWindowType } from '../../data/enums/PopupWindowType';
-import { CustomCursorStyle } from '../../data/enums/CustomCursorStyle';
-import { ContextType } from '../../data/enums/ContextType';
+import { ISize } from "../../interfaces/ISize";
+import { GeneralActionTypes, ProjectData } from "./types";
+import { Action } from "../Actions";
+import { PopupWindowType } from "../../data/enums/PopupWindowType";
+import { CustomCursorStyle } from "../../data/enums/CustomCursorStyle";
+import { ContextType } from "../../data/enums/ContextType";
 
 export function updateWindowSize(windowSize: ISize): GeneralActionTypes {
     return {
@@ -14,25 +14,31 @@ export function updateWindowSize(windowSize: ISize): GeneralActionTypes {
     };
 }
 
-export function updateActivePopupType(activePopupType: PopupWindowType): GeneralActionTypes {
+export function updateActivePopupType(
+    activePopupType: PopupWindowType
+): GeneralActionTypes {
     return {
         type: Action.UPDATE_ACTIVE_POPUP_TYPE,
         payload: {
             activePopupType,
-        }
-    }
+        },
+    };
 }
 
-export function updateCustomCursorStyle(customCursorStyle: CustomCursorStyle): GeneralActionTypes {
+export function updateCustomCursorStyle(
+    customCursorStyle: CustomCursorStyle
+): GeneralActionTypes {
     return {
         type: Action.UPDATE_CUSTOM_CURSOR_STYLE,
         payload: {
             customCursorStyle,
-        }
-    }
+        },
+    };
 }
 
-export function updateActiveContext(activeContext: ContextType): GeneralActionTypes {
+export function updateActiveContext(
+    activeContext: ContextType
+): GeneralActionTypes {
     return {
         type: Action.UPDATE_CONTEXT,
         payload: {
@@ -41,7 +47,9 @@ export function updateActiveContext(activeContext: ContextType): GeneralActionTy
     };
 }
 
-export function updatePreventCustomCursorStatus(preventCustomCursor: boolean): GeneralActionTypes {
+export function updatePreventCustomCursorStatus(
+    preventCustomCursor: boolean
+): GeneralActionTypes {
     return {
         type: Action.UPDATE_PREVENT_CUSTOM_CURSOR_STATUS,
         payload: {
@@ -50,7 +58,9 @@ export function updatePreventCustomCursorStatus(preventCustomCursor: boolean): G
     };
 }
 
-export function updateImageDragModeStatus(imageDragMode: boolean): GeneralActionTypes {
+export function updateImageDragModeStatus(
+    imageDragMode: boolean
+): GeneralActionTypes {
     return {
         type: Action.UPDATE_IMAGE_DRAG_MODE_STATUS,
         payload: {
@@ -59,7 +69,9 @@ export function updateImageDragModeStatus(imageDragMode: boolean): GeneralAction
     };
 }
 
-export function updateCrossHairVisibleStatus(crossHairVisible: boolean): GeneralActionTypes {
+export function updateCrossHairVisibleStatus(
+    crossHairVisible: boolean
+): GeneralActionTypes {
     return {
         type: Action.UPDATE_CROSS_HAIR_VISIBLE_STATUS,
         payload: {
@@ -77,7 +89,9 @@ export function updateFixedZoomStatus(fixedZoom: boolean): GeneralActionTypes {
     };
 }
 
-export function updateEllipseDrawStatus(ellipseDraw: boolean): GeneralActionTypes {
+export function updateEllipseDrawStatus(
+    ellipseDraw: boolean
+): GeneralActionTypes {
     return {
         type: Action.UPDATE_ELLIPSE_DRAW_STATUS,
         payload: {
@@ -86,7 +100,20 @@ export function updateEllipseDrawStatus(ellipseDraw: boolean): GeneralActionType
     };
 }
 
-export function updateCopyPolygonsStatus(copyPolygons: boolean): GeneralActionTypes {
+export function updateMovingAnnotationStatus(
+    movingAnnotation: boolean
+): GeneralActionTypes {
+    return {
+        type: Action.UPDATE_MOVING_ANNOTATION_STATUS,
+        payload: {
+            movingAnnotation,
+        },
+    };
+}
+
+export function updateCopyPolygonsStatus(
+    copyPolygons: boolean
+): GeneralActionTypes {
     return {
         type: Action.UPDATE_COPY_POLYGONS_STATUS,
         payload: {
@@ -95,7 +122,9 @@ export function updateCopyPolygonsStatus(copyPolygons: boolean): GeneralActionTy
     };
 }
 
-export function updatePasteAnnotationsStatus(pastePolygons: boolean): GeneralActionTypes {
+export function updatePasteAnnotationsStatus(
+    pastePolygons: boolean
+): GeneralActionTypes {
     return {
         type: Action.UPDATE_PASTE_POLYGONS_STATUS,
         payload: {
@@ -104,7 +133,9 @@ export function updatePasteAnnotationsStatus(pastePolygons: boolean): GeneralAct
     };
 }
 
-export function updateProjectData(projectData: ProjectData): GeneralActionTypes {
+export function updateProjectData(
+    projectData: ProjectData
+): GeneralActionTypes {
     return {
         type: Action.UPDATE_PROJECT_DATA,
         payload: {
@@ -122,7 +153,9 @@ export function updateZoom(zoom: number): GeneralActionTypes {
     };
 }
 
-export function updatePerClassColorationStatus(enablePerClassColoration: boolean): GeneralActionTypes {
+export function updatePerClassColorationStatus(
+    enablePerClassColoration: boolean
+): GeneralActionTypes {
     return {
         type: Action.UPDATE_ENABLE_PER_CLASS_COLORATION_STATUS,
         payload: {

@@ -1,8 +1,8 @@
-import { store } from '../..';
-import { PopupWindowType } from '../../data/enums/PopupWindowType';
-import { ContextType } from '../../data/enums/ContextType';
-import { CustomCursorStyle } from '../../data/enums/CustomCursorStyle';
-import { ProjectType } from '../../data/enums/ProjectType';
+import { store } from "../..";
+import { PopupWindowType } from "../../data/enums/PopupWindowType";
+import { ContextType } from "../../data/enums/ContextType";
+import { CustomCursorStyle } from "../../data/enums/CustomCursorStyle";
+import { ProjectType } from "../../data/enums/ProjectType";
 
 export class GeneralSelector {
     public static getActivePopupType(): PopupWindowType {
@@ -31,6 +31,10 @@ export class GeneralSelector {
 
     public static getEllipseDrawStatus(): boolean {
         return store.getState().general.ellipseDraw;
+    }
+
+    public static getMovingAnnotationStatus(): boolean {
+        return store.getState().general.movingAnnotation;
     }
 
     public static getCopyPolygonsStatus(): boolean {
@@ -66,6 +70,6 @@ export class GeneralSelector {
     }
 
     public static getEnablePerClassColorationStatus(): boolean {
-        return store.getState().general.enablePerClassColoration
+        return store.getState().general.enablePerClassColoration;
     }
 }

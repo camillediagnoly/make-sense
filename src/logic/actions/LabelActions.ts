@@ -83,7 +83,15 @@ export class LabelActions {
 
 
         // Map labelId in annotations to the corresponding name and filters only keypoints
-        const measurementNames = ['p-b.m:Asym-P', 'p-b.m:Asym-N', 'p-b.m:Asym-U', 'p-d.m:TGA-P', 'p-d.m:TGA-N', 'p-d.m:TGA-U']
+        const measurementNames = ['p-b.m:Asym-P', 'p-b.m:Asym-N',
+            'p-b.m:Angle-P', 'p-b.m:Angle-N',
+            'p-b.m:Position-P', 'p-b.m:Position-N',
+            'p-b.m:Surface-P', 'p-b.m:Surface-N',
+            'p-e.m:VxAsym-P', 'p-e.m:VxAsym-N',
+            'p-e.m:TGA-P', 'p-e.m:TGA-N',
+            'p-f.m:CSP-P', 'p-f.m:CSP-N',
+            'p-f.m:CI-P', 'p-f.m:CI-N',
+        ]
 
         const measurementAnnotations = activeImageData.labelPolygons.map(annotation => ({
             ...annotation,
