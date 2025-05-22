@@ -526,23 +526,29 @@ export class PolygonRenderEngine extends BaseRenderEngine {
         const allKeypointCenters =
             this.keypointUtils.getKeypointsFromPolygons();
         let keypoints = [];
-        const keypointNamesAngleBAndAsymE = [
+        const keypointNamesToDrawLineExceptAsymB = [
             ...angleKeypointNames_B.slice(0, -1),
             ...positionKeypointNames_B.slice(0, 2),
             ...asymKeypointNames_E,
             ...tgaKeypointNames_E.slice(0, 2),
+            ...asymCSPKeypointNames_F,
+            ...asymCIKeypointNames_F,
         ];
-        for (let i = 0; i < keypointNamesAngleBAndAsymE.length; i++) {
+        for (let i = 0; i < keypointNamesToDrawLineExceptAsymB.length; i++) {
             const selectedCenter = allKeypointCenters.find(
                 (polygon) =>
-                    polygon.labelName === keypointNamesAngleBAndAsymE[i]
+                    polygon.labelName === keypointNamesToDrawLineExceptAsymB[i]
             );
             keypoints.push(selectedCenter);
         }
-        for (let i = 0; i < keypointNamesAngleBAndAsymE.length - 1; i += 2) {
+        for (
+            let i = 0;
+            i < keypointNamesToDrawLineExceptAsymB.length - 1;
+            i += 2
+        ) {
             const subset = [
-                keypointNamesAngleBAndAsymE[i],
-                keypointNamesAngleBAndAsymE[i + 1],
+                keypointNamesToDrawLineExceptAsymB[i],
+                keypointNamesToDrawLineExceptAsymB[i + 1],
             ];
             if (
                 subset.every((name) =>
