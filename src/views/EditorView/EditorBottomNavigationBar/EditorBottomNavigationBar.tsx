@@ -34,7 +34,9 @@ const EditorBottomNavigationBar: React.FC<IProps> = ({ size, imageData, totalIma
         );
     };
     const keypointUtilsInstance = new KeypointUtils();
-    const [asymRatio_B, angle_B, areaRatio_B, positionRatio_B, tgaRatio_D, asymRatio_E, tgaRatio_E, asymRatioCSP_F, asymRatioCI_F] = keypointUtilsInstance.buildMeasurements()
+    const [asymRatio_B, angle_B, areaRatio_B, positionRatio_B, 
+        tgaRatio_D, asymRatio_E, tgaRatio_E, asymRatioCSP_F, 
+        asymRatioCI_F, angleSF_F] = keypointUtilsInstance.buildMeasurements()
 
 
 
@@ -76,6 +78,9 @@ const EditorBottomNavigationBar: React.FC<IProps> = ({ size, imageData, totalIma
                 <div className="OtherMeasurements">
                     <div className="Measurement">
                         B-Angle = {angle_B != null ? `${angle_B.toFixed(2)}°` : 'null'}
+                    </div>
+                    <div className="Measurement">
+                        F-AngleSF = {angleSF_F != null ? `${angleSF_F.toFixed(2)}°` : 'null'}
                     </div>
                 </div>
             </div>

@@ -73,6 +73,11 @@ const asymCIKeypointNames_F = [
     "p-f.k:CI-3",
     "p-f.k:CI-4",
 ];
+const angleSFKeypointNames_F = [
+    "p-f.k:AngleSF-1",
+    "p-f.k:AngleSF-2",
+    "p-f.k:AngleSF-3",
+];
 
 const allKeypointNames = [
     ...asymKeypointNames_B,
@@ -84,6 +89,7 @@ const allKeypointNames = [
     ...tgaKeypointNames_E,
     ...asymCSPKeypointNames_F,
     ...asymCIKeypointNames_F,
+    ...angleSFKeypointNames_F,
 ];
 
 export class PolygonRenderEngine extends BaseRenderEngine {
@@ -526,7 +532,7 @@ export class PolygonRenderEngine extends BaseRenderEngine {
         const allKeypointCenters =
             this.keypointUtils.getKeypointsFromPolygons();
         let keypoints = [];
-        const keypointNamesToDrawLineExceptAsymB = [
+        const keypointNamesPairedToDrawLine = [
             ...angleKeypointNames_B.slice(0, -1),
             ...positionKeypointNames_B.slice(0, 2),
             ...asymKeypointNames_E,
@@ -534,21 +540,17 @@ export class PolygonRenderEngine extends BaseRenderEngine {
             ...asymCSPKeypointNames_F,
             ...asymCIKeypointNames_F,
         ];
-        for (let i = 0; i < keypointNamesToDrawLineExceptAsymB.length; i++) {
+        for (let i = 0; i < keypointNamesPairedToDrawLine.length; i++) {
             const selectedCenter = allKeypointCenters.find(
                 (polygon) =>
-                    polygon.labelName === keypointNamesToDrawLineExceptAsymB[i]
+                    polygon.labelName === keypointNamesPairedToDrawLine[i]
             );
             keypoints.push(selectedCenter);
         }
-        for (
-            let i = 0;
-            i < keypointNamesToDrawLineExceptAsymB.length - 1;
-            i += 2
-        ) {
+        for (let i = 0; i < keypointNamesPairedToDrawLine.length - 1; i += 2) {
             const subset = [
-                keypointNamesToDrawLineExceptAsymB[i],
-                keypointNamesToDrawLineExceptAsymB[i + 1],
+                keypointNamesPairedToDrawLine[i],
+                keypointNamesPairedToDrawLine[i + 1],
             ];
             if (
                 subset.every((name) =>
@@ -586,14 +588,26 @@ export class PolygonRenderEngine extends BaseRenderEngine {
         }
 
         keypoints = [];
-        for (let i = 0; i < asymKeypointNames_B.length; i++) {
+        const keypointNamesUnPairedToDrawLine = [
+            ...asymKeypointNames_B,
+            ...angleSFKeypointNames_F,
+        ];
+        for (let i = 0; i < keypointNamesUnPairedToDrawLine.length; i++) {
             const selectedCenter = allKeypointCenters.find(
-                (polygon) => polygon.labelName === asymKeypointNames_B[i]
+                (polygon) =>
+                    polygon.labelName === keypointNamesUnPairedToDrawLine[i]
             );
             keypoints.push(selectedCenter);
         }
-        for (let i = 0; i < asymKeypointNames_B.length - 1; i += 1) {
-            const subset = [asymKeypointNames_B[i], asymKeypointNames_B[i + 1]];
+        for (
+            let i = 0;
+            i < keypointNamesUnPairedToDrawLine.length - 1;
+            i += 1
+        ) {
+            const subset = [
+                keypointNamesUnPairedToDrawLine[i],
+                keypointNamesUnPairedToDrawLine[i + 1],
+            ];
             if (
                 subset.every((name) =>
                     keypoints.some((kpt) => kpt?.labelName === name)
@@ -1522,6 +1536,10 @@ export class KeypointUtils {
             allKeypointCenters,
             asymCIKeypointNames_F
         );
+        const angleSF_F = this.computeAngle(
+            allKeypointCenters,
+            angleSFKeypointNames_F
+        );
 
         return [
             asymRatio_B,
@@ -1533,6 +1551,7 @@ export class KeypointUtils {
             tgaRatio_E,
             asymRatioCSP_F,
             asymRatioCI_F,
+            angleSF_F,
         ];
     }
 
@@ -1650,9 +1669,21 @@ export class KeypointUtils {
         }
 
         // Ensure all selected keypoints are present
-        if (keypoints.slice(0, 4).includes(undefined)) {
+        if (
+            (keypointNames.length === 5 &&
+                keypoints.slice(0, 4).includes(undefined)) ||
+            (keypointNames.length === 3 &&
+                keypoints.slice(0, 3).includes(undefined))
+        ) {
             // console.error('There are not enough keypoints')
             return null;
+        }
+        console.log(keypoints);
+        console.log(keypointNames);
+
+        if (keypointNames.length === 3) {
+            // insert to keypoints at 3rd position with a copy of keypoints[1]
+            keypoints.splice(2, 0, keypoints[1]);
         }
 
         // Angle values
@@ -1685,6 +1716,18 @@ export class KeypointUtils {
 
         return Math.abs(angle);
     }
+
+    // private computeAngle3Points(
+    //     keypointCenters: {
+    //         id: string;
+    //         labelName: string;
+    //         centroid: IPoint;
+    //     }[],
+    //     keypointNames: string[]
+    // ): number | null {
+    //     const keypoints = [];
+
+    // }
 
     private findLineEquationFrom2Points(
         linePoint1: IPoint,
