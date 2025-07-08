@@ -11,13 +11,22 @@ import { Direction } from "../../data/enums/Direction";
 import { PlatformUtil } from "../../utils/PlatformUtil";
 import { LabelActions } from "../actions/LabelActions";
 import { LineRenderEngine } from "../render/LineRenderEngine";
-import { GeneralSelector } from '../../store/selectors/GeneralSelector';
+import { LabelsSelector } from "../../store/selectors/LabelsSelector"; 
+import { store } from '../../index';
+import { ShortcutItem } from '../../store/general/types';
 
 export class EditorContext extends BaseContext {
-    public static actions: HotKeyAction[] = [
-        {
-            keyCombo: ["Enter"],
-            action: (event: KeyboardEvent) => {
+    private static getShortcutByName(name: string): ShortcutItem | undefined {
+        return store.getState().general.keyboardShortcuts.find(s => s.name === name);
+    }
+
+    // Define empty array that will be populated by initializeActions
+    public static actions: HotKeyAction[] = [];
+
+    public static initializeActions() {
+        // Create a mapping of action handlers
+        const actionHandlers: {[key: string]: (event: KeyboardEvent) => void} = {
+            'Finish Polygon Creation': (event: KeyboardEvent) => {
                 if (EditorModel.supportRenderingEngine && EditorModel.supportRenderingEngine.labelType === LabelType.POLYGON) {
                     const editorData: EditorData = EditorActions.getEditorData();
                     const isDrawingEllipse: boolean = (EditorModel.supportRenderingEngine as PolygonRenderEngine).isDrawingEllipse;
@@ -28,11 +37,8 @@ export class EditorContext extends BaseContext {
 
                 }
                 EditorActions.fullRender();
-            }
-        },
-        {
-            keyCombo: ["Escape"],
-            action: (event: KeyboardEvent) => {
+            },
+            'Cancel Label Creation': (event: KeyboardEvent) => {
                 if (EditorModel.supportRenderingEngine) {
                     switch (EditorModel.supportRenderingEngine.labelType) {
                         case LabelType.POLYGON:
@@ -44,141 +50,86 @@ export class EditorContext extends BaseContext {
                     }
                 }
                 EditorActions.fullRender();
-            }
-        },
-        {
-            keyCombo: PlatformUtil.isMac(window.navigator.userAgent) ? ["Alt", "ArrowLeft"] : ["Control", "ArrowLeft"],
-            action: (event: KeyboardEvent) => {
-                ImageActions.getPreviousImage()
-            }
-        },
-        {
-            keyCombo: PlatformUtil.isMac(window.navigator.userAgent) ? ["Alt", "ArrowRight"] : ["Control", "ArrowRight"],
-            action: (event: KeyboardEvent) => {
+            },
+            'Undo Last Point': (event: KeyboardEvent) => {
+                if (EditorModel.supportRenderingEngine &&
+                    EditorModel.supportRenderingEngine.labelType === LabelType.POLYGON) {
+                    (EditorModel.supportRenderingEngine as PolygonRenderEngine).undoLastAddedPoint();
+                }
+                EditorActions.fullRender();
+            },
+            'Previous Image': (event: KeyboardEvent) => {
+                ImageActions.getPreviousImage();
+            },
+            'Next Image': (event: KeyboardEvent) => {
                 ImageActions.getNextImage();
-            }
-        },
-        {
-            keyCombo: PlatformUtil.isMac(window.navigator.userAgent) ? ["Alt", "+"] : ["Control", "+"],
-            action: (event: KeyboardEvent) => {
+            },
+            'Zoom In': (event: KeyboardEvent) => {
                 ViewPortActions.zoomIn();
-            }
-        },
-        {
-            keyCombo: PlatformUtil.isMac(window.navigator.userAgent) ? ["Alt", "-"] : ["Control", "-"],
-            action: (event: KeyboardEvent) => {
+            },
+            'Zoom Out': (event: KeyboardEvent) => {
                 ViewPortActions.zoomOut();
-            }
-        },
-        {
-            keyCombo: ["ArrowRight"],
-            action: (event: KeyboardEvent) => {
+            },
+            'Move Right': (event: KeyboardEvent) => {
                 event.preventDefault();
                 ViewPortActions.translateViewPortPosition(Direction.RIGHT);
-            }
-        },
-        {
-            keyCombo: ["ArrowLeft"],
-            action: (event: KeyboardEvent) => {
+            },
+            'Move Left': (event: KeyboardEvent) => {
                 event.preventDefault();
                 ViewPortActions.translateViewPortPosition(Direction.LEFT);
-            }
-        },
-        {
-            keyCombo: ["ArrowUp"],
-            action: (event: KeyboardEvent) => {
+            },
+            'Move Up': (event: KeyboardEvent) => {
                 event.preventDefault();
                 ViewPortActions.translateViewPortPosition(Direction.BOTTOM);
-            }
-        },
-        {
-            keyCombo: ["ArrowDown"],
-            action: (event: KeyboardEvent) => {
+            },
+            'Move Down': (event: KeyboardEvent) => {
                 event.preventDefault();
                 ViewPortActions.translateViewPortPosition(Direction.TOP);
-            }
-        },
-        {
-            keyCombo: PlatformUtil.isMac(window.navigator.userAgent) ? ["Backspace"] : ["Delete"],
-            action: (event: KeyboardEvent) => {
+            },
+            'Delete Active Label': (event: KeyboardEvent) => {
                 LabelActions.deleteActiveLabel();
+            },
+            'Toggle Labels Visibility': (event: KeyboardEvent) => {
+                const imageData = LabelsSelector.getActiveImageData();
+                if (imageData) {
+                    LabelActions.toggleAllLabelsVisibilityInImage(imageData.id);
+                }
             }
-        },
-        {
-            keyCombo: PlatformUtil.isMac(window.navigator.userAgent) ? ["Alt", "0"] : ["Control", "0"],
-            action: (event: KeyboardEvent) => {
-                ImageActions.setActiveLabelOnActiveImage(0);
+        };
+
+        // Add label selection actions (0-9)
+        for (let i = 0; i <= 9; i++) {
+            actionHandlers[`Select Label ${i}`] = (event: KeyboardEvent) => {
+                ImageActions.setActiveLabelOnActiveImage(i);
                 EditorActions.fullRender();
+            };
+        }
+
+        // Get all shortcuts from Redux
+        const shortcuts = store.getState().general.keyboardShortcuts;
+        
+        // Build actions array by matching shortcuts with handlers
+        const actions: HotKeyAction[] = [];
+        
+        shortcuts.forEach(shortcut => {
+            // If we have a handler for this shortcut
+            if (actionHandlers[shortcut.name]) {
+                actions.push({
+                    keyCombo: shortcut.keyCombo,
+                    action: actionHandlers[shortcut.name]
+                });
             }
-        },
-        {
-            keyCombo: PlatformUtil.isMac(window.navigator.userAgent) ? ["Alt", "1"] : ["Control", "1"],
-            action: (event: KeyboardEvent) => {
-                ImageActions.setActiveLabelOnActiveImage(1);
-                EditorActions.fullRender();
-            }
-        },
-        {
-            keyCombo: PlatformUtil.isMac(window.navigator.userAgent) ? ["Alt", "2"] : ["Control", "2"],
-            action: (event: KeyboardEvent) => {
-                ImageActions.setActiveLabelOnActiveImage(2);
-                EditorActions.fullRender();
-            }
-        },
-        {
-            keyCombo: PlatformUtil.isMac(window.navigator.userAgent) ? ["Alt", "3"] : ["Control", "3"],
-            action: (event: KeyboardEvent) => {
-                ImageActions.setActiveLabelOnActiveImage(3);
-                EditorActions.fullRender();
-            }
-        },
-        {
-            keyCombo: PlatformUtil.isMac(window.navigator.userAgent) ? ["Alt", "4"] : ["Control", "4"],
-            action: (event: KeyboardEvent) => {
-                ImageActions.setActiveLabelOnActiveImage(4);
-                EditorActions.fullRender();
-            }
-        },
-        {
-            keyCombo: PlatformUtil.isMac(window.navigator.userAgent) ? ["Alt", "5"] : ["Control", "5"],
-            action: (event: KeyboardEvent) => {
-                ImageActions.setActiveLabelOnActiveImage(5);
-                EditorActions.fullRender();
-            }
-        },
-        {
-            keyCombo: PlatformUtil.isMac(window.navigator.userAgent) ? ["Alt", "6"] : ["Control", "6"],
-            action: (event: KeyboardEvent) => {
-                ImageActions.setActiveLabelOnActiveImage(6);
-                EditorActions.fullRender();
-            }
-        },
-        {
-            keyCombo: PlatformUtil.isMac(window.navigator.userAgent) ? ["Alt", "7"] : ["Control", "7"],
-            action: (event: KeyboardEvent) => {
-                ImageActions.setActiveLabelOnActiveImage(7);
-                EditorActions.fullRender();
-            }
-        },
-        {
-            keyCombo: PlatformUtil.isMac(window.navigator.userAgent) ? ["Alt", "8"] : ["Control", "8"],
-            action: (event: KeyboardEvent) => {
-                ImageActions.setActiveLabelOnActiveImage(8);
-                EditorActions.fullRender();
-            }
-        },
-        {
-            keyCombo: PlatformUtil.isMac(window.navigator.userAgent) ? ["Alt", "9"] : ["Control", "9"],
-            action: (event: KeyboardEvent) => {
-                ImageActions.setActiveLabelOnActiveImage(9);
-                EditorActions.fullRender();
-            }
-        },
-        {
+        });
+        
+        // Special case for measurement label visibility which isn't in the Redux shortcuts list
+        actions.push({
             keyCombo: ["0"],
             action: (event: KeyboardEvent) => {
                 LabelActions.toggleMeasurementLabelVisibility();
             }
-        },
-    ];
+        });
+        
+        // Update the static actions array
+        EditorContext.actions = actions;
+    }
 }

@@ -1,0 +1,106 @@
+@import '../../../settings/Settings';
+
+.EditShortcutsPopupContent {
+  display: flex;
+  flex-direction: column;
+  flex-wrap: nowrap;
+  justify-content: flex-start;
+  align-items: center;
+  align-content: flex-start;
+  padding-top: 30px;
+  width: 100%; /* Ensure it takes full width */
+  overflow-y: hidden; /* Don't scroll the entire content */
+  height: 100%; /* Take full height of parent */
+
+  .Message {
+    align-self: stretch;
+    color: white;
+    font-size: 15px;
+    padding: 0 40px 30px 40px;
+    border-bottom: solid 1px $darkThemeFirstColor;
+  }
+
+  .ShortcutsList {
+    align-self: stretch;
+    flex: 1;
+    overflow-y: auto; /* Make just this section scrollable */
+    padding: 20px 40px;
+    max-height: 350px; /* Set a max height to ensure footer is visible */
+
+    .ShortcutItem {
+      display: flex;
+      flex-direction: row;
+      justify-content: space-between;
+      align-items: center;
+      padding: 12px 0;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+
+      .ShortcutName {
+        flex: 1;
+        color: white;
+        font-size: 14px;
+      }
+
+      .ShortcutKeys {
+        background-color: rgba(0, 0, 0, 0.2);
+        color: white;
+        padding: 8px 12px;
+        border-radius: 4px;
+        margin: 0 15px;
+        min-width: 150px;
+        text-align: center;
+        cursor: pointer;
+
+        &:hover {
+          background-color: rgba(0, 0, 0, 0.3);
+        }
+
+        &.recording {
+          background-color: $secondaryColor;
+        }
+      }
+
+      .ResetButton {
+        color: $secondaryColor;
+        cursor: pointer;
+        font-size: 12px;
+        
+        &:hover {
+          text-decoration: underline;
+        }
+      }
+    }
+  }
+  
+
+.ConflictWarning {
+  background-color: rgba(255, 50, 50, 0.2);
+  color: #ff5050;
+  padding: 10px;
+  margin: 10px 40px;
+  border-radius: 4px;
+  text-align: center;
+}
+
+.ShortcutGroup {
+  margin-bottom: 20px;
+  
+  .GroupTitle {
+    color: $secondaryColor;
+    font-weight: bold;
+    padding: 5px 0;
+    margin-bottom: 10px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  }
+}
+
+.ShortcutInfo {
+  flex: 1;
+  
+  .ShortcutDescription {
+    font-size: 12px;
+    color: rgba(255, 255, 255, 0.6);
+    margin-top: 3px;
+  }
+}
+}

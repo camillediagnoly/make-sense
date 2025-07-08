@@ -178,4 +178,41 @@ export class LabelActions {
             .map((labelName: LabelName) => labelName.name)
             .includes(label)
     }
+
+
+	public static toggleAllLabelsVisibilityInImage(imageId: string) {
+    const imageData: ImageData = LabelsSelector.getImageDataById(imageId);
+    
+    // Determine if we need to show or hide all labels
+    // If at least one label is visible, we'll hide all. Otherwise, show all.
+    const hasVisibleRects = imageData.labelRects.some((labelRect: LabelRect) => labelRect.isVisible);
+    const hasVisiblePoints = imageData.labelPoints.some((labelPoint: LabelPoint) => labelPoint.isVisible);
+    const hasVisiblePolygons = imageData.labelPolygons.some((labelPolygon: LabelPolygon) => labelPolygon.isVisible);
+    const hasVisibleLines = imageData.labelLines.some((labelLine: LabelLine) => labelLine.isVisible);
+    
+    const makeAllVisible = !(hasVisibleRects || hasVisiblePoints || hasVisiblePolygons || hasVisibleLines);
+    
+    const newImageData = {
+        ...imageData,
+        labelRects: imageData.labelRects.map((labelRect: LabelRect) => ({
+            ...labelRect,
+            isVisible: makeAllVisible
+        })),
+        labelPoints: imageData.labelPoints.map((labelPoint: LabelPoint) => ({
+            ...labelPoint,
+            isVisible: makeAllVisible
+        })),
+        labelPolygons: imageData.labelPolygons.map((labelPolygon: LabelPolygon) => ({
+            ...labelPolygon,
+            isVisible: makeAllVisible
+        })),
+        labelLines: imageData.labelLines.map((labelLine: LabelLine) => ({
+            ...labelLine,
+            isVisible: makeAllVisible
+        }))
+    }
+    
+    store.dispatch(updateImageDataById(imageData.id, newImageData));
+}
+
 }

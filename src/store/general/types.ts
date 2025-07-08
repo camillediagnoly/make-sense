@@ -10,6 +10,14 @@ export type ProjectData = {
     name: string;
 };
 
+export type ShortcutItem = {
+    id: string;
+    name: string;
+    keyCombo: string[];
+    defaultKeyCombo: string[];
+	description?: string;
+}
+
 export type GeneralState = {
     windowSize: ISize;
     activePopupType: PopupWindowType;
@@ -26,6 +34,7 @@ export type GeneralState = {
     activeContext: ContextType;
     projectData: ProjectData;
     zoom: number;
+    keyboardShortcuts: ShortcutItem[];
 };
 
 interface UpdateProjectData {
@@ -132,6 +141,28 @@ interface UpdatePerClassColoration {
     };
 }
 
+interface UpdateKeyboardShortcuts {
+    type: typeof Action.UPDATE_KEYBOARD_SHORTCUTS;
+    payload: {
+        keyboardShortcuts: ShortcutItem[];
+    }
+}
+
+interface UpdateKeyboardShortcut {
+    type: typeof Action.UPDATE_KEYBOARD_SHORTCUT;
+    payload: {
+        id: string;
+        keyCombo: string[];
+    }
+}
+
+export interface ResetKeyboardShortcutAction {
+    type: Action.RESET_KEYBOARD_SHORTCUT;
+    payload: {
+        id: string;
+    };
+}
+
 export type GeneralActionTypes =
     | UpdateProjectData
     | UpdateWindowSize
@@ -147,4 +178,7 @@ export type GeneralActionTypes =
     | UpdatePastePolygonsStatus
     | UpdateFixedZoomStatus
     | UpdateZoom
-    | UpdatePerClassColoration;
+    | UpdatePerClassColoration
+    | UpdateKeyboardShortcuts
+    | UpdateKeyboardShortcut
+    | ResetKeyboardShortcutAction;

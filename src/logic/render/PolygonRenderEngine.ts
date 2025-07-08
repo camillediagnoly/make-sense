@@ -356,6 +356,22 @@ export class PolygonRenderEngine extends BaseRenderEngine {
         }
     }
 
+	private removeLastPoint(): void {
+	  if (this.isCreationInProgress() && this.activePath.length > 0) {
+		this.activePath.pop();
+	  }
+	}
+
+
+	public undoLastAddedPoint(): void {
+	  if (this.isCreationInProgress()) {
+		this.removeLastPoint();
+		EditorActions.fullRender();
+	  }
+
+
+}
+    
     // =================================================================================================================
     // RENDERING
     // =================================================================================================================

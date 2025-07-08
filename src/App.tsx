@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import './App.scss';
 import EditorView from './views/EditorView/EditorView';
 import MainView from './views/MainView/MainView';
@@ -14,6 +14,8 @@ import {PlatformModel} from './staticModels/PlatformModel';
 import classNames from 'classnames';
 import NotificationsView from './views/NotificationsView/NotificationsView';
 import { RoboflowAPIDetails } from './store/ai/types';
+import { ShortcutItem } from './store/general/types';
+import { EditorContext } from './logic/context/EditorContext';
 
 interface IProps {
     projectType: ProjectType;
@@ -22,6 +24,7 @@ interface IProps {
     isPoseDetectionLoaded: boolean;
     isYOLOV5ObjectDetectorLoaded: boolean;
     roboflowAPIDetails: RoboflowAPIDetails;
+    keyboardShortcuts: ShortcutItem[];
 }
 
 const App: React.FC<IProps> = (
@@ -31,9 +34,22 @@ const App: React.FC<IProps> = (
         isObjectDetectorLoaded,
         isPoseDetectionLoaded,
         isYOLOV5ObjectDetectorLoaded,
-        roboflowAPIDetails
+        roboflowAPIDetails,
+        keyboardShortcuts
     }
 ) => {
+
+    // Initialize keyboard shortcuts when the app first loads
+    useEffect(() => {
+        EditorContext.initializeActions();
+    }, []);
+
+    // Update keyboard shortcuts when they change in Redux
+    useEffect(() => {
+        EditorContext.initializeActions();
+    }, [keyboardShortcuts]);
+
+
     const selectRoute = () => {
         if (!!PlatformModel.mobileDeviceData.manufacturer && !!PlatformModel.mobileDeviceData.os)
             return <MobileMainView/>;
@@ -69,7 +85,8 @@ const mapStateToProps = (state: AppState) => ({
     isSSDObjectDetectorLoaded: state.ai.isSSDObjectDetectorLoaded,
     isPoseDetectorLoaded: state.ai.isPoseDetectorLoaded,
     isYOLOV5ObjectDetectorLoaded: state.ai.isYOLOV5ObjectDetectorLoaded,
-    roboflowAPIDetails: state.ai.roboflowAPIDetails
+    roboflowAPIDetails: state.ai.roboflowAPIDetails,
+    keyboardShortcuts: state.general.keyboardShortcuts 
 });
 
 export default connect(

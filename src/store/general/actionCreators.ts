@@ -5,6 +5,7 @@ import { PopupWindowType } from "../../data/enums/PopupWindowType";
 import { CustomCursorStyle } from "../../data/enums/CustomCursorStyle";
 import { ContextType } from "../../data/enums/ContextType";
 
+
 export function updateWindowSize(windowSize: ISize): GeneralActionTypes {
     return {
         type: Action.UPDATE_WINDOW_SIZE,
@@ -160,6 +161,34 @@ export function updatePerClassColorationStatus(
         type: Action.UPDATE_ENABLE_PER_CLASS_COLORATION_STATUS,
         payload: {
             enablePerClassColoration,
+        },
+    };
+}
+
+export function updateKeyboardShortcuts(keyboardShortcuts: ShortcutItem[]): GeneralActionTypes {
+    return {
+        type: Action.UPDATE_KEYBOARD_SHORTCUTS,
+        payload: {
+            keyboardShortcuts,
+        },
+    };
+}
+
+export function updateKeyboardShortcut(id: string, keyCombo: string[]): GeneralActionTypes {
+    return {
+        type: Action.UPDATE_KEYBOARD_SHORTCUT,
+        payload: {
+            id,
+            keyCombo,
+        },
+    };
+}
+
+export function resetKeyboardShortcut(id: string): GeneralActionTypes {
+    return {
+        type: Action.RESET_KEYBOARD_SHORTCUT,
+        payload: {
+            id,
         },
     };
 }

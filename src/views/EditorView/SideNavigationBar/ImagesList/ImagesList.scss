@@ -2,4 +2,71 @@
   align-self: stretch;
   flex: 1;
   overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.ImagesListControls {
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.SearchContainer {
+  width: 100%;
+}
+
+.SearchInput {
+  width: 100%;
+  padding: 8px 12px;
+  border-radius: 4px;
+  border: 1px solid #444;
+  background-color: #333;
+  color: #fff;
+  font-size: 14px;
+  box-sizing: border-box;
+}
+
+.SearchInput::placeholder {
+  color: #888;
+}
+
+.FilterButtons {
+  display: flex;
+  gap: 8px;
+}
+
+.FilterButton {
+  flex: 1;
+  padding: 8px 0;
+  background-color: #333;
+  border: 1px solid #444;
+  border-radius: 4px;
+  color: #fff;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-size: 14px;
+}
+
+.FilterButton:hover {
+  background-color: #444;
+}
+
+.FilterButton.active {
+  background-color: #2980b9;
+  border-color: #2980b9;
+}
+
+.ImagesListContainer {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 10px;
+}
+
+.ImagesListGrid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
 }
