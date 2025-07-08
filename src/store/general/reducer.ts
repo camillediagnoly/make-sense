@@ -2,7 +2,7 @@ import { GeneralActionTypes, GeneralState } from "./types";
 import { Action } from "../Actions";
 import { CustomCursorStyle } from "../../data/enums/CustomCursorStyle";
 import { ViewPointSettings } from "../../settings/ViewPointSettings";
-import {PlatformUtil} from "../../utils/PlatformUtil";
+import { PlatformUtil } from "../../utils/PlatformUtil";
 
 const initialState: GeneralState = {
     windowSize: null,
@@ -25,109 +25,118 @@ const initialState: GeneralState = {
     zoom: ViewPointSettings.MIN_ZOOM,
     keyboardShortcuts: [
         {
-            id: 'finish-polygon-creation',
-            name: 'Finish Polygon Creation',
-            keyCombo: [' '],
-            defaultKeyCombo: [' '],
-            description: 'Completes polygon creation and adds the label'
+            id: "finish-polygon-creation",
+            name: "Finish Polygon Creation",
+            keyCombo: [" "],
+            defaultKeyCombo: [" "],
+            description: "Completes polygon creation and adds the label",
         },
         {
-            id: 'cancel-label-creation',
-            name: 'Cancel Label Creation',
-            keyCombo: ['Escape'],
-            defaultKeyCombo: ['Escape'],
-            description: 'Cancels current label creation'
+            id: "cancel-label-creation",
+            name: "Cancel Label Creation",
+            keyCombo: ["Escape"],
+            defaultKeyCombo: ["Escape"],
+            description: "Cancels current label creation",
         },
         {
-            id: 'undo-last-point',
-            name: 'Undo Last Point',
-            keyCombo:  ['Control', 'z'],
-            defaultKeyCombo:  ['Control', 'z'],
-            description: 'Removes the last added point in polygon creation'
+            id: "undo-last-point",
+            name: "Undo Last Point",
+            keyCombo: ["Control", "z"],
+            defaultKeyCombo: ["Control", "z"],
+            description: "Removes the last added point in polygon creation",
         },
         {
-            id: 'toggle-labels-visibility',
-            name: 'Toggle Labels Visibility',
-            keyCombo: PlatformUtil.isMac() ? ['Option', 'z'] : ['e'],
-            defaultKeyCombo: PlatformUtil.isMac() ? ['Option', 'z'] : ['e'],
-            description: 'Shows or hides all labels in the current image'
+            id: "toggle-labels-visibility",
+            name: "Toggle Labels Visibility",
+            keyCombo: PlatformUtil.isMac() ? ["Option", "z"] : ["e"],
+            defaultKeyCombo: PlatformUtil.isMac() ? ["Option", "z"] : ["e"],
+            description: "Shows or hides all labels in the current image",
         },
         {
-            id: 'previous-image',
-            name: 'Previous Image',
-            keyCombo: PlatformUtil.isMac() ? ['Alt', 'ArrowLeft'] : ['Control', 'ArrowLeft'],
-            defaultKeyCombo: PlatformUtil.isMac() ? ['Alt', 'ArrowLeft'] : ['Control', 'ArrowLeft'],
-            description: 'Navigate to the previous image'
+            id: "previous-image",
+            name: "Previous Image",
+            keyCombo: PlatformUtil.isMac() ? ["Alt", "ArrowLeft"] : ["a"],
+            defaultKeyCombo: PlatformUtil.isMac()
+                ? ["Alt", "ArrowLeft"]
+                : ["a"],
+            description: "Navigate to the previous image",
         },
         {
-            id: 'next-image',
-            name: 'Next Image',
-            keyCombo: PlatformUtil.isMac() ? ['Alt', 'ArrowRight'] : ['Control', 'ArrowRight'],
-            defaultKeyCombo: PlatformUtil.isMac() ? ['Alt', 'ArrowRight'] : ['Control', 'ArrowRight'],
-            description: 'Navigate to the next image'
+            id: "next-image",
+            name: "Next Image",
+            keyCombo: PlatformUtil.isMac() ? ["Alt", "ArrowRight"] : ["d"],
+            defaultKeyCombo: PlatformUtil.isMac()
+                ? ["Alt", "ArrowRight"]
+                : ["d"],
+            description: "Navigate to the next image",
         },
         {
-            id: 'zoom-in',
-            name: 'Zoom In',
-            keyCombo: PlatformUtil.isMac() ? ['Alt', '+'] : ['Control', '+'],
-            defaultKeyCombo: PlatformUtil.isMac() ? ['Alt', '+'] : ['Control', '+'],
-            description: 'Increase zoom level'
+            id: "zoom-in",
+            name: "Zoom In",
+            keyCombo: PlatformUtil.isMac() ? ["Alt", "+"] : ["Control", "+"],
+            defaultKeyCombo: PlatformUtil.isMac()
+                ? ["Alt", "+"]
+                : ["Control", "+"],
+            description: "Increase zoom level",
         },
         {
-            id: 'zoom-out',
-            name: 'Zoom Out',
-            keyCombo: PlatformUtil.isMac() ? ['Alt', '-'] : ['Control', '-'],
-            defaultKeyCombo: PlatformUtil.isMac() ? ['Alt', '-'] : ['Control', '-'],
-            description: 'Decrease zoom level'
+            id: "zoom-out",
+            name: "Zoom Out",
+            keyCombo: PlatformUtil.isMac() ? ["Alt", "-"] : ["Control", "-"],
+            defaultKeyCombo: PlatformUtil.isMac()
+                ? ["Alt", "-"]
+                : ["Control", "-"],
+            description: "Decrease zoom level",
         },
         {
-            id: 'move-right',
-            name: 'Move Right',
-            keyCombo: ['ArrowRight'],
-            defaultKeyCombo: ['ArrowRight'],
-            description: 'Move viewport to the right'
+            id: "move-right",
+            name: "Move Right",
+            keyCombo: ["ArrowRight"],
+            defaultKeyCombo: ["ArrowRight"],
+            description: "Move viewport to the right",
         },
         {
-            id: 'move-left',
-            name: 'Move Left',
-            keyCombo: ['ArrowLeft'],
-            defaultKeyCombo: ['ArrowLeft'],
-            description: 'Move viewport to the left'
+            id: "move-left",
+            name: "Move Left",
+            keyCombo: ["ArrowLeft"],
+            defaultKeyCombo: ["ArrowLeft"],
+            description: "Move viewport to the left",
         },
         {
-            id: 'move-up',
-            name: 'Move Up',
-            keyCombo: ['ArrowUp'],
-            defaultKeyCombo: ['ArrowUp'],
-            description: 'Move viewport up'
+            id: "move-up",
+            name: "Move Up",
+            keyCombo: ["ArrowUp"],
+            defaultKeyCombo: ["ArrowUp"],
+            description: "Move viewport up",
         },
         {
-            id: 'move-down',
-            name: 'Move Down',
-            keyCombo: ['ArrowDown'],
-            defaultKeyCombo: ['ArrowDown'],
-            description: 'Move viewport down'
+            id: "move-down",
+            name: "Move Down",
+            keyCombo: ["ArrowDown"],
+            defaultKeyCombo: ["ArrowDown"],
+            description: "Move viewport down",
         },
         {
-            id: 'delete-active-label',
-            name: 'Delete Active Label',
-            keyCombo: PlatformUtil.isMac() ? ['Backspace'] : ['Delete'],
-            defaultKeyCombo: PlatformUtil.isMac() ? ['Backspace'] : ['Delete'],
-            description: 'Delete currently selected label'
+            id: "delete-active-label",
+            name: "Delete Active Label",
+            keyCombo: PlatformUtil.isMac() ? ["Backspace"] : ["Delete"],
+            defaultKeyCombo: PlatformUtil.isMac() ? ["Backspace"] : ["Delete"],
+            description: "Delete currently selected label",
         },
         {
-            id: 'toggle-fixed-zoom',
-            name: 'Toggle Fixed Zoom',
-            keyCombo: ['f'],
-            defaultKeyCombo: ['f'],
-            description: 'Toggles fixed zoom mode (locks zoom level while navigating)'
+            id: "toggle-fixed-zoom",
+            name: "Toggle Fixed Zoom",
+            keyCombo: ["f"],
+            defaultKeyCombo: ["f"],
+            description:
+                "Toggles fixed zoom mode (locks zoom level while navigating)",
         },
         {
-            id: 'toggle-ellipse-draw',
-            name: 'Toggle Ellipse Drawing',
-            keyCombo: ['l'],
-            defaultKeyCombo: ['l'],
-            description: 'Enables or disables ellipse drawing mode'
+            id: "toggle-ellipse-draw",
+            name: "Toggle Ellipse Drawing",
+            keyCombo: ["l"],
+            defaultKeyCombo: ["l"],
+            description: "Enables or disables ellipse drawing mode",
         },
         // {
         //     id: 'toggle-moving-annotation',
@@ -155,11 +164,15 @@ const initialState: GeneralState = {
         ...Array.from({ length: 10 }, (_, i) => ({
             id: `select-label-${i}`,
             name: `Select Label ${i}`,
-            keyCombo: PlatformUtil.isMac() ? ['Alt', i.toString()] : ['Control', i.toString()],
-            defaultKeyCombo: PlatformUtil.isMac() ? ['Alt', i.toString()] : ['Control', i.toString()],
-            description: `Selects label at index ${i}`
-        }))
-    ]
+            keyCombo: PlatformUtil.isMac()
+                ? ["Alt", i.toString()]
+                : ["Control", i.toString()],
+            defaultKeyCombo: PlatformUtil.isMac()
+                ? ["Alt", i.toString()]
+                : ["Control", i.toString()],
+            description: `Selects label at index ${i}`,
+        })),
+    ],
 };
 
 export function generalReducer(
@@ -262,29 +275,29 @@ export function generalReducer(
         case Action.UPDATE_KEYBOARD_SHORTCUTS: {
             return {
                 ...state,
-                keyboardShortcuts: action.payload.keyboardShortcuts
-            }
+                keyboardShortcuts: action.payload.keyboardShortcuts,
+            };
         }
-		
+
         case Action.UPDATE_KEYBOARD_SHORTCUT: {
             return {
                 ...state,
-                keyboardShortcuts: state.keyboardShortcuts.map(shortcut => 
+                keyboardShortcuts: state.keyboardShortcuts.map((shortcut) =>
                     shortcut.id === action.payload.id
                         ? { ...shortcut, keyCombo: action.payload.keyCombo }
                         : shortcut
-                )
-            }
+                ),
+            };
         }
-		
-		case Action.RESET_KEYBOARD_SHORTCUT: {
+
+        case Action.RESET_KEYBOARD_SHORTCUT: {
             return {
                 ...state,
-                keyboardShortcuts: state.keyboardShortcuts.map(shortcut => 
+                keyboardShortcuts: state.keyboardShortcuts.map((shortcut) =>
                     shortcut.id === action.payload.id
                         ? { ...shortcut, keyCombo: shortcut.defaultKeyCombo }
                         : shortcut
-                )
+                ),
             };
         }
 
