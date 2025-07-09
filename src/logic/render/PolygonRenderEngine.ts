@@ -78,6 +78,11 @@ const angleSFKeypointNames_F = [
     "p-f.k:AngleSF-2",
     "p-f.k:AngleSF-3",
 ];
+const ratioSFKeypointNames_F = [
+    "p-f.k:RatioSF-1",
+    "p-f.k:RatioSF-3",
+    "p-f.k:RatioSF-2",
+];
 
 const allKeypointNames = [
     ...asymKeypointNames_B,
@@ -90,6 +95,7 @@ const allKeypointNames = [
     ...asymCSPKeypointNames_F,
     ...asymCIKeypointNames_F,
     ...angleSFKeypointNames_F,
+    ...ratioSFKeypointNames_F,
 ];
 
 export class PolygonRenderEngine extends BaseRenderEngine {
@@ -356,22 +362,19 @@ export class PolygonRenderEngine extends BaseRenderEngine {
         }
     }
 
-	private removeLastPoint(): void {
-	  if (this.isCreationInProgress() && this.activePath.length > 0) {
-		this.activePath.pop();
-	  }
-	}
+    private removeLastPoint(): void {
+        if (this.isCreationInProgress() && this.activePath.length > 0) {
+            this.activePath.pop();
+        }
+    }
 
+    public undoLastAddedPoint(): void {
+        if (this.isCreationInProgress()) {
+            this.removeLastPoint();
+            EditorActions.fullRender();
+        }
+    }
 
-	public undoLastAddedPoint(): void {
-	  if (this.isCreationInProgress()) {
-		this.removeLastPoint();
-		EditorActions.fullRender();
-	  }
-
-
-}
-    
     // =================================================================================================================
     // RENDERING
     // =================================================================================================================
@@ -607,6 +610,7 @@ export class PolygonRenderEngine extends BaseRenderEngine {
         const keypointNamesUnPairedToDrawLine = [
             ...asymKeypointNames_B,
             ...angleSFKeypointNames_F,
+            ...ratioSFKeypointNames_F,
         ];
         for (let i = 0; i < keypointNamesUnPairedToDrawLine.length; i++) {
             const selectedCenter = allKeypointCenters.find(
@@ -1556,6 +1560,10 @@ export class KeypointUtils {
             allKeypointCenters,
             angleSFKeypointNames_F
         );
+        const ratioSF_F = this.computeDistanceRatio(
+            allKeypointCenters,
+            ratioSFKeypointNames_F
+        );
 
         return [
             asymRatio_B,
@@ -1568,6 +1576,7 @@ export class KeypointUtils {
             asymRatioCSP_F,
             asymRatioCI_F,
             angleSF_F,
+            ratioSF_F,
         ];
     }
 
