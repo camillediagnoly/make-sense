@@ -53,6 +53,11 @@ const positionKeypointNames_B = [
     "p-b.k:Position-4",
     "p-b.k:Position-5",
 ];
+const veinsKeypointNames_B = [
+    "p-b.k:Veins-3",
+    "p-b.k:Veins-2",
+    "p-b.k:Veins-1",
+];
 const tgaKeypointNames_D = ["p-d.k:TGA-3", "p-d.k:TGA-1", "p-d.k:TGA-2"];
 const asymKeypointNames_E = [
     "p-e.k:VxAsym-1",
@@ -89,6 +94,7 @@ const allKeypointNames = [
     ...angleKeypointNames_B,
     ...surfaceKeypointNames_B,
     ...positionKeypointNames_B,
+    ...veinsKeypointNames_B,
     ...tgaKeypointNames_D,
     ...asymKeypointNames_E,
     ...tgaKeypointNames_E,
@@ -609,6 +615,7 @@ export class PolygonRenderEngine extends BaseRenderEngine {
         keypoints = [];
         const keypointNamesUnPairedToDrawLine = [
             ...asymKeypointNames_B,
+            ...veinsKeypointNames_B,
             ...angleSFKeypointNames_F,
             ...ratioSFKeypointNames_F,
         ];
@@ -1536,6 +1543,10 @@ export class KeypointUtils {
             allKeypointCenters,
             positionKeypointNames_B
         );
+        const veinsRatio_B = this.computeDistanceRatio(
+            allKeypointCenters,
+            veinsKeypointNames_B
+        );
         const tgaRatio_D = this.computeDistanceRatio(
             allKeypointCenters,
             tgaKeypointNames_D
@@ -1570,6 +1581,7 @@ export class KeypointUtils {
             angle_B,
             areaRatio_B,
             positionRatio_B,
+            veinsRatio_B,
             tgaRatio_D,
             asymRatio_E,
             tgaRatio_E,
