@@ -88,6 +88,12 @@ const ratioSFKeypointNames_F = [
     "p-f.k:RatioSF-3",
     "p-f.k:RatioSF-2",
 ];
+const ratioAtrVMGKeypointNames_F = [
+    "p-f.k:AtrVMG-3",
+    "p-f.k:AtrVMG-4",
+    "p-f.k:AtrVMG-1",
+    "p-f.k:AtrVMG-2",
+];
 
 const allKeypointNames = [
     ...asymKeypointNames_B,
@@ -102,6 +108,7 @@ const allKeypointNames = [
     ...asymCIKeypointNames_F,
     ...angleSFKeypointNames_F,
     ...ratioSFKeypointNames_F,
+    ...ratioAtrVMGKeypointNames_F,
 ];
 
 export class PolygonRenderEngine extends BaseRenderEngine {
@@ -564,6 +571,7 @@ export class PolygonRenderEngine extends BaseRenderEngine {
             ...tgaKeypointNames_E.slice(0, 2),
             ...asymCSPKeypointNames_F,
             ...asymCIKeypointNames_F,
+            ...ratioAtrVMGKeypointNames_F,
         ];
         for (let i = 0; i < keypointNamesPairedToDrawLine.length; i++) {
             const selectedCenter = allKeypointCenters.find(
@@ -1575,6 +1583,10 @@ export class KeypointUtils {
             allKeypointCenters,
             ratioSFKeypointNames_F
         );
+        const ratioAtrVMG_F = this.computeDistanceRatio(
+            allKeypointCenters,
+            ratioAtrVMGKeypointNames_F
+        );
 
         return [
             asymRatio_B,
@@ -1589,6 +1601,7 @@ export class KeypointUtils {
             asymRatioCI_F,
             angleSF_F,
             ratioSF_F,
+            ratioAtrVMG_F,
         ];
     }
 
