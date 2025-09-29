@@ -624,6 +624,7 @@ export class PolygonRenderEngine extends BaseRenderEngine {
         const keypointNamesUnPairedToDrawLine = [
             ...asymKeypointNames_B,
             ...veinsKeypointNames_B,
+            "p-b.k:Veins-3",
             ...angleSFKeypointNames_F,
             ...ratioSFKeypointNames_F,
         ];
@@ -972,10 +973,15 @@ export class PolygonRenderEngine extends BaseRenderEngine {
                 const labelPolygon0: LabelPolygon =
                     LabelUtil.createLabelPolygon(activeLabelId, polygons[0]);
 
-                const adjacentLabelName = activeLabelName.replace(
-                    this.kptNameEndPattern,
-                    (match) => (parseInt(match, 10) + 1).toString()
-                );
+                let adjacentLabelName: string;
+                if (activeLabelName === "p-b.k:Veins-1") {
+                    adjacentLabelName = "p-b.k:Veins-3";
+                } else {
+                    adjacentLabelName = activeLabelName.replace(
+                        this.kptNameEndPattern,
+                        (match) => (parseInt(match, 10) + 1).toString()
+                    );
+                }
                 const adjacentLabelId = labelNameToIdMap[adjacentLabelName];
                 if (adjacentLabelId) {
                     const labelPolygon1: LabelPolygon =
@@ -2131,7 +2137,7 @@ export class KeypointUtils {
         // Calculate ratio
         const ratio =
             this.computePolygonAreaShoelace(ellipsePointsForRatio) /
-            (Math.PI * majorAxis * minorAxis + 1e-6);
+            (Math.PI * (majorAxis as number) * (minorAxis as number) + 1e-6);
         return ratio;
     }
 
