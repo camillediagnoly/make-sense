@@ -1517,6 +1517,7 @@ export class KeypointUtils {
         // Map labelId in annotations to the corresponding name and filters only keypoints
 
         const allKeypointAnnotations = imageData.labelPolygons
+            .filter((annotation) => annotation.isVisible)
             .map((annotation) => ({
                 ...annotation,
                 labelName: annotation.labelId
