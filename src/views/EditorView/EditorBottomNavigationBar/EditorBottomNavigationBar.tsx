@@ -67,45 +67,45 @@ const EditorBottomNavigationBar: React.FC<IProps> = ({ size, imageData, totalIma
             <div className="BottomRow">
                 <div className="RatioMeasurement">
                     <div className="RatioMeasurement">
-                        B-Asym = {asymRatio_B?.toFixed(2) ?? 'null'}
+                        B-Asym = {asymRatio_B?.toFixed(3) ?? 'null'}
                     </div>
                     <div className="RatioMeasurement">
-                        B-Area = {areaRatio_B?.toFixed(2) ?? 'null'}
+                        B-Area = {areaRatio_B?.toFixed(3) ?? 'null'}
                     </div>
                     <div className="RatioMeasurement">
-                        B-Position = {positionRatio_B?.toFixed(2) ?? 'null'}
+                        B-Position = {positionRatio_B?.toFixed(3) ?? 'null'}
                     </div>
                     <div className="RatioMeasurement">
-                        B-Veins = {veinsRatio_B?.toFixed(2) ?? 'null'}
+                        B-Veins = {veinsRatio_B?.toFixed(3) ?? 'null'}
                     </div>
                     <div className="RatioMeasurement">
-                        B-Angle = {angle_B != null ? `${angle_B.toFixed(2)}°` : 'null'}
+                        B-Angle = {angle_B != null ? `${angle_B.toFixed(3)}°` : 'null'}
                     </div>
                     <div className="RatioMeasurement">
-                        D-TGA = {tgaRatio_D?.toFixed(2) ?? 'null'}
+                        D-TGA = {tgaRatio_D?.toFixed(3) ?? 'null'}
                     </div>
                     <div className="RatioMeasurement">
-                        E-Asym = {asymRatio_E?.toFixed(2) ?? 'null'}
+                        E-Asym = {asymRatio_E?.toFixed(3) ?? 'null'}
                     </div>
                     <div className="RatioMeasurement">
-                        E-TGA = {tgaRatio_E?.toFixed(2) ?? 'null'}
+                        E-TGA = {tgaRatio_E?.toFixed(3) ?? 'null'}
                     </div>
                 </div>
                 <div className="RatioMeasurement">
                     <div className="RatioMeasurement">
-                        F-Asym-CSP = {asymRatioCSP_F?.toFixed(2) ?? 'null'}
+                        F-Asym-CSP = {asymRatioCSP_F?.toFixed(3) ?? 'null'}
                     </div>
                     <div className="RatioMeasurement">
-                        F-Asym-CI = {asymRatioCI_F?.toFixed(2) ?? 'null'}
+                        F-Asym-CI = {asymRatioCI_F?.toFixed(3) ?? 'null'}
                     </div>
                     <div className="RatioMeasurement">
-                        F-RatioSF = {ratioSF_F?.toFixed(2) ?? 'null'}
+                        F-RatioSF = {ratioSF_F?.toFixed(3) ?? 'null'}
                     </div>
                     <div className="RatioMeasurement">
-                        F-AngleSF = {angleSF_F != null ? `${angleSF_F.toFixed(2)}°` : 'null'}
+                        F-AngleSF = {angleSF_F != null ? `${angleSF_F.toFixed(3)}°` : 'null'}
                     </div>
                     <div className="RatioMeasurement">
-                        F-AtrVMG = {ratioAtrVMG_F?.toFixed(2) ?? 'null'}
+                        F-AtrVMG = {ratioAtrVMG_F?.toFixed(3) ?? 'null'}
                     </div>
                 </div>
             </div>
