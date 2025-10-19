@@ -1,0 +1,80 @@
+@import '../../../../settings/Settings';
+
+.backup-status-circle {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  display: inline-block;
+  margin: 0 12px 0 20px;
+  transition: opacity 0.3s ease, transform 0.3s ease;
+  vertical-align: middle;
+
+  // Idle state (backup enabled but not actively saving)
+  &.idle {
+    background: rgba(255, 255, 255, 0.2);
+    opacity: 0.5;
+  }
+
+  // Success state (green blink animation)
+  &.success {
+    background: $primaryColor; // #2af598
+    box-shadow: 0 0 8px rgba(42, 245, 152, 0.8);
+    animation: greenBlink 1.5s ease-in-out;
+  }
+
+  // Error state (continuous red pulse)
+  &.error {
+    background: #ff3838;
+    box-shadow: 0 0 8px rgba(255, 56, 56, 0.8);
+    cursor: pointer;
+    animation: redPulse 2s ease-in-out infinite;
+
+    &:hover {
+      transform: scale(1.15);
+    }
+  }
+}
+
+// Green blink animation
+// Plays once for 1.5 seconds, then element returns to idle state
+@keyframes greenBlink {
+  0% {
+    opacity: 0;
+    transform: scale(0.5);
+  }
+  15% {
+    opacity: 1;
+    transform: scale(1.1);
+  }
+  25% {
+    opacity: 0.3;
+    transform: scale(0.9);
+  }
+  35% {
+    opacity: 1;
+    transform: scale(1.05);
+  }
+  45% {
+    opacity: 0.3;
+    transform: scale(0.95);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(0.5);
+  }
+}
+
+// Red pulse animation
+// Continuous pulsing to draw attention to error
+@keyframes redPulse {
+  0%, 100% {
+    opacity: 1;
+    transform: scale(1);
+    box-shadow: 0 0 8px rgba(255, 56, 56, 0.8);
+  }
+  50% {
+    opacity: 0.6;
+    transform: scale(1.1);
+    box-shadow: 0 0 12px rgba(255, 56, 56, 1);
+  }
+}

@@ -30,6 +30,23 @@ export class RectLabelsExporter {
         }
     }
 
+    /**
+     * Get export content without triggering download (for automatic backup)
+     * Only supports CSV format
+     */
+    public static getExportContent(exportFormatType: AnnotationFormatType): string | null {
+        if (exportFormatType === AnnotationFormatType.CSV) {
+            const contentEntries: string[] = LabelsSelector.getImagesData()
+                .map((imageData: ImageData) => {
+                    return RectLabelsExporter.wrapRectLabelsIntoCSV(imageData)})
+                .filter((imageLabelData: string) => {
+                    return !!imageLabelData})
+            contentEntries.unshift(Settings.RECT_LABELS_EXPORT_CSV_COLUMN_NAMES)
+            return contentEntries.join('\n');
+        }
+        return null; // ZIP formats (YOLO, VOC) not supported for automatic export
+    }
+
     private static exportAsYOLO(): void {
         const zip = new JSZip();
         LabelsSelector.getImagesData()

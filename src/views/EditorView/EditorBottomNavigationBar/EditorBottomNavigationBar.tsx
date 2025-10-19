@@ -35,7 +35,7 @@ const EditorBottomNavigationBar: React.FC<IProps> = ({ size, imageData, totalIma
     };
     const keypointUtilsInstance = new KeypointUtils();
     const [asymRatio_B, angle_B, areaRatio_B, positionRatio_B, veinsRatio_B,
-        tgaRatio_D, asymRatio_E, tgaRatio_E, asymRatioCSP_F, 
+        tgaRatio_D, asymRatio_E, tgaRatio_E, asymRatioCSP_F,
         asymRatioCI_F, angleSF_F, ratioSF_F, ratioAtrVMG_F] = keypointUtilsInstance.buildMeasurements()
 
 
@@ -51,10 +51,10 @@ const EditorBottomNavigationBar: React.FC<IProps> = ({ size, imageData, totalIma
                     isDisabled={activeImageIndex === 0}
                     externalClassName={"left"}
                 />
-            
+
                     <div className="CurrentImageName"> {imageData.fileData.name} </div> :
                     <div className="CurrentImageCount"> {getImageCounter()} </div>
-                
+
                 <ImageButton
                     image={"ico/right.png"}
                     imageAlt={"next"}

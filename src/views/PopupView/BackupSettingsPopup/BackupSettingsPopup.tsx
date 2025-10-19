@@ -1,0 +1,282 @@
+import React, { useState } from 'react';
+import './BackupSettingsPopup.scss';
+import { GenericYesNoPopup } from '../GenericYesNoPopup/GenericYesNoPopup';
+import { updateActivePopupType } from '../../../store/general/actionCreators';
+import { AppState } from '../../../store';
+import { connect } from 'react-redux';
+import {
+    updateBackupEnabled,
+    updateBackupFrequency,
+} from '../../../store/backup/actionCreators';
+import { BackupTimerService } from '../../../logic/backup/BackupTimerService';
+import { BackupManager } from '../../../logic/backup/BackupManager';
+import { LabelType } from '../../../data/enums/LabelType';
+import { LabelToolkitData } from '../../../data/info/LabelToolkitData';
+
+interface IProps {
+    isEnabled: boolean;
+    frequencyMinutes: number;
+    status: 'idle' | 'saving' | 'success' | 'error';
+    lastBackupTime: Date | null;
+    errorMessage: string | null;
+    updateActivePopupType: (type: null) => void;
+    updateBackupEnabled: (enabled: boolean) => void;
+    updateBackupFrequency: (frequency: number) => void;
+}
+
+const BackupSettingsPopup: React.FC<IProps> = ({
+    isEnabled,
+    frequencyMinutes,
+    status,
+    lastBackupTime,
+    errorMessage,
+    updateActivePopupType,
+    updateBackupEnabled,
+    updateBackupFrequency,
+}) => {
+    // Initialize from existing BackupManager settings
+    const existingDirectoryHandle = BackupManager.getDirectoryHandle();
+    const existingExportType = BackupManager.getExportLabelType();
+
+    const [localEnabled, setLocalEnabled] = useState(isEnabled);
+    const [localFrequency, setLocalFrequency] = useState(frequencyMinutes);
+    const [localLocation, setLocalLocation] = useState(existingDirectoryHandle ? existingDirectoryHandle.name : '~/makesense-backups/');
+    const [directoryHandle, setDirectoryHandle] = useState<any>(existingDirectoryHandle);
+    const [selectedExportType, setSelectedExportType] = useState<LabelType>(existingExportType || LabelType.POLYGON);
+
+    const onAccept = () => {
+        // Apply settings
+        updateBackupEnabled(localEnabled);
+        updateBackupFrequency(localFrequency);
+
+        // Store directory handle and selected export type in BackupManager
+        if (directoryHandle) {
+            BackupManager.setDirectoryHandle(directoryHandle);
+        }
+        BackupManager.setExportLabelType(selectedExportType);
+
+        if (localEnabled) {
+            BackupTimerService.restart();
+        } else {
+            BackupTimerService.stop();
+        }
+
+        updateActivePopupType(null);
+    };
+
+    const onReject = () => {
+        updateActivePopupType(null);
+    };
+
+    const handleManualBackup = async () => {
+        try {
+            await BackupManager.triggerManualBackup();
+        } catch (error) {
+            console.error('Manual backup failed:', error);
+        }
+    };
+
+    const formatLastBackupTime = (): string => {
+        if (!lastBackupTime) return 'Never';
+
+        const now = new Date();
+        const diff = now.getTime() - new Date(lastBackupTime).getTime();
+        const minutes = Math.floor(diff / 60000);
+
+        if (minutes === 0) return 'Just now';
+        if (minutes === 1) return '1 minute ago';
+        if (minutes < 60) return `${minutes} minutes ago`;
+
+        const hours = Math.floor(minutes / 60);
+        if (hours === 1) return '1 hour ago';
+        return `${hours} hours ago`;
+    };
+
+    const handleBrowseClick = async () => {
+        try {
+            // Check if File System Access API is available
+            if ('showDirectoryPicker' in window) {
+                // @ts-ignore - File System Access API types may not be available
+                const handle = await window.showDirectoryPicker({
+                    mode: 'readwrite',
+                });
+
+                // Store the directory handle for later use
+                setDirectoryHandle(handle);
+
+                // Display the folder name
+                // Note: Browser security prevents access to full absolute paths
+                setLocalLocation(handle.name);
+                console.log('Selected folder:', handle.name);
+            } else {
+                // Fallback: File System Access API not supported
+                alert('Folder selection is not supported in this browser. Please use a modern browser like Chrome, Edge, or Opera.');
+            }
+        } catch (error) {
+            // User cancelled or error occurred
+            if (error.name !== 'AbortError') {
+                console.error('Error selecting folder:', error);
+            }
+        }
+    };
+
+    const renderContent = () => {
+        return (
+            <div className="backup-settings-content">
+                {/* Backup Mode Fieldset */}
+                <fieldset className="backup-fieldset">
+                    <legend>Backup Mode</legend>
+
+                    <label className="radio-option">
+                        <input
+                            type="radio"
+                            name="backupMode"
+                            checked={localEnabled}
+                            onChange={() => setLocalEnabled(true)}
+                        />
+                        <span className="radio-circle"></span>
+                        <span className="radio-text">Automatic Backup</span>
+                    </label>
+
+                    <label className="radio-option">
+                        <input
+                            type="radio"
+                            name="backupMode"
+                            checked={!localEnabled}
+                            onChange={() => setLocalEnabled(false)}
+                        />
+                        <span className="radio-circle"></span>
+                        <span className="radio-text">Manual Backup</span>
+                    </label>
+                </fieldset>
+
+                {/* Backup Options Fieldset */}
+                <fieldset className="backup-fieldset">
+                    <legend>Backup Options</legend>
+
+                    <div className="option-group">
+                        <div className="option-label">Frequency</div>
+                        <select
+                            className="option-select"
+                            value={localFrequency}
+                            onChange={(e) => setLocalFrequency(Number(e.target.value))}
+                            disabled={!localEnabled}
+                            title="Select how often to automatically save backups"
+                        >
+                            <option value={1}>Every 1 minute</option>
+                            <option value={2}>Every 2 minutes</option>
+                            <option value={3}>Every 3 minutes</option>
+                            <option value={5}>Every 5 minutes</option>
+                            <option value={10}>Every 10 minutes</option>
+                        </select>
+                    </div>
+
+                    <div className="separator"></div>
+
+                    <div className="option-group">
+                        <div className="option-label">Backup Location</div>
+                        <div className="location-input-group">
+                            <input
+                                type="text"
+                                className="location-input"
+                                value={localLocation}
+                                placeholder="No folder selected"
+                                readOnly
+                                title={localLocation}
+                            />
+                            <button
+                                className="browse-button"
+                                onClick={handleBrowseClick}
+                                type="button"
+                            >
+                                Browse
+                            </button>
+                        </div>
+                        {directoryHandle && (
+                            <div className="location-note location-success">
+                                ✓ Automatic backups will save to this folder
+                            </div>
+                        )}
+                        {!directoryHandle && (
+                            <div className="location-note">
+                                Note: Only folder name shown (browser security). Backups will save directly to selected folder.
+                            </div>
+                        )}
+                    </div>
+                </fieldset>
+
+                {/* Export Format Selection */}
+                <fieldset className="backup-fieldset">
+                    <legend>Export Format</legend>
+
+                    <div className="export-format-selection">
+                        <div className="option-label">Annotation Type</div>
+                        <div className="shape-icons-container">
+                            {LabelToolkitData.filter((toolkit) => toolkit.labelType !== LabelType.IMAGE_RECOGNITION).map((toolkit) => (
+                                <div
+                                    key={toolkit.labelType}
+                                    className={`shape-icon-button ${selectedExportType === toolkit.labelType ? 'active' : ''}`}
+                                    onClick={() => setSelectedExportType(toolkit.labelType)}
+                                    title={toolkit.headerText}
+                                >
+                                    <img src={toolkit.imageSrc} alt={toolkit.imageAlt} />
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                </fieldset>
+
+                {/* Status Display */}
+                {(status !== 'idle' || lastBackupTime) && (
+                    <div className="status-section">
+                        {status === 'error' && (
+                            <div className="status-error">
+                                ✗ {errorMessage || 'Backup failed'}
+                            </div>
+                        )}
+                        {status === 'success' && (
+                            <div className="status-success">
+                                ✓ Last backup: {formatLastBackupTime()}
+                            </div>
+                        )}
+                        {status === 'idle' && lastBackupTime && (
+                            <div className="status-idle">
+                                Last backup: {formatLastBackupTime()}
+                            </div>
+                        )}
+                        {status === 'saving' && (
+                            <div className="status-saving">⏳ Saving backup...</div>
+                        )}
+                    </div>
+                )}
+            </div>
+        );
+    };
+
+    return (
+        <GenericYesNoPopup
+            title="Backup Settings"
+            renderContent={renderContent}
+            acceptLabel="Apply"
+            onAccept={onAccept}
+            rejectLabel="Cancel"
+            onReject={onReject}
+        />
+    );
+};
+
+const mapStateToProps = (state: AppState) => ({
+    isEnabled: state.backup.isEnabled,
+    frequencyMinutes: state.backup.frequencyMinutes,
+    status: state.backup.status,
+    lastBackupTime: state.backup.lastBackupTime,
+    errorMessage: state.backup.errorMessage,
+});
+
+const mapDispatchToProps = {
+    updateActivePopupType,
+    updateBackupEnabled,
+    updateBackupFrequency,
+};
+
+export default connect(mapStateToProps, mapDispatchToProps)(BackupSettingsPopup);

@@ -14,7 +14,17 @@ export class VGGExporter {
         ExporterUtil.saveAs(content, fileName);
     }
 
-    private static mapImagesDataToVGGObject(imagesData: ImageData[], labelNames: LabelName[]): VGGObject {
+    /**
+     * Get export content without triggering download (for automatic backup)
+     */
+    public static getExportContent(): string {
+        const imagesData: ImageData[] = LabelsSelector.getImagesData();
+        const labelNames: LabelName[] = LabelsSelector.getLabelNames();
+        const VGGObject: VGGObject = VGGExporter.mapImagesDataToVGGObject(imagesData, labelNames);
+        return JSON.stringify(VGGObject, null, 2);
+    }
+
+    public static mapImagesDataToVGGObject(imagesData: ImageData[], labelNames: LabelName[]): VGGObject {
         return imagesData.reduce((data: VGGObject, image: ImageData) => {
             const fileData: VGGFileData = VGGExporter.mapImageDataToVGGFileData(image, labelNames);
             if (!!fileData) {
