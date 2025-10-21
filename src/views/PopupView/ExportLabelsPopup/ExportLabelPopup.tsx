@@ -71,11 +71,16 @@ const ExportLabelPopup: React.FC<IProps> = ({
             updateBackupEnabled(localEnabled);
             updateBackupFrequency(localFrequency);
 
-            // Store directory handle and selected export type in BackupManager
+            // Store directory handle and export type in BackupManager
+            // For Firefox (IndexedDB), always use POLYGON (JSON format)
+            // For Chrome/Edge (File System API), use selected format
             if (directoryHandle) {
                 BackupManager.setDirectoryHandle(directoryHandle);
             }
-            BackupManager.setExportLabelType(selectedExportType);
+            const exportType = BrowserDetection.supportsFileSystemAccess()
+                ? selectedExportType
+                : LabelType.POLYGON;
+            BackupManager.setExportLabelType(exportType);
 
             if (localEnabled) {
                 BackupTimerService.restart();
@@ -296,24 +301,27 @@ const ExportLabelPopup: React.FC<IProps> = ({
                         </>
                     )}
 
-                    <div className="separator"></div>
-
-                    {/* Export Format Selection */}
-                    <div className="export-format-selection">
-                        <div className="selection-label">Format</div>
-                        <div className="shape-icons-container">
-                            {LabelToolkitData.filter((toolkit) => toolkit.labelType !== LabelType.IMAGE_RECOGNITION).map((toolkit) => (
-                                <div
-                                    key={toolkit.labelType}
-                                    className={`shape-icon-button ${selectedExportType === toolkit.labelType ? 'active' : ''} ${!localEnabled ? 'disabled' : ''}`}
-                                    onClick={() => localEnabled && setSelectedExportType(toolkit.labelType)}
-                                    title={toolkit.headerText}
-                                >
-                                    <img src={toolkit.imageSrc} alt={toolkit.imageAlt} />
+                    {/* Export Format Selection - Only show for browsers with File System Access API */}
+                    {BrowserDetection.supportsFileSystemAccess() && (
+                        <>
+                            <div className="separator"></div>
+                            <div className="export-format-selection">
+                                <div className="selection-label">Format</div>
+                                <div className="shape-icons-container">
+                                    {LabelToolkitData.filter((toolkit) => toolkit.labelType !== LabelType.IMAGE_RECOGNITION).map((toolkit) => (
+                                        <div
+                                            key={toolkit.labelType}
+                                            className={`shape-icon-button ${selectedExportType === toolkit.labelType ? 'active' : ''} ${!localEnabled ? 'disabled' : ''}`}
+                                            onClick={() => localEnabled && setSelectedExportType(toolkit.labelType)}
+                                            title={toolkit.headerText}
+                                        >
+                                            <img src={toolkit.imageSrc} alt={toolkit.imageAlt} />
+                                        </div>
+                                    ))}
                                 </div>
-                            ))}
-                        </div>
-                    </div>
+                            </div>
+                        </>
+                    )}
                 </fieldset>
 
                 {/* Status Display */}
