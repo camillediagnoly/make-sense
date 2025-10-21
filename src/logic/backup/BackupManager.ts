@@ -19,6 +19,8 @@ import { LineLabelsExporter } from '../export/LineLabelExport';
 import { COCOExporter } from '../export/polygon/COCOExporter';
 import { VGGExporter } from '../export/polygon/VGGExporter';
 import * as crypto from 'crypto';
+import { BrowserDetection } from '../../utils/BrowserDetection';
+import { IndexedDBStorage } from './IndexedDBStorage';
 
 export class BackupManager {
     // Store directory handle for automatic backups
@@ -280,11 +282,18 @@ export class BackupManager {
                 return;
             }
 
-            // Save to backup directory if we have a directory handle
-            if (this.directoryHandle) {
+            // Check if browser supports File System Access API
+            const supportsFileSystemAPI = BrowserDetection.supportsFileSystemAccess();
+
+            // Save to backup directory
+            if (supportsFileSystemAPI && this.directoryHandle) {
+                // Use File System Access API with directory handle
+                await this.saveExportToDirectory(exportData.content, exportData.extension);
+            } else if (!supportsFileSystemAPI) {
+                // Use IndexedDB for browsers without File System Access API
                 await this.saveExportToDirectory(exportData.content, exportData.extension);
             } else {
-                console.warn('No directory handle available for automatic export');
+                console.warn('No directory handle available for automatic export. Backups will be stored in IndexedDB or downloaded.');
             }
         } catch (error) {
             console.error('Automatic export failed:', error);
@@ -299,10 +308,6 @@ export class BackupManager {
      * @param includeTimestamp - If true, adds timestamp to filename (for manual backups)
      */
     private static async saveExportToDirectory(content: string, extension: string, includeTimestamp: boolean = false): Promise<void> {
-        if (!this.directoryHandle) {
-            throw new Error('No directory handle available');
-        }
-
         const state = store.getState();
         const projectName = state.general.projectData.name || 'untitled-project';
         const safeProjectName = projectName.replace(/[^a-z0-9_-]/gi, '_');
@@ -318,16 +323,24 @@ export class BackupManager {
             fileName = `labels_${safeProjectName}.${extension}`;
         }
 
-        // Get or create file handle in the directory
-        // @ts-ignore - File System Access API types
-        const fileHandle = await this.directoryHandle.getFileHandle(fileName, { create: true });
+        // Check if browser supports File System Access API
+        if (BrowserDetection.supportsFileSystemAccess() && this.directoryHandle) {
+            // Use File System Access API (Chrome, Edge, Opera)
+            // Get or create file handle in the directory
+            // @ts-ignore - File System Access API types
+            const fileHandle = await this.directoryHandle.getFileHandle(fileName, { create: true });
 
-        // Write to the file
-        const writable = await fileHandle.createWritable();
-        await writable.write(content);
-        await writable.close();
+            // Write to the file
+            const writable = await fileHandle.createWritable();
+            await writable.write(content);
+            await writable.close();
 
-        console.log(`Export saved to directory: ${fileName}`);
+            console.log(`Export saved to directory: ${fileName}`);
+        } else {
+            // Use IndexedDB for browsers without File System Access API (Firefox, Safari, etc.)
+            await IndexedDBStorage.saveFile(fileName, content, projectName);
+            console.log(`Export saved to IndexedDB: ${fileName}`);
+        }
     }
 
     /**
@@ -343,15 +356,33 @@ export class BackupManager {
             const filePath = this.getBackupFilePath();
             const jsonString = JSON.stringify(backupData, null, 2);
 
-            // If we have a directory handle, use it for automatic backups
-            if (isAutomatic && this.directoryHandle) {
-                await this.saveToDirectory(jsonString, filePath);
-            } else if (isAutomatic || !('showSaveFilePicker' in window)) {
-                // Fallback: Use download mechanism for auto-backup or unsupported browsers
-                this.saveUsingDownload(jsonString, filePath);
+            // Check if browser supports File System Access API
+            const supportsFileSystemAPI = BrowserDetection.supportsFileSystemAccess();
+
+            if (isAutomatic) {
+                // Automatic backup
+                if (supportsFileSystemAPI && this.directoryHandle) {
+                    // Use File System Access API with directory handle
+                    await this.saveToDirectory(jsonString, filePath);
+                } else if (!supportsFileSystemAPI) {
+                    // Use IndexedDB for browsers without File System Access API (Firefox, Safari, etc.)
+                    const fileName = filePath.split('/').pop() || 'backup.json';
+                    const projectName = store.getState().general.projectData.name || 'untitled-project';
+                    await IndexedDBStorage.saveFile(fileName, jsonString, projectName);
+                    console.log(`Backup saved to IndexedDB: ${fileName}`);
+                } else {
+                    // Fallback: Use download mechanism
+                    this.saveUsingDownload(jsonString, filePath);
+                }
             } else {
-                // Use File System API for manual backup (user gesture)
-                await this.saveUsingFileSystemAPI(jsonString, filePath);
+                // Manual backup
+                if (supportsFileSystemAPI) {
+                    // Use File System API for manual backup (user gesture)
+                    await this.saveUsingFileSystemAPI(jsonString, filePath);
+                } else {
+                    // For browsers without File System Access API, use download
+                    this.saveUsingDownload(jsonString, filePath);
+                }
             }
 
             console.log(`Backup saved: ${filePath} (${isAutomatic ? 'automatic' : 'manual'})`);
@@ -369,7 +400,8 @@ export class BackupManager {
             }, 1500);
         } catch (error) {
             console.error('Backup failed:', error);
-            store.dispatch(updateBackupError(error.message || 'Unknown backup error'));
+            const errorMessage = error instanceof Error ? error.message : 'Unknown backup error';
+            store.dispatch(updateBackupError(errorMessage));
         }
     }
 

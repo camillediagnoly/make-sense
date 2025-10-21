@@ -16,6 +16,8 @@ import { AppState } from '../../../store';
 import { connect } from 'react-redux';
 import { BackupManager } from '../../../logic/backup/BackupManager';
 import { BackupTimerService } from '../../../logic/backup/BackupTimerService';
+import { BrowserDetection } from '../../../utils/BrowserDetection';
+import { IndexedDBStorage } from '../../../logic/backup/IndexedDBStorage';
 import {
     updateBackupEnabled,
     updateBackupFrequency,
@@ -28,6 +30,7 @@ interface IProps {
     status: 'idle' | 'saving' | 'success' | 'error';
     lastBackupTime: Date | null;
     errorMessage: string | null;
+    projectName: string;
     updateBackupEnabled: (enabled: boolean) => void;
     updateBackupFrequency: (frequency: number) => void;
 }
@@ -39,6 +42,7 @@ const ExportLabelPopup: React.FC<IProps> = ({
     status,
     lastBackupTime,
     errorMessage,
+    projectName,
     updateBackupEnabled,
     updateBackupFrequency,
 }) => {
@@ -130,7 +134,7 @@ const ExportLabelPopup: React.FC<IProps> = ({
     const handleBrowseClick = async () => {
         try {
             // Check if File System Access API is available
-            if ('showDirectoryPicker' in window) {
+            if (BrowserDetection.supportsFileSystemAccess()) {
                 // @ts-ignore - File System Access API types may not be available
                 const handle = await window.showDirectoryPicker({
                     mode: 'readwrite',
@@ -144,14 +148,29 @@ const ExportLabelPopup: React.FC<IProps> = ({
                 setLocalLocation(handle.name);
                 console.log('Selected folder:', handle.name);
             } else {
-                // Fallback: File System Access API not supported
-                alert('Folder selection is not supported in this browser. Please use a modern browser like Chrome, Edge, or Opera.');
+                // For browsers without File System Access API (Firefox, Safari, etc.)
+                const browserName = BrowserDetection.getBrowserName();
+                alert(
+                    `${browserName} doesn't support folder selection.\n\n` +
+                    `Don't worry! Your backups will be automatically saved to your browser's secure storage (IndexedDB).\n\n` +
+                    `You can download your backups at any time using the "Download Backups" button.`
+                );
             }
         } catch (error) {
             // User cancelled or error occurred
-            if (error.name !== 'AbortError') {
+            if (error instanceof Error && error.name !== 'AbortError') {
                 console.error('Error selecting folder:', error);
             }
+        }
+    };
+
+    const handleDownloadBackups = async () => {
+        try {
+            await IndexedDBStorage.downloadAllProjectFiles(projectName || 'untitled-project');
+            alert('All backup files have been downloaded successfully!');
+        } catch (error) {
+            console.error('Error downloading backups:', error);
+            alert('Failed to download backups. Please try again.');
         }
     };
 
@@ -233,28 +252,49 @@ const ExportLabelPopup: React.FC<IProps> = ({
 
                     <div className="separator"></div>
 
-                    <div className="option-group">
-                        <div className="option-label">Location</div>
-                        <div className="location-input-group">
-                            <input
-                                type="text"
-                                className="location-input"
-                                value={localLocation}
-                                placeholder="No folder selected"
-                                readOnly
-                                disabled={!localEnabled}
-                                title={localLocation}
-                            />
-                            <button
-                                className="browse-button"
-                                onClick={handleBrowseClick}
-                                disabled={!localEnabled}
-                                type="button"
-                            >
-                                Browse
-                            </button>
+                    {BrowserDetection.supportsFileSystemAccess() ? (
+                        <div className="option-group">
+                            <div className="option-label">Location</div>
+                            <div className="location-input-group">
+                                <input
+                                    type="text"
+                                    className="location-input"
+                                    value={localLocation}
+                                    placeholder="No folder selected"
+                                    readOnly
+                                    disabled={!localEnabled}
+                                    title={localLocation}
+                                />
+                                <button
+                                    className="browse-button"
+                                    onClick={handleBrowseClick}
+                                    disabled={!localEnabled}
+                                    type="button"
+                                >
+                                    Browse
+                                </button>
+                            </div>
                         </div>
-                    </div>
+                    ) : (
+                        <>
+                            <div className="option-group">
+                                <div className="option-label">Location</div>
+                                <button
+                                    className="download-backups-button"
+                                    onClick={handleDownloadBackups}
+                                    type="button"
+                                    title="Download all backups from browser storage"
+                                >
+                                    Download Backups
+                                </button>
+                            </div>
+                            <div className="location-note location-info">
+                                ℹ {BrowserDetection.getBrowserName()} uses browser storage for backups.
+                                Your data is saved securely and automatically.
+                                Click "Download Backups" to export files to your computer.
+                            </div>
+                        </>
+                    )}
 
                     <div className="separator"></div>
 
@@ -335,8 +375,8 @@ const ExportLabelPopup: React.FC<IProps> = ({
             onLabelTypeChange={onLabelTypeChange}
             acceptLabel={showBackupSettings ? 'Apply' : 'Export'}
             onAccept={onAccept}
-            disableAcceptButton={showBackupSettings ? !directoryHandle : !exportFormatType}
-            disabledTooltip={showBackupSettings && !directoryHandle ? 'Please select a backup location first' : undefined}
+            disableAcceptButton={showBackupSettings ? (BrowserDetection.supportsFileSystemAccess() && !directoryHandle) : !exportFormatType}
+            disabledTooltip={showBackupSettings && BrowserDetection.supportsFileSystemAccess() && !directoryHandle ? 'Please select a backup location first' : undefined}
             rejectLabel={'Cancel'}
             onReject={onReject}
             renderInternalContent={renderInternalContent}
@@ -359,6 +399,7 @@ const mapStateToProps = (state: AppState) => ({
     status: state.backup.status,
     lastBackupTime: state.backup.lastBackupTime,
     errorMessage: state.backup.errorMessage,
+    projectName: state.general.projectData.name,
 });
 
 export default connect(

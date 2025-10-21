@@ -198,6 +198,17 @@
         font-weight: 500;
         font-style: normal;
       }
+
+      &.location-info {
+        color: #1e90ff;
+        background: rgba(30, 144, 255, 0.12);
+        padding: 8px 10px;
+        border-radius: 4px;
+        font-style: normal;
+        font-size: 11px;
+        border-left: 3px solid #1e90ff;
+        line-height: 1.4;
+      }
     }
   }
 

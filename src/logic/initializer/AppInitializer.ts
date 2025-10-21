@@ -1,14 +1,17 @@
 import {updateWindowSize} from '../../store/general/actionCreators';
 import {ContextManager} from '../context/ContextManager';
-import {store} from '../../index';
 import {PlatformUtil} from '../../utils/PlatformUtil';
 import {PlatformModel} from '../../staticModels/PlatformModel';
 import {EventType} from '../../data/enums/EventType';
 import {GeneralSelector} from '../../store/selectors/GeneralSelector';
 import {EnvironmentUtil} from '../../utils/EnvironmentUtil';
+import type { Store } from 'redux';
 
 export class AppInitializer {
-    public static inti():void {
+    private static store: Store;
+
+    public static inti(store: Store):void {
+        AppInitializer.store = store;
         AppInitializer.handleResize();
         AppInitializer.detectDeviceParams();
         AppInitializer.handleAccidentalPageExit();
@@ -30,7 +33,7 @@ export class AppInitializer {
     };
 
     private static handleResize = () => {
-        store.dispatch(updateWindowSize({
+        AppInitializer.store.dispatch(updateWindowSize({
             width: window.innerWidth,
             height: window.innerHeight
         }));

@@ -174,6 +174,22 @@
         }
       }
 
+      // Option group vertical (label above control)
+      .option-group-vertical {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        margin-bottom: 16px;
+
+        .option-label {
+          color: white;
+          font-size: 13px;
+          font-weight: 600;
+          text-transform: uppercase;
+          letter-spacing: 0.3px;
+        }
+      }
+
       // Option group (label and control on same line)
       .option-group {
         display: flex;
@@ -226,74 +242,114 @@
             color: white;
           }
         }
+      }
 
-        .location-input-group {
-          display: flex;
+      // Location input group (used by both option-group and option-group-vertical)
+      .location-input-group {
+        display: flex;
+        width: 100%;
+        gap: 0;
+
+        .location-input {
           flex: 1;
-          gap: 0;
+          padding: 8px 12px;
+          background: $darkThemeSecondColor;
+          color: white;
+          border: 1px solid $darkThemeThirdColor;
+          border-top-left-radius: 4px;
+          border-bottom-left-radius: 4px;
+          border-right: none;
+          font-size: 13px;
+          font-family: 'Courier New', monospace;
+          outline: none;
+          transition: all 0.2s;
 
-          .location-input {
-            flex: 1;
-            padding: 8px 12px;
-            background: $darkThemeSecondColor;
-            color: white;
-            border: 1px solid $darkThemeThirdColor;
-            border-top-left-radius: 4px;
-            border-bottom-left-radius: 4px;
-            border-right: none;
-            font-size: 13px;
-            font-family: 'Courier New', monospace;
-            outline: none;
-            transition: all 0.2s;
-
-            &::placeholder {
-              color: rgba(255, 255, 255, 0.4);
-              font-style: italic;
-              font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-            }
-
-            &:focus {
-              border-color: $secondaryColor;
-            }
+          &::placeholder {
+            color: rgba(255, 255, 255, 0.4);
+            font-style: italic;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
           }
 
-          .browse-button {
-            padding: 8px 20px;
-            background: $darkThemeSecondColor;
-            color: white;
-            border: 1px solid $darkThemeThirdColor;
-            border-top-right-radius: 4px;
-            border-bottom-right-radius: 4px;
-            font-size: 14px;
-            font-weight: 500;
-            cursor: pointer;
-            outline: none;
-            transition: all 0.2s;
-            white-space: nowrap;
-
-            &:hover {
-              background: lighten($darkThemeSecondColor, 5%);
-              border-color: $secondaryColor;
-            }
-
-            &:active {
-              transform: translateY(1px);
-            }
+          &:focus {
+            border-color: $secondaryColor;
           }
         }
 
-        .location-note {
-          margin-top: 6px;
-          font-size: 11px;
-          color: rgba(255, 255, 255, 0.5);
-          font-style: italic;
-          line-height: 1.3;
+        .browse-button {
+          padding: 8px 20px;
+          background: $darkThemeSecondColor;
+          color: white;
+          border: 1px solid $darkThemeThirdColor;
+          border-top-right-radius: 4px;
+          border-bottom-right-radius: 4px;
+          font-size: 14px;
+          font-weight: 500;
+          cursor: pointer;
+          outline: none;
+          transition: all 0.2s;
+          white-space: nowrap;
 
-          &.location-success {
-            color: $primaryColor;
-            font-weight: 500;
-            font-style: normal;
+          &:hover {
+            background: lighten($darkThemeSecondColor, 5%);
+            border-color: $secondaryColor;
           }
+
+          &:active {
+            transform: translateY(1px);
+          }
+        }
+      }
+
+      // Download backups button (for Firefox - horizontal layout)
+      .download-backups-button {
+        flex: 1;
+        padding: 8px 20px;
+        background: $darkThemeSecondColor;
+        color: white;
+        border: 1px solid $darkThemeThirdColor;
+        border-radius: 4px;
+        font-size: 14px;
+        font-weight: 500;
+        cursor: pointer;
+        outline: none;
+        transition: all 0.2s;
+        white-space: nowrap;
+
+        &:hover {
+          background: lighten($darkThemeSecondColor, 5%);
+          border-color: $secondaryColor;
+        }
+
+        &:active {
+          transform: translateY(1px);
+        }
+      }
+
+      // Location note (used by both option-group and option-group-vertical)
+      .location-note {
+        margin-top: 6px;
+        font-size: 11px;
+        color: rgba(255, 255, 255, 0.5);
+        font-style: italic;
+        line-height: 1.3;
+
+        &.location-success {
+          color: $primaryColor;
+          font-weight: 500;
+          font-style: normal;
+        }
+
+        &.location-info {
+          color: #1e90ff;
+          background: rgba(30, 144, 255, 0.12);
+          padding: 8px 10px;
+          border-radius: 4px;
+          font-style: normal;
+          font-size: 11px;
+          border-left: 3px solid #1e90ff;
+          line-height: 1.4;
+          margin-top: 12px;
+          margin-bottom: 0;
         }
       }
 

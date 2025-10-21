@@ -29,7 +29,7 @@ export const DropDownMenuData: DropDownMenuNode[] = [
             },
             {
                 name: 'Edit Shortcuts',
-                imageSrc: 'ico/keyboard.png', 
+                imageSrc: 'ico/keyboard.png',
                 imageAlt: 'keyboard',
                 disabled: false,
                 onClick: () => store.dispatch(updateActivePopupType(PopupWindowType.EDIT_SHORTCUTS))

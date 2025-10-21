@@ -12,6 +12,9 @@ import { BackupTimerService } from '../../../logic/backup/BackupTimerService';
 import { BackupManager } from '../../../logic/backup/BackupManager';
 import { LabelType } from '../../../data/enums/LabelType';
 import { LabelToolkitData } from '../../../data/info/LabelToolkitData';
+import { BrowserDetection } from '../../../utils/BrowserDetection';
+import { IndexedDBStorage } from '../../../logic/backup/IndexedDBStorage';
+import { store } from '../../../index';
 
 interface IProps {
     isEnabled: boolean;
@@ -34,6 +37,12 @@ const BackupSettingsPopup: React.FC<IProps> = ({
     updateBackupEnabled,
     updateBackupFrequency,
 }) => {
+    // DEBUG: Log browser support
+    console.log('=== BACKUP SETTINGS DEBUG ===');
+    console.log('Browser supports File System Access API:', BrowserDetection.supportsFileSystemAccess());
+    console.log('Browser name:', BrowserDetection.getBrowserName());
+    console.log('showDirectoryPicker available:', 'showDirectoryPicker' in window);
+
     // Initialize from existing BackupManager settings
     const existingDirectoryHandle = BackupManager.getDirectoryHandle();
     const existingExportType = BackupManager.getExportLabelType();
@@ -95,7 +104,7 @@ const BackupSettingsPopup: React.FC<IProps> = ({
     const handleBrowseClick = async () => {
         try {
             // Check if File System Access API is available
-            if ('showDirectoryPicker' in window) {
+            if (BrowserDetection.supportsFileSystemAccess()) {
                 // @ts-ignore - File System Access API types may not be available
                 const handle = await window.showDirectoryPicker({
                     mode: 'readwrite',
@@ -109,14 +118,31 @@ const BackupSettingsPopup: React.FC<IProps> = ({
                 setLocalLocation(handle.name);
                 console.log('Selected folder:', handle.name);
             } else {
-                // Fallback: File System Access API not supported
-                alert('Folder selection is not supported in this browser. Please use a modern browser like Chrome, Edge, or Opera.');
+                // For browsers without File System Access API (Firefox, Safari, etc.)
+                const browserName = BrowserDetection.getBrowserName();
+                alert(
+                    `${browserName} doesn't support folder selection.\n\n` +
+                    `Don't worry! Your backups will be automatically saved to your browser's secure storage (IndexedDB).\n\n` +
+                    `You can download your backups at any time using the "Download Backups" button below.`
+                );
             }
         } catch (error) {
             // User cancelled or error occurred
-            if (error.name !== 'AbortError') {
+            if (error instanceof Error && error.name !== 'AbortError') {
                 console.error('Error selecting folder:', error);
             }
+        }
+    };
+
+    const handleDownloadBackups = async () => {
+        try {
+            const state = store.getState();
+            const projectName = state.general.projectData.name || 'untitled-project';
+            await IndexedDBStorage.downloadAllProjectFiles(projectName);
+            alert('All backup files have been downloaded successfully!');
+        } catch (error) {
+            console.error('Error downloading backups:', error);
+            alert('Failed to download backups. Please try again.');
         }
     };
 
@@ -175,32 +201,61 @@ const BackupSettingsPopup: React.FC<IProps> = ({
 
                     <div className="option-group">
                         <div className="option-label">Backup Location</div>
-                        <div className="location-input-group">
-                            <input
-                                type="text"
-                                className="location-input"
-                                value={localLocation}
-                                placeholder="No folder selected"
-                                readOnly
-                                title={localLocation}
-                            />
-                            <button
-                                className="browse-button"
-                                onClick={handleBrowseClick}
-                                type="button"
-                            >
-                                Browse
-                            </button>
-                        </div>
-                        {directoryHandle && (
-                            <div className="location-note location-success">
-                                ✓ Automatic backups will save to this folder
-                            </div>
-                        )}
-                        {!directoryHandle && (
-                            <div className="location-note">
-                                Note: Only folder name shown (browser security). Backups will save directly to selected folder.
-                            </div>
+                        {BrowserDetection.supportsFileSystemAccess() ? (
+                            <>
+                                <div className="location-input-group">
+                                    <input
+                                        type="text"
+                                        className="location-input"
+                                        value={localLocation}
+                                        placeholder="No folder selected"
+                                        readOnly
+                                        title={localLocation}
+                                    />
+                                    <button
+                                        className="browse-button"
+                                        onClick={handleBrowseClick}
+                                        type="button"
+                                    >
+                                        Browse
+                                    </button>
+                                </div>
+                                {directoryHandle && (
+                                    <div className="location-note location-success">
+                                        ✓ Automatic backups will save to this folder
+                                    </div>
+                                )}
+                                {!directoryHandle && (
+                                    <div className="location-note">
+                                        Note: Only folder name shown (browser security). Backups will save directly to selected folder.
+                                    </div>
+                                )}
+                            </>
+                        ) : (
+                            <>
+                                <div className="location-input-group">
+                                    <input
+                                        type="text"
+                                        className="location-input"
+                                        value="Browser Storage (IndexedDB)"
+                                        readOnly
+                                        title="Backups are stored in your browser's secure storage"
+                                    />
+                                    <button
+                                        className="browse-button"
+                                        onClick={handleDownloadBackups}
+                                        type="button"
+                                        title="Download all backups from browser storage"
+                                    >
+                                        Download Backups
+                                    </button>
+                                </div>
+                                <div className="location-note location-info">
+                                    ℹ {BrowserDetection.getBrowserName()} uses browser storage for backups.
+                                    Your data is saved securely and automatically.
+                                    Click "Download Backups" to export files to your computer.
+                                </div>
+                            </>
                         )}
                     </div>
                 </fieldset>

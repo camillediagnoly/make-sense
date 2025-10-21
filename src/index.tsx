@@ -10,7 +10,7 @@ import { EditorContext } from './logic/context/EditorContext'; // Add this impor
 export const store = configureStore();
 
 // Initialize the application
-AppInitializer.inti(); // Note: there appears to be a typo here - should be 'init'
+AppInitializer.inti(store); // Note: there appears to be a typo here - should be 'init'
 
 // Initialize keyboard shortcuts after the store is set up
 document.addEventListener('DOMContentLoaded', () => {
