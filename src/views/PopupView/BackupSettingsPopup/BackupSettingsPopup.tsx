@@ -135,13 +135,33 @@ const BackupSettingsPopup: React.FC<IProps> = ({
     };
 
     const handleDownloadBackups = async () => {
+        console.log('=== DOWNLOAD BACKUPS BUTTON CLICKED ===');
         try {
-            const state = store.getState();
-            const projectName = state.general.projectData.name || 'untitled-project';
-            await IndexedDBStorage.downloadAllProjectFiles(projectName);
-            alert('All backup files have been downloaded successfully!');
+            console.log('Step 1: Fetching files from IndexedDB...');
+
+            // Get all files first to check if there are any
+            const files = await IndexedDBStorage.getAllFiles();
+            console.log(`Step 2: Found ${files.length} file(s) in IndexedDB`);
+            console.log('Files:', files);
+
+            if (files.length === 0) {
+                console.log('Step 3: No files found - showing alert');
+                alert('No backup files found in browser storage.');
+                return;
+            }
+
+            console.log('Step 3: Starting download...');
+            // Download all files from IndexedDB with their original names
+            await IndexedDBStorage.downloadAllFiles();
+            console.log('Step 4: Download completed successfully');
+
+            console.log('Step 5: Clearing IndexedDB...');
+            // Clear all backup files from IndexedDB after successful download
+            await IndexedDBStorage.clearAllFiles();
+            console.log('Step 6: IndexedDB cleared - DONE');
         } catch (error) {
-            console.error('Error downloading backups:', error);
+            console.error('=== ERROR IN DOWNLOAD PROCESS ===');
+            console.error('Error details:', error);
             alert('Failed to download backups. Please try again.');
         }
     };
@@ -189,6 +209,7 @@ const BackupSettingsPopup: React.FC<IProps> = ({
                             disabled={!localEnabled}
                             title="Select how often to automatically save backups"
                         >
+                            <option value={0.5}>Every 30 seconds</option>
                             <option value={1}>Every 1 minute</option>
                             <option value={2}>Every 2 minutes</option>
                             <option value={3}>Every 3 minutes</option>

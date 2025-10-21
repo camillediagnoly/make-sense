@@ -13,12 +13,10 @@ export class BackupTimerService {
         const backupState = store.getState().backup;
 
         if (!backupState.isEnabled) {
-            console.log('Backup is disabled, timer not started');
             return;
         }
 
         if (this.isRunning) {
-            console.log('Backup timer already running, restarting...');
             this.stop();
         }
 
@@ -36,8 +34,6 @@ export class BackupTimerService {
         }, frequencyMs);
 
         this.isRunning = true;
-
-        console.log(`Backup timer started: ${backupState.frequencyMinutes} minute interval`);
     }
 
     /**
@@ -48,7 +44,6 @@ export class BackupTimerService {
             clearInterval(this.intervalId);
             this.intervalId = null;
             this.isRunning = false;
-            console.log('Backup timer stopped');
         }
     }
 
@@ -76,30 +71,24 @@ export class BackupTimerService {
 
         // Check if backup is still enabled
         if (!backupState.isEnabled) {
-            console.log('Backup disabled, stopping timer');
             this.stop();
             return;
         }
 
         // Skip if no images loaded
         if (labelsState.imagesData.length === 0) {
-            console.log('No images loaded, skipping backup');
             return;
         }
 
         // Skip if already saving
         if (backupState.status === 'saving') {
-            console.log('Backup already in progress, skipping');
             return;
         }
-
-        console.log('Performing scheduled annotation export...');
 
         try {
             // Perform automatic export based on user-selected label type
             await BackupManager.performAutomaticExport();
         } catch (error) {
-            console.error('Scheduled annotation export failed:', error);
             // Error already handled in BackupManager
         }
     }

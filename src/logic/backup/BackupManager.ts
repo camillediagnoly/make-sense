@@ -145,7 +145,6 @@ export class BackupManager {
      */
     public static setDirectoryHandle(handle: any): void {
         this.directoryHandle = handle;
-        console.log('Directory handle set for automatic backups:', handle?.name);
     }
 
     /**
@@ -160,7 +159,6 @@ export class BackupManager {
      */
     public static setExportLabelType(labelType: LabelType): void {
         this.exportLabelType = labelType;
-        console.log('Export label type set for automatic exports:', labelType);
     }
 
     /**
@@ -192,8 +190,6 @@ export class BackupManager {
         let extension: string;
 
         try {
-            console.log(`Generating export content for ${labelType} in ${formatType} format`);
-
             switch (labelType) {
                 case LabelType.POLYGON:
                     if (formatType === AnnotationFormatType.COCO) {
@@ -203,7 +199,6 @@ export class BackupManager {
                         content = VGGExporter.getExportContent();
                         extension = 'json';
                     } else {
-                        console.warn(`Unsupported format ${formatType} for POLYGON`);
                         return null;
                     }
                     break;
@@ -212,7 +207,6 @@ export class BackupManager {
                     content = RectLabelsExporter.getExportContent(formatType);
                     extension = 'csv';
                     if (!content) {
-                        console.warn(`Format ${formatType} not supported for automatic export. Only CSV is supported.`);
                         return null;
                     }
                     break;
@@ -222,7 +216,6 @@ export class BackupManager {
                         content = PointLabelsExporter.getExportContent();
                         extension = 'csv';
                     } else {
-                        console.warn(`Unsupported format ${formatType} for POINT`);
                         return null;
                     }
                     break;
@@ -232,25 +225,20 @@ export class BackupManager {
                         content = LineLabelsExporter.getExportContent();
                         extension = 'csv';
                     } else {
-                        console.warn(`Unsupported format ${formatType} for LINE`);
                         return null;
                     }
                     break;
 
                 default:
-                    console.warn(`Unknown label type: ${labelType}`);
                     return null;
             }
 
             if (!content || content.length === 0) {
-                console.warn('Generated content is empty or null');
                 return null;
             }
 
-            console.log(`Successfully generated ${content.length} characters of export content`);
             return { content, extension };
         } catch (error) {
-            console.error('Error generating export content:', error);
             return null;
         }
     }
@@ -265,20 +253,16 @@ export class BackupManager {
             const exportLabelType = this.exportLabelType;
 
             if (!exportLabelType) {
-                console.warn('No export label type set. Skipping automatic export.');
                 return;
             }
 
             // Get the default export format for this label type
             const exportFormat = this.getDefaultExportFormat(exportLabelType);
 
-            console.log(`Performing automatic export for ${exportLabelType} in ${exportFormat} format`);
-
             // Generate export content
             const exportData = this.generateExportContent(exportLabelType, exportFormat);
 
             if (!exportData) {
-                console.warn('Could not generate export content for automatic export');
                 return;
             }
 
@@ -292,11 +276,8 @@ export class BackupManager {
             } else if (!supportsFileSystemAPI) {
                 // Use IndexedDB for browsers without File System Access API
                 await this.saveExportToDirectory(exportData.content, exportData.extension);
-            } else {
-                console.warn('No directory handle available for automatic export. Backups will be stored in IndexedDB or downloaded.');
             }
         } catch (error) {
-            console.error('Automatic export failed:', error);
             // Don't throw - we don't want to break the backup process
         }
     }
@@ -335,11 +316,11 @@ export class BackupManager {
             await writable.write(content);
             await writable.close();
 
-            console.log(`Export saved to directory: ${fileName}`);
+            const timestamp = new Date().toLocaleString();
+            console.log(`[${timestamp}] Backup saved: ${fileName}`);
         } else {
             // Use IndexedDB for browsers without File System Access API (Firefox, Safari, etc.)
             await IndexedDBStorage.saveFile(fileName, content, projectName);
-            console.log(`Export saved to IndexedDB: ${fileName}`);
         }
     }
 
@@ -369,7 +350,6 @@ export class BackupManager {
                     const fileName = filePath.split('/').pop() || 'backup.json';
                     const projectName = store.getState().general.projectData.name || 'untitled-project';
                     await IndexedDBStorage.saveFile(fileName, jsonString, projectName);
-                    console.log(`Backup saved to IndexedDB: ${fileName}`);
                 } else {
                     // Fallback: Use download mechanism
                     this.saveUsingDownload(jsonString, filePath);
@@ -385,8 +365,6 @@ export class BackupManager {
                 }
             }
 
-            console.log(`Backup saved: ${filePath} (${isAutomatic ? 'automatic' : 'manual'})`);
-
             // Update Redux state
             store.dispatch(updateBackupStatus('success'));
             store.dispatch(updateLastBackupTime(new Date()));
@@ -399,7 +377,6 @@ export class BackupManager {
                 }
             }, 1500);
         } catch (error) {
-            console.error('Backup failed:', error);
             const errorMessage = error instanceof Error ? error.message : 'Unknown backup error';
             store.dispatch(updateBackupError(errorMessage));
         }
@@ -479,12 +456,6 @@ export class BackupManager {
      * Manual backup trigger (user gesture - exports with timestamp)
      */
     public static async triggerManualBackup(): Promise<void> {
-        const backupState = store.getState().backup;
-
-        if (!backupState.isEnabled) {
-            console.warn('Backup is not enabled. Enabling temporarily for manual backup.');
-        }
-
         // Perform manual export with timestamp
         await this.performManualExport();
     }
@@ -497,29 +468,23 @@ export class BackupManager {
             const exportLabelType = this.exportLabelType;
 
             if (!exportLabelType) {
-                console.warn('No export label type set. Skipping manual export.');
                 return;
             }
 
             const exportFormat = this.getDefaultExportFormat(exportLabelType);
-            console.log(`Performing manual export for ${exportLabelType} in ${exportFormat} format`);
 
             const exportData = this.generateExportContent(exportLabelType, exportFormat);
 
             if (!exportData) {
-                console.warn('Could not generate export content for manual export');
                 return;
             }
 
             if (this.directoryHandle) {
                 // Save with timestamp for manual exports
                 await this.saveExportToDirectory(exportData.content, exportData.extension, true);
-                console.log('Manual export completed with timestamp');
-            } else {
-                console.warn('No directory handle available for manual export');
             }
         } catch (error) {
-            console.error('Manual export failed:', error);
+            // Silent fail
         }
     }
 

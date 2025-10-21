@@ -4,7 +4,7 @@ import { Action } from '../Actions';
 const initialState: BackupState = {
     // Settings
     isEnabled: false,
-    frequencyMinutes: 1, // Default: 1 minute
+    frequencyMinutes: 0.5, // Default: 30 seconds
     storageLocation: 'default',
     customFolderPath: null,
 

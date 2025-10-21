@@ -49,6 +49,8 @@ export class IndexedDBStorage {
 
     /**
      * Save a file to IndexedDB
+     * This will clear all existing backup files before saving the new one,
+     * ensuring only the latest backup is kept
      */
     public static async saveFile(fileName: string, content: string, projectName: string): Promise<void> {
         const db = await this.openDatabase();
@@ -57,22 +59,33 @@ export class IndexedDBStorage {
             const transaction = db.transaction([this.STORE_NAME], 'readwrite');
             const objectStore = transaction.objectStore(this.STORE_NAME);
 
-            const fileData: StoredFile = {
-                fileName,
-                content,
-                timestamp: Date.now(),
-                projectName,
+            // First, clear all existing files from IndexedDB
+            const clearRequest = objectStore.clear();
+
+            clearRequest.onsuccess = () => {
+                // Now save the new file
+                const fileData: StoredFile = {
+                    fileName,
+                    content,
+                    timestamp: Date.now(),
+                    projectName,
+                };
+
+                const putRequest = objectStore.put(fileData);
+
+                putRequest.onsuccess = () => {
+                    const timestamp = new Date().toLocaleString();
+                    console.log(`[${timestamp}] Backup saved: ${fileName}`);
+                    resolve();
+                };
+
+                putRequest.onerror = () => {
+                    reject(new Error(`Failed to save file: ${fileName}`));
+                };
             };
 
-            const request = objectStore.put(fileData);
-
-            request.onsuccess = () => {
-                console.log(`File saved to IndexedDB: ${fileName}`);
-                resolve();
-            };
-
-            request.onerror = () => {
-                reject(new Error(`Failed to save file: ${fileName}`));
+            clearRequest.onerror = () => {
+                reject(new Error('Failed to clear existing files'));
             };
 
             transaction.oncomplete = () => {
@@ -173,7 +186,6 @@ export class IndexedDBStorage {
             const request = objectStore.delete(fileName);
 
             request.onsuccess = () => {
-                console.log(`File deleted from IndexedDB: ${fileName}`);
                 resolve();
             };
 
@@ -208,8 +220,6 @@ export class IndexedDBStorage {
         link.click();
         document.body.removeChild(link);
         URL.revokeObjectURL(url);
-
-        console.log(`File downloaded: ${fileName}`);
     }
 
     /**
@@ -226,6 +236,27 @@ export class IndexedDBStorage {
     }
 
     /**
+     * Download all files from IndexedDB with their original filenames
+     */
+    public static async downloadAllFiles(): Promise<void> {
+        const files = await this.getAllFiles();
+
+        if (files.length === 0) {
+            return;
+        }
+
+        for (const file of files) {
+            try {
+                await this.downloadFile(file.fileName);
+                // Small delay between downloads to avoid browser blocking
+                await new Promise((resolve) => setTimeout(resolve, 100));
+            } catch (error) {
+                throw error; // Re-throw to stop the process
+            }
+        }
+    }
+
+    /**
      * Clear all stored files (useful for testing or cleanup)
      */
     public static async clearAllFiles(): Promise<void> {
@@ -238,7 +269,6 @@ export class IndexedDBStorage {
             const request = objectStore.clear();
 
             request.onsuccess = () => {
-                console.log('All files cleared from IndexedDB');
                 resolve();
             };
 

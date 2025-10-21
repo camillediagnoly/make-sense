@@ -247,6 +247,7 @@ const ExportLabelPopup: React.FC<IProps> = ({
                             disabled={!localEnabled}
                             title="Select how often to automatically save backups"
                         >
+                            <option value={0.5}>Every 30 seconds</option>
                             <option value={1}>Every 1 minute</option>
                             <option value={2}>Every 2 minutes</option>
                             <option value={3}>Every 3 minutes</option>
