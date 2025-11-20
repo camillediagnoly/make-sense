@@ -105,7 +105,7 @@ const EditorBottomNavigationBar: React.FC<IProps> = ({ size, imageData, totalIma
                         F-AngleSF = {angleSF_F != null ? `${angleSF_F.toFixed(3)}°` : 'null'}
                     </div>
                     <div className="RatioMeasurement">
-                        F-AtrVMG = {ratioAtrVMG_F?.toFixed(3) ?? 'null'}
+                        F-Vp = {ratioAtrVMG_F?.toFixed(3) ?? 'null'}
                     </div>
                 </div>
             </div>
