@@ -89,10 +89,10 @@ const ratioSFKeypointNames_F = [
     "p-f.k:RatioSF-2",
 ];
 const ratioAtrVMGKeypointNames_F = [
-    "p-f.k:AtrVMG-3",
-    "p-f.k:AtrVMG-4",
-    "p-f.k:AtrVMG-1",
-    "p-f.k:AtrVMG-2",
+    "p-f.k:Vp-3",
+    "p-f.k:Vp-4",
+    "p-f.k:Vp-1",
+    "p-f.k:Vp-2",
 ];
 const ratio4VKeypointNames_G = [
     "p-g.k:4V-1",
