@@ -12,7 +12,8 @@ export class LabelUtil {
         return {
             id: uuidv4(),
             name,
-            color: sample(Settings.LABEL_COLORS_PALETTE)
+            color: sample(Settings.LABEL_COLORS_PALETTE),
+            isVisible: true
         }
     }
 
@@ -50,9 +51,10 @@ export class LabelUtil {
     }
 
     public static toggleAnnotationVisibility<AnnotationType extends Annotation>(annotation: AnnotationType): AnnotationType {
+        const currentVisibility = annotation.isVisible !== false;
         return {
             ...annotation,
-            isVisible: !annotation.isVisible
+            isVisible: !currentVisibility
         }
     }
 

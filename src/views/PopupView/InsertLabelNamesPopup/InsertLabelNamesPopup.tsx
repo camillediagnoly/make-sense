@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import './InsertLabelNamesPopup.scss';
 import { GenericYesNoPopup } from '../GenericYesNoPopup/GenericYesNoPopup';
 import { PopupWindowType } from '../../../data/enums/PopupWindowType';
@@ -43,7 +43,14 @@ const InsertLabelNamesPopup: React.FC<IProps> = (
         projectType,
         enablePerClassColoration
     }) => {
-    const [labelNames, setLabelNames] = useState(LabelsSelector.getLabelNames());
+    const normalizeLabelName = (labelName: LabelName): LabelName => ({
+        ...labelName,
+        isVisible: labelName.isVisible !== false,
+    });
+
+    const [labelNames, setLabelNames] = useState(
+        LabelsSelector.getLabelNames().map(normalizeLabelName)
+    );
 
     const validateEmptyLabelNames = (): boolean => {
         const emptyLabelNames = filter(labelNames, (labelName: LabelName) => labelName.name === '');
@@ -86,15 +93,48 @@ const InsertLabelNamesPopup: React.FC<IProps> = (
         setLabelNames(newLabelNames);
     };
 
-    const togglePerClassColorationCallback = () => {
-        updatePerClassColorationStatusAction(!enablePerClassColoration);
-    };
+    useEffect(() => {
+        if (projectType === ProjectType.OBJECT_DETECTION && !enablePerClassColoration) {
+            updatePerClassColorationStatusAction(true);
+        }
+    }, [projectType, enablePerClassColoration, updatePerClassColorationStatusAction]);
 
     const changeLabelNameColorCallback = (id: string) => {
         const newLabelNames = labelNames.map((labelName: LabelName) => {
             return labelName.id === id ? { ...labelName, color: sample(Settings.LABEL_COLORS_PALETTE) } : labelName;
         });
         setLabelNames(newLabelNames);
+    };
+
+    const hasLabels = labelNames.length > 0;
+    const areAllLabelsVisible = hasLabels && labelNames.every((labelName: LabelName) => labelName.isVisible !== false);
+
+    const toggleLabelVisibilityAcrossImages = (id: string) => {
+        setLabelNames((prev) =>
+            prev.map((labelName: LabelName) => {
+                if (labelName.id === id) {
+                    const nextVisibility = !(labelName.isVisible !== false);
+                    LabelActions.setLabelVisibilityForLabelName(
+                        id,
+                        nextVisibility
+                    );
+                    return { ...labelName, isVisible: nextVisibility };
+                }
+                return labelName;
+            })
+        );
+    };
+
+    const toggleAllLabelVisibilityAcrossImages = () => {
+        if (!hasLabels) {
+            return;
+        }
+
+        const nextVisibility = !areAllLabelsVisible;
+        const labelIds = labelNames.map((labelName: LabelName) => labelName.id);
+
+        LabelActions.setLabelVisibilityForLabelNames(labelIds, nextVisibility);
+        setLabelNames(labelNames.map((labelName: LabelName) => ({ ...labelName, isVisible: nextVisibility })));
     };
 
     const onKeyUpCallback = (event: React.KeyboardEvent<HTMLInputElement>) => {
@@ -133,10 +173,16 @@ const InsertLabelNamesPopup: React.FC<IProps> = (
                     shrink: true,
                 }}
             />
-            {projectType === ProjectType.OBJECT_DETECTION && enablePerClassColoration && <ColorSelectorView
+            {projectType === ProjectType.OBJECT_DETECTION && <ColorSelectorView
                 color={labelName.color}
                 onClick={onChangeColorCallback}
             />}
+            <ImageButton
+                image={(labelName.isVisible !== false) ? 'ico/eye.png' : 'ico/hide.png'}
+                imageAlt={'label_visibility'}
+                buttonSize={{ width: 30, height: 30 }}
+                onClick={() => toggleLabelVisibilityAcrossImages(labelName.id)}
+            />
             <ImageButton
                 image={'ico/trash.png'}
                 imageAlt={'remove_label'}
@@ -149,7 +195,8 @@ const InsertLabelNamesPopup: React.FC<IProps> = (
 
     const onCreateAcceptCallback = () => {
         const nonEmptyLabelNames: LabelName[] = reject(labelNames,
-            (labelName: LabelName) => labelName.name.length === 0);
+            (labelName: LabelName) => labelName.name.length === 0)
+            .map(normalizeLabelName);
         if (labelNames.length > 0) {
             updateLabelNamesAction(nonEmptyLabelNames);
         }
@@ -160,7 +207,8 @@ const InsertLabelNamesPopup: React.FC<IProps> = (
 
     const onUpdateAcceptCallback = () => {
         const nonEmptyLabelNames: LabelName[] = reject(labelNames,
-            (labelName: LabelName) => labelName.name.length === 0);
+            (labelName: LabelName) => labelName.name.length === 0)
+            .map(normalizeLabelName);
         const missingIds: string[] = LabelUtil.labelNamesIdsDiff(LabelsSelector.getLabelNames(), nonEmptyLabelNames);
         LabelActions.removeLabelNames(missingIds);
         updateLabelNamesAction(nonEmptyLabelNames);
@@ -188,15 +236,17 @@ const InsertLabelNamesPopup: React.FC<IProps> = (
                     onClick={safeAddLabelNameCallback}
                     externalClassName={'monochrome'}
                 />
-                {labelNames.length > 0 && <ImageButton
-                    image={enablePerClassColoration ? 'ico/colors-on.png' : 'ico/colors-off.png'}
-                    imageAlt={'per-class-coloration'}
+                <ImageButton
+                    image={areAllLabelsVisible ? 'ico/eye.png' : 'ico/hide.png'}
+                    imageAlt={'toggle_visibility_all'}
                     buttonSize={{ width: 40, height: 40 }}
-                    padding={15}
-                    onClick={togglePerClassColorationCallback}
-                    isActive={enablePerClassColoration}
-                    externalClassName={enablePerClassColoration ? '' : 'monochrome'}
-                />}
+                    padding={18}
+                    onClick={toggleAllLabelVisibilityAcrossImages}
+                    isActive={hasLabels && !areAllLabelsVisible}
+                    isDisabled={!hasLabels}
+                    externalClassName={'monochrome'}
+                    title={areAllLabelsVisible ? 'Hide all labels' : 'Show all labels'}
+                />
             </div>
             <div className='RightContainer'>
                 <div className='Message'>

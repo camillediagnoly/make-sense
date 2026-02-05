@@ -3,6 +3,7 @@ import { Action } from "../Actions";
 import { CustomCursorStyle } from "../../data/enums/CustomCursorStyle";
 import { ViewPointSettings } from "../../settings/ViewPointSettings";
 import { PlatformUtil } from "../../utils/PlatformUtil";
+import { ImageFilterMode } from "../../data/enums/ImageFilterMode";
 
 const initialState: GeneralState = {
     windowSize: null,
@@ -23,6 +24,9 @@ const initialState: GeneralState = {
         name: "my-project-name",
     },
     zoom: ViewPointSettings.MIN_ZOOM,
+    polygonLassoMode: false,
+    imageListFilterMode: ImageFilterMode.ALL,
+    imageListSearchText: "",
     keyboardShortcuts: [
         {
             id: "finish-polygon-creation",
@@ -269,6 +273,25 @@ export function generalReducer(
                 ...state,
                 enablePerClassColoration:
                     action.payload.enablePerClassColoration,
+            };
+        }
+
+        case Action.UPDATE_POLYGON_DRAW_MODE: {
+            return {
+                ...state,
+                polygonLassoMode: action.payload.polygonLassoMode,
+            };
+        }
+        case Action.UPDATE_IMAGE_LIST_FILTER_MODE: {
+            return {
+                ...state,
+                imageListFilterMode: action.payload.imageListFilterMode,
+            };
+        }
+        case Action.UPDATE_IMAGE_LIST_SEARCH_TEXT: {
+            return {
+                ...state,
+                imageListSearchText: action.payload.imageListSearchText,
             };
         }
 

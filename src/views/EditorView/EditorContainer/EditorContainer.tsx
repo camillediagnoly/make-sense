@@ -125,7 +125,6 @@ const EditorContainer: React.FC<IProps> = (
                 <EditorBottomNavigationBar
                     imageData={imagesData[activeImageIndex]}
                     size={calculateEditorSize()}
-                    totalImageCount={imagesData.length}
                     key='editor-bottom-navigation-bar'
                 />
             </div>

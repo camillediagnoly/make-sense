@@ -4,6 +4,7 @@ import { PopupWindowType } from "../../data/enums/PopupWindowType";
 import { CustomCursorStyle } from "../../data/enums/CustomCursorStyle";
 import { ContextType } from "../../data/enums/ContextType";
 import { ProjectType } from "../../data/enums/ProjectType";
+import { ImageFilterMode } from "../../data/enums/ImageFilterMode";
 
 export type ProjectData = {
     type: ProjectType;
@@ -35,6 +36,9 @@ export type GeneralState = {
     projectData: ProjectData;
     zoom: number;
     keyboardShortcuts: ShortcutItem[];
+    polygonLassoMode: boolean;
+    imageListFilterMode: ImageFilterMode;
+    imageListSearchText: string;
 };
 
 interface UpdateProjectData {
@@ -141,6 +145,27 @@ interface UpdatePerClassColoration {
     };
 }
 
+interface UpdatePolygonDrawMode {
+    type: typeof Action.UPDATE_POLYGON_DRAW_MODE;
+    payload: {
+        polygonLassoMode: boolean;
+    };
+}
+
+interface UpdateImageListFilterMode {
+    type: typeof Action.UPDATE_IMAGE_LIST_FILTER_MODE;
+    payload: {
+        imageListFilterMode: ImageFilterMode;
+    };
+}
+
+interface UpdateImageListSearchText {
+    type: typeof Action.UPDATE_IMAGE_LIST_SEARCH_TEXT;
+    payload: {
+        imageListSearchText: string;
+    };
+}
+
 interface UpdateKeyboardShortcuts {
     type: typeof Action.UPDATE_KEYBOARD_SHORTCUTS;
     payload: {
@@ -181,4 +206,7 @@ export type GeneralActionTypes =
     | UpdatePerClassColoration
     | UpdateKeyboardShortcuts
     | UpdateKeyboardShortcut
-    | ResetKeyboardShortcutAction;
+    | ResetKeyboardShortcutAction
+    | UpdatePolygonDrawMode
+    | UpdateImageListFilterMode
+    | UpdateImageListSearchText;

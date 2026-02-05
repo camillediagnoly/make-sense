@@ -37,6 +37,7 @@ export type LabelName = {
     name: string;
     id: string;
     color?: string;
+    isVisible?: boolean;
 }
 
 export type ImageData = {
@@ -146,6 +147,14 @@ interface UpdateFirstLabelCreatedFlag {
     }
 }
 
+interface UpdateLabelVisibility {
+    type: typeof Action.UPDATE_LABEL_VISIBILITY;
+    payload: {
+        labelId: string;
+        isVisible: boolean;
+    }
+}
+
 export type LabelsActionTypes = UpdateActiveImageIndex
     | UpdateActiveLabelNameId
     | UpdateActiveLabelType
@@ -156,4 +165,4 @@ export type LabelsActionTypes = UpdateActiveImageIndex
     | UpdateActiveLabelId
     | UpdateHighlightedLabelId
     | UpdateFirstLabelCreatedFlag
-
+    | UpdateLabelVisibility

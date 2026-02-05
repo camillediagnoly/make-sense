@@ -3,7 +3,7 @@ import {connect} from "react-redux";
 import {LabelType} from "../../../../data/enums/LabelType";
 import {ISize} from "../../../../interfaces/ISize";
 import {AppState} from "../../../../store";
-import {ImageData, LabelPoint, LabelRect} from "../../../../store/labels/types";
+import {ImageData} from "../../../../store/labels/types";
 import {VirtualList} from "../../../Common/VirtualList/VirtualList";
 import ImagePreview from "../ImagePreview/ImagePreview";
 import './ImagesList.scss';
@@ -11,25 +11,23 @@ import {ContextManager} from "../../../../logic/context/ContextManager";
 import {ContextType} from "../../../../data/enums/ContextType";
 import {ImageActions} from "../../../../logic/actions/ImageActions";
 import {EventType} from "../../../../data/enums/EventType";
-import {LabelStatus} from "../../../../data/enums/LabelStatus";
+import {ImageFilterMode} from "../../../../data/enums/ImageFilterMode";
+import {ImageFilterUtil} from "../../../../utils/ImageFilterUtil";
+import {updateImageListFilterMode, updateImageListSearchText} from "../../../../store/general/actionCreators";
 
 interface IProps {
     activeImageIndex: number;
     imagesData: ImageData[];
     activeLabelType: LabelType;
+    filterMode: ImageFilterMode;
+    searchText: string;
+    updateImageListFilterModeAction: (filterMode: ImageFilterMode) => any;
+    updateImageListSearchTextAction: (searchText: string) => any;
 }
 
 interface IState {
     size: ISize;
-    searchText: string;
-    filterMode: FilterMode;
     key: number; // Used to force refresh the VirtualList
-}
-
-enum FilterMode {
-    ALL = "ALL",
-    LABELED = "LABELED",
-    UNLABELED = "UNLABELED"
 }
 
 class ImagesList extends React.Component<IProps, IState> {
@@ -40,8 +38,6 @@ class ImagesList extends React.Component<IProps, IState> {
 
         this.state = {
             size: null,
-            searchText: "",
-            filterMode: FilterMode.ALL,
             key: 0
         }
     }
@@ -69,51 +65,18 @@ class ImagesList extends React.Component<IProps, IState> {
     };
 
     private isImageChecked = (index:number): boolean => {
-        const imageData = this.props.imagesData[index]
-        switch (this.props.activeLabelType) {
-            case LabelType.LINE:
-                return imageData.labelLines.length > 0
-            case LabelType.IMAGE_RECOGNITION:
-                return imageData.labelNameIds.length > 0
-            case LabelType.POINT:
-                return imageData.labelPoints
-                    .filter((labelPoint: LabelPoint) => labelPoint.status === LabelStatus.ACCEPTED)
-                    .length > 0
-            case LabelType.POLYGON:
-                return imageData.labelPolygons.length > 0
-            case LabelType.RECT:
-                return imageData.labelRects
-                    .filter((labelRect: LabelRect) => labelRect.status === LabelStatus.ACCEPTED)
-                    .length > 0
-            default:
-                return false;
-        }
+        const imageData = this.props.imagesData[index];
+        return ImageFilterUtil.isImageLabeled(imageData, this.props.activeLabelType);
     };
 
     private getFilteredImages = (): number[] => {
-        const { imagesData } = this.props;
-        const { searchText, filterMode } = this.state;
-        
-        return imagesData
-            .map((image, index) => ({ image, index }))
-            .filter(({ image, index }) => {
-                const filename = 
-                    (image.fileData && image.fileData.name) 
-                
-                const matchesSearch = searchText === "" || 
-                    filename.toLowerCase().includes(searchText.toLowerCase());
-                
-                
-                let matchesFilter = true;
-                if (filterMode === FilterMode.LABELED) {
-                    matchesFilter = this.isImageChecked(index);
-                } else if (filterMode === FilterMode.UNLABELED) {
-                    matchesFilter = !this.isImageChecked(index);
-                }
-                
-                return matchesSearch && matchesFilter;
-            })
-            .map(({ index }) => index);
+        const { imagesData, activeLabelType, filterMode, searchText } = this.props;
+        return ImageFilterUtil.getFilteredImageIndices(
+            imagesData,
+            activeLabelType,
+            filterMode,
+            searchText
+        );
     };
 
     private onClickHandler = (index: number) => {
@@ -121,9 +84,9 @@ class ImagesList extends React.Component<IProps, IState> {
     };
 
     // Force VirtualList to re-render and reset its scroll position when filters change
-    componentDidUpdate(prevProps, prevState) {
-        if (prevState.searchText !== this.state.searchText || 
-            prevState.filterMode !== this.state.filterMode) {
+    componentDidUpdate(prevProps) {
+        if (prevProps.searchText !== this.props.searchText ||
+            prevProps.filterMode !== this.props.filterMode) {
             // Increment key to force VirtualList to completely re-render
             this.setState(prevState => ({ key: prevState.key + 1 }));
         }
@@ -146,15 +109,15 @@ class ImagesList extends React.Component<IProps, IState> {
     };
 
     private handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        this.setState({ searchText: e.target.value });
+        this.props.updateImageListSearchTextAction(e.target.value);
     };
 
-    private setFilterMode = (filterMode: FilterMode) => {
-        this.setState({ filterMode });
+    private setFilterMode = (filterMode: ImageFilterMode) => {
+        this.props.updateImageListFilterModeAction(filterMode);
     };
 
     private renderSearchAndFilter = () => {
-        const { filterMode } = this.state;
+        const { filterMode, searchText } = this.props;
         return (
             <div className="ImagesListControls">
                 <div className="SearchContainer">
@@ -162,26 +125,26 @@ class ImagesList extends React.Component<IProps, IState> {
                         type="text" 
                         className="SearchInput"
                         placeholder="Search images by name..."
-                        value={this.state.searchText}
+                        value={searchText}
                         onChange={this.handleSearchChange}
                     />
                 </div>
                 <div className="FilterButtons">
                     <button 
-                        className={`FilterButton ${filterMode === FilterMode.ALL ? 'active' : ''}`}
-                        onClick={() => this.setFilterMode(FilterMode.ALL)}
+                        className={`FilterButton ${filterMode === ImageFilterMode.ALL ? 'active' : ''}`}
+                        onClick={() => this.setFilterMode(ImageFilterMode.ALL)}
                     >
                         All
                     </button>
                     <button 
-                        className={`FilterButton ${filterMode === FilterMode.LABELED ? 'active' : ''}`}
-                        onClick={() => this.setFilterMode(FilterMode.LABELED)}
+                        className={`FilterButton ${filterMode === ImageFilterMode.LABELED ? 'active' : ''}`}
+                        onClick={() => this.setFilterMode(ImageFilterMode.LABELED)}
                     >
                         Labeled
                     </button>
                     <button 
-                        className={`FilterButton ${filterMode === FilterMode.UNLABELED ? 'active' : ''}`}
-                        onClick={() => this.setFilterMode(FilterMode.UNLABELED)}
+                        className={`FilterButton ${filterMode === ImageFilterMode.UNLABELED ? 'active' : ''}`}
+                        onClick={() => this.setFilterMode(ImageFilterMode.UNLABELED)}
                     >
                         Unlabeled
                     </button>
@@ -222,15 +185,18 @@ class ImagesList extends React.Component<IProps, IState> {
     }
 }
 
-const mapDispatchToProps = {};
-
 const mapStateToProps = (state: AppState) => ({
     activeImageIndex: state.labels.activeImageIndex,
     imagesData: state.labels.imagesData,
-    activeLabelType: state.labels.activeLabelType
+    activeLabelType: state.labels.activeLabelType,
+    filterMode: state.general.imageListFilterMode,
+    searchText: state.general.imageListSearchText
 });
 
 export default connect(
     mapStateToProps,
-    mapDispatchToProps
+    {
+        updateImageListFilterModeAction: updateImageListFilterMode,
+        updateImageListSearchTextAction: updateImageListSearchText
+    }
 )(ImagesList);

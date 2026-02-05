@@ -84,6 +84,16 @@ export function updateLabelNames(labels: LabelName[]): LabelsActionTypes {
     }
 }
 
+export function updateLabelVisibility(labelId: string, isVisible: boolean): LabelsActionTypes {
+    return {
+        type: Action.UPDATE_LABEL_VISIBILITY,
+        payload: {
+            labelId,
+            isVisible,
+        },
+    };
+}
+
 export function updateFirstLabelCreatedFlag(firstLabelCreatedFlag: boolean): LabelsActionTypes {
     return {
         type: Action.UPDATE_FIRST_LABEL_CREATED_FLAG,

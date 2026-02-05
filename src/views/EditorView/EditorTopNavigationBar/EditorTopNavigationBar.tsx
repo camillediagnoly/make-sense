@@ -4,7 +4,7 @@ import React from 'react';
 import classNames from 'classnames';
 import { AppState } from '../../../store';
 import { connect } from 'react-redux';
-import { updateCrossHairVisibleStatus, updateImageDragModeStatus, updateFixedZoomStatus, updateEllipseDrawStatus, updateMovingAnnotationStatus, updateCopyPolygonsStatus, updatePasteAnnotationsStatus } from '../../../store/general/actionCreators';
+import { updateCrossHairVisibleStatus, updateImageDragModeStatus, updateFixedZoomStatus, updateEllipseDrawStatus, updateMovingAnnotationStatus, updateCopyPolygonsStatus, updatePasteAnnotationsStatus, updatePolygonDrawMode } from '../../../store/general/actionCreators';
 import { GeneralSelector } from '../../../store/selectors/GeneralSelector';
 import { ViewPointSettings } from '../../../settings/ViewPointSettings';
 import { ImageButton } from '../../Common/ImageButton/ImageButton';
@@ -71,6 +71,7 @@ interface IProps {
     updateMovingAnnotationAction: (movingAnnotation: boolean) => any;
     updateCopyPolygonsAction: (copyPolygons: boolean) => any;
     updatePastePolygonsAction: (pastePolygons: boolean) => any;
+    updatePolygonDrawModeAction: (polygonLassoMode: boolean) => any;
     imageDragMode: boolean;
     crossHairVisible: boolean;
     fixedZoom: boolean;
@@ -79,6 +80,7 @@ interface IProps {
     copyPolygons: boolean;
     pastePolygons: boolean;
     activeLabelType: LabelType;
+    polygonLassoMode: boolean;
 }
 
 const EditorTopNavigationBar: React.FC<IProps> = (
@@ -91,6 +93,7 @@ const EditorTopNavigationBar: React.FC<IProps> = (
         updateMovingAnnotationAction,
         updateCopyPolygonsAction,
         updatePastePolygonsAction,
+        updatePolygonDrawModeAction,
         imageDragMode,
         crossHairVisible,
         fixedZoom,
@@ -98,7 +101,8 @@ const EditorTopNavigationBar: React.FC<IProps> = (
         movingAnnotation,
         copyPolygons,
         pastePolygons,
-        activeLabelType
+        activeLabelType,
+        polygonLassoMode
     }) => {
     const getClassName = () => {
         return classNames(
@@ -140,6 +144,10 @@ const EditorTopNavigationBar: React.FC<IProps> = (
 
     const pastePolygonsOnClick = () => {
         updatePastePolygonsAction(!pastePolygons);
+    };
+
+    const polygonModeOnClick = () => {
+        updatePolygonDrawModeAction(!polygonLassoMode);
     };
 
     const withAI = (
@@ -244,6 +252,17 @@ const EditorTopNavigationBar: React.FC<IProps> = (
                 }
                 {
                     getButtonWithTooltip(
+                        'polygon-draw-mode',
+                        polygonLassoMode ? 'switch to point-click polygon mode' : 'switch to freehand polygon mode',
+                        polygonLassoMode ? 'ico/polyline.png' : 'ico/polygon.png',
+                        'polygon-draw-mode',
+                        polygonLassoMode,
+                        undefined,
+                        polygonModeOnClick
+                    )
+                }
+                {
+                    getButtonWithTooltip(
                         'moving-annotation',
                         movingAnnotation ? 'turn-off annotation moving' : 'turn-on annotation moving',
                         'ico/move-100.png',
@@ -316,6 +335,7 @@ const mapDispatchToProps = {
     updateMovingAnnotationAction: updateMovingAnnotationStatus,
     updateCopyPolygonsAction: updateCopyPolygonsStatus,
     updatePastePolygonsAction: updatePasteAnnotationsStatus,
+    updatePolygonDrawModeAction: updatePolygonDrawMode,
 };
 
 const mapStateToProps = (state: AppState) => ({
@@ -327,7 +347,8 @@ const mapStateToProps = (state: AppState) => ({
     movingAnnotation: state.general.movingAnnotation,
     copyPolygons: state.general.copyPolygons,
     pastePolygons: state.general.pastePolygons,
-    activeLabelType: state.labels.activeLabelType
+    activeLabelType: state.labels.activeLabelType,
+    polygonLassoMode: state.general.polygonLassoMode,
 });
 
 export default connect(

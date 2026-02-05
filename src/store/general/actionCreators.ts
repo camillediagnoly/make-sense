@@ -4,6 +4,7 @@ import { Action } from "../Actions";
 import { PopupWindowType } from "../../data/enums/PopupWindowType";
 import { CustomCursorStyle } from "../../data/enums/CustomCursorStyle";
 import { ContextType } from "../../data/enums/ContextType";
+import { ImageFilterMode } from "../../data/enums/ImageFilterMode";
 
 
 export function updateWindowSize(windowSize: ISize): GeneralActionTypes {
@@ -161,6 +162,39 @@ export function updatePerClassColorationStatus(
         type: Action.UPDATE_ENABLE_PER_CLASS_COLORATION_STATUS,
         payload: {
             enablePerClassColoration,
+        },
+    };
+}
+
+export function updatePolygonDrawMode(
+    polygonLassoMode: boolean
+): GeneralActionTypes {
+    return {
+        type: Action.UPDATE_POLYGON_DRAW_MODE,
+        payload: {
+            polygonLassoMode,
+        },
+    };
+}
+
+export function updateImageListFilterMode(
+    imageListFilterMode: ImageFilterMode
+): GeneralActionTypes {
+    return {
+        type: Action.UPDATE_IMAGE_LIST_FILTER_MODE,
+        payload: {
+            imageListFilterMode,
+        },
+    };
+}
+
+export function updateImageListSearchText(
+    imageListSearchText: string
+): GeneralActionTypes {
+    return {
+        type: Action.UPDATE_IMAGE_LIST_SEARCH_TEXT,
+        payload: {
+            imageListSearchText,
         },
     };
 }

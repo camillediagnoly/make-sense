@@ -19,16 +19,59 @@ import {
 import { LabelStatus } from "../../data/enums/LabelStatus";
 import { remove } from "lodash";
 import { GeneralSelector } from "../../store/selectors/GeneralSelector";
+import { ImageFilterUtil } from "../../utils/ImageFilterUtil";
+import { ImageFilterMode } from "../../data/enums/ImageFilterMode";
 
 export class ImageActions {
+  private static getFilteredImageIndices(): number[] {
+    const imagesData = LabelsSelector.getImagesData();
+    const activeLabelType = LabelsSelector.getActiveLabelType();
+    const filterMode: ImageFilterMode = GeneralSelector.getImageListFilterMode();
+    const searchText: string = GeneralSelector.getImageListSearchText();
+    return ImageFilterUtil.getFilteredImageIndices(
+      imagesData,
+      activeLabelType,
+      filterMode,
+      searchText
+    );
+  }
+
   public static getPreviousImage(): void {
+    const filteredIndices = ImageActions.getFilteredImageIndices();
+    if (!filteredIndices.length) {
+      return;
+    }
+
     const currentImageIndex: number = LabelsSelector.getActiveImageIndex();
-    ImageActions.getImageByIndex(currentImageIndex - 1);
+    const currentFilteredIndex = filteredIndices.indexOf(currentImageIndex);
+    if (currentFilteredIndex === -1) {
+      ImageActions.getImageByIndex(
+        filteredIndices[filteredIndices.length - 1]
+      );
+      return;
+    }
+    if (currentFilteredIndex === 0) {
+      return;
+    }
+    ImageActions.getImageByIndex(filteredIndices[currentFilteredIndex - 1]);
   }
 
   public static getNextImage(): void {
+    const filteredIndices = ImageActions.getFilteredImageIndices();
+    if (!filteredIndices.length) {
+      return;
+    }
+
     const currentImageIndex: number = LabelsSelector.getActiveImageIndex();
-    ImageActions.getImageByIndex(currentImageIndex + 1);
+    const currentFilteredIndex = filteredIndices.indexOf(currentImageIndex);
+    if (currentFilteredIndex === -1) {
+      ImageActions.getImageByIndex(filteredIndices[0]);
+      return;
+    }
+    if (currentFilteredIndex === filteredIndices.length - 1) {
+      return;
+    }
+    ImageActions.getImageByIndex(filteredIndices[currentFilteredIndex + 1]);
   }
 
   public static getImageByIndex(index: number): void {

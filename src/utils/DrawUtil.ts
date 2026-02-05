@@ -125,6 +125,33 @@ export class DrawUtil {
         ctx.restore();
     }
 
+    public static drawDashedPolygon(
+        canvas: HTMLCanvasElement,
+        anchors: IPoint[],
+        color = '#fff',
+        thickness = 1,
+        dashPattern: number[] = [8, 4],
+        closePath: boolean = true
+    ): void {
+        if (!anchors || anchors.length === 0) return;
+        const ctx: CanvasRenderingContext2D = canvas.getContext('2d');
+        ctx.save();
+        ctx.strokeStyle = color;
+        ctx.lineWidth = thickness;
+        ctx.setLineDash(dashPattern);
+        ctx.beginPath();
+        ctx.moveTo(anchors[0].x, anchors[0].y);
+        for (let i = 1; i < anchors.length; i++) {
+            ctx.lineTo(anchors[i].x, anchors[i].y);
+        }
+        if (closePath) {
+            ctx.closePath();
+        }
+        ctx.stroke();
+        ctx.setLineDash([]);
+        ctx.restore();
+    }
+
     public static drawPolygonWithFill(canvas: HTMLCanvasElement, anchors: IPoint[], color = '#fff'): void {
         const ctx: CanvasRenderingContext2D = canvas.getContext('2d');
         ctx.save();

@@ -9,20 +9,36 @@ import { ContextType } from "../../../data/enums/ContextType";
 import classNames from "classnames";
 import { ImageActions } from "../../../logic/actions/ImageActions";
 import { KeypointUtils } from "../../../logic/render/PolygonRenderEngine";
+import { ImageFilterMode } from "../../../data/enums/ImageFilterMode";
+import { ImageFilterUtil } from "../../../utils/ImageFilterUtil";
+import { LabelType } from "../../../data/enums/LabelType";
 
 interface IProps {
     size: ISize;
     imageData: ImageData;
-    totalImageCount: number;
+    imagesData: ImageData[];
     activeImageIndex: number;
     activeContext: ContextType;
+    activeLabelType: LabelType;
+    filterMode: ImageFilterMode;
+    searchText: string;
 }
 
-const EditorBottomNavigationBar: React.FC<IProps> = ({ size, imageData, totalImageCount, activeImageIndex, activeContext }) => {
+const EditorBottomNavigationBar: React.FC<IProps> = ({ size, imageData, imagesData, activeImageIndex, activeContext, activeLabelType, filterMode, searchText }) => {
     const minWidth: number = 400;
 
+    const filteredIndices = ImageFilterUtil.getFilteredImageIndices(
+        imagesData,
+        activeLabelType,
+        filterMode,
+        searchText
+    );
+    const activeFilteredIndex = filteredIndices.indexOf(activeImageIndex);
+    const totalImageCount = filteredIndices.length;
+    const currentImagePosition = activeFilteredIndex >= 0 ? activeFilteredIndex + 1 : 0;
+
     const getImageCounter = () => {
-        return (activeImageIndex + 1) + " / " + totalImageCount;
+        return currentImagePosition + " / " + totalImageCount;
     };
 
     const getClassName = () => {
@@ -35,8 +51,8 @@ const EditorBottomNavigationBar: React.FC<IProps> = ({ size, imageData, totalIma
     };
     const keypointUtilsInstance = new KeypointUtils();
     const [asymRatio_B, angle_B, areaRatio_B, positionRatio_B, veinsRatio_B,
-        tgaRatio_D, asymRatio_E, tgaRatio_E, asymRatioCSP_F,
-        asymRatioCI_F, angleSF_F, ratioSF_F, ratioAtrVMG_F] = keypointUtilsInstance.buildMeasurements()
+        tgaRatio_D, asymRatio_E, tgaRatio_E, asymRatioCSP_F, 
+        asymRatioCI_F, angleSF_F, ratioSF_F, ratioAtrVMG_F, ratio4V_G] = keypointUtilsInstance.buildMeasurements()
 
 
 
@@ -48,19 +64,22 @@ const EditorBottomNavigationBar: React.FC<IProps> = ({ size, imageData, totalIma
                     imageAlt={"previous"}
                     buttonSize={{ width: 25, height: 25 }}
                     onClick={() => ImageActions.getPreviousImage()}
-                    isDisabled={activeImageIndex === 0}
+                    isDisabled={totalImageCount === 0 || (activeFilteredIndex >= 0 && activeFilteredIndex === 0)}
                     externalClassName={"left"}
                 />
-
+            
                     <div className="CurrentImageName"> {imageData.fileData.name} </div> :
                     <div className="CurrentImageCount"> {getImageCounter()} </div>
-
+                
                 <ImageButton
                     image={"ico/right.png"}
                     imageAlt={"next"}
                     buttonSize={{ width: 25, height: 25 }}
                     onClick={() => ImageActions.getNextImage()}
-                    isDisabled={activeImageIndex === totalImageCount - 1}
+                    isDisabled={
+                        totalImageCount === 0 ||
+                        (activeFilteredIndex >= 0 && activeFilteredIndex === totalImageCount - 1)
+                    }
                     externalClassName={"right"}
                 />
             </div>
@@ -105,7 +124,10 @@ const EditorBottomNavigationBar: React.FC<IProps> = ({ size, imageData, totalIma
                         F-AngleSF = {angleSF_F != null ? `${angleSF_F.toFixed(3)}°` : 'null'}
                     </div>
                     <div className="RatioMeasurement">
-                        F-AtrVMG = {ratioAtrVMG_F?.toFixed(3) ?? 'null'}
+                        F-Vp = {ratioAtrVMG_F?.toFixed(3) ?? 'null'}
+                    </div>
+                    <div className="RatioMeasurement">
+                        G-4V = {ratio4V_G?.toFixed(3) ?? 'null'}
                     </div>
                 </div>
             </div>
@@ -117,7 +139,11 @@ const mapDispatchToProps = {};
 
 const mapStateToProps = (state: AppState) => ({
     activeImageIndex: state.labels.activeImageIndex,
-    activeContext: state.general.activeContext
+    activeContext: state.general.activeContext,
+    imagesData: state.labels.imagesData,
+    activeLabelType: state.labels.activeLabelType,
+    filterMode: state.general.imageListFilterMode,
+    searchText: state.general.imageListSearchText
 });
 
 export default connect(

@@ -90,7 +90,7 @@ const PolygonLabelsList: React.FC<IProps> = (
                 id={labelPolygon.id}
                 key={labelPolygon.id}
                 onDelete={deletePolygonLabelById}
-                value={labelPolygon.labelId !== null ? findLast(labelNames, {id: labelPolygon.labelId}) : null}
+                value={labelPolygon.labelId !== null ? findLast(labelNames, { id: labelPolygon.labelId }) : null}
                 options={labelNames}
                 onSelectLabel={updatePolygonLabel}
                 toggleLabelVisibility={togglePolygonLabelVisibilityById}

@@ -38,6 +38,10 @@
         background-color: rgba(0, 0, 0, 0.4);
       }
 
+      &.disabled {
+        opacity: 0.35;
+      }
+
       &.monochrome {
         img {
           filter: brightness(0) invert(1);
