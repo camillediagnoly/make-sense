@@ -16,6 +16,7 @@ import LoadModelPopup from './LoadModelPopup/LoadModelPopup';
 import LoadYOLOv5ModelPopup from './LoadYOLOv5ModelPopup/LoadYOLOv5ModelPopup';
 import ConnectInferenceServerPopup from './ConnectInferenceServerPopup/ConnectInferenceServerPopup';
 import EditShortcutsPopup from './EditShortcutsPopup/EditShortcutsPopup';
+import BackupSettingsPopup from './BackupSettingsPopup/BackupSettingsPopup';
 
 interface IProps {
     activePopupType: PopupWindowType;
@@ -53,6 +54,8 @@ const PopupView: React.FC<IProps> = ({ activePopupType }) => {
                 return <SuggestLabelNamesPopup />;
             case PopupWindowType.EDIT_SHORTCUTS:
                 return <EditShortcutsPopup />;
+            case PopupWindowType.BACKUP_SETTINGS:
+                return <BackupSettingsPopup />;
             case PopupWindowType.LOADER:
                 return <ClipLoader
                     size={50}

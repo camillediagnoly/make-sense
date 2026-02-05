@@ -11,6 +11,7 @@ interface IProps {
     onAccept?: () => any;
     skipAcceptButton?: boolean;
     disableAcceptButton?: boolean;
+    disabledTooltip?: string;
     rejectLabel?: string;
     onReject?: () => any;
     skipRejectButton?: boolean;
@@ -25,6 +26,7 @@ export const GenericYesNoPopup: React.FC<IProps> = (
         onAccept,
         skipAcceptButton,
         disableAcceptButton,
+        disabledTooltip,
         rejectLabel,
         onReject,
         skipRejectButton,
@@ -32,12 +34,21 @@ export const GenericYesNoPopup: React.FC<IProps> = (
     }) => {
 
     const [status, setMountStatus] = useState(false);
+    const [showTooltip, setShowTooltip] = useState(false);
+
     useEffect(() => {
         if (!status) {
             ContextManager.switchCtx(ContextType.POPUP);
             setMountStatus(true);
         }
     }, [status]);
+
+    const handleDisabledAcceptClick = () => {
+        if (disableAcceptButton && disabledTooltip) {
+            setShowTooltip(true);
+            setTimeout(() => setShowTooltip(false), 3000);
+        }
+    };
 
     return (
         <div className='GenericYesNoPopup'>
@@ -54,12 +65,21 @@ export const GenericYesNoPopup: React.FC<IProps> = (
                     externalClassName={'reject'}
                     isDisabled={disableRejectButton}
                 />}
-                {!skipAcceptButton && <TextButton
-                    label={acceptLabel ? acceptLabel : 'YES'}
-                    onClick={onAccept}
-                    externalClassName={'accept'}
-                    isDisabled={disableAcceptButton}
-                />}
+                {!skipAcceptButton && (
+                    <div className='accept-button-wrapper'>
+                        <TextButton
+                            label={acceptLabel ? acceptLabel : 'YES'}
+                            onClick={disableAcceptButton ? handleDisabledAcceptClick : onAccept}
+                            externalClassName={'accept'}
+                            isDisabled={disableAcceptButton}
+                        />
+                        {showTooltip && disabledTooltip && (
+                            <div className='disabled-button-tooltip'>
+                                {disabledTooltip}
+                            </div>
+                        )}
+                    </div>
+                )}
             </div>
         </div>
     )

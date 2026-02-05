@@ -16,6 +16,18 @@ export class PointLabelsExporter {
         }
     }
 
+    /**
+     * Get export content without triggering download (for automatic backup)
+     */
+    public static getExportContent(): string {
+        return LabelsSelector.getImagesData()
+            .map((imageData: ImageData) => {
+                return PointLabelsExporter.wrapRectLabelsIntoCSV(imageData)})
+            .filter((imageLabelData: string) => {
+                return !!imageLabelData})
+            .join("\n");
+    }
+
     private static exportAsCSV(): void {
         const content: string = LabelsSelector.getImagesData()
             .map((imageData: ImageData) => {

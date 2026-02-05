@@ -342,7 +342,8 @@ export class RectRenderEngine extends BaseRenderEngine {
 
         if (imageData) {
             imageData.labelRects.forEach((labelRect: LabelRect) => {
-                if (labelRect.isVisible) {
+                const isVisible = labelRect.isVisible !== false;
+                if (isVisible) {
                     if (
                         labelRect.status === LabelStatus.ACCEPTED &&
                         labelRect.id === activeLabelId

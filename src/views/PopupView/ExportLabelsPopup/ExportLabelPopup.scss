@@ -53,5 +53,435 @@
         }
       }
     }
+
+    // Backup settings styling
+    .backup-settings-content {
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+      width: 100%;
+      padding: 30px 40px;
+
+      // Fieldset styling
+      .backup-fieldset {
+        border: 1px solid $darkThemeThirdColor;
+        border-radius: 4px;
+        padding: 0 16px 14px 16px;
+        margin: 0;
+
+        legend {
+          color: rgba(255, 255, 255, 0.9);
+          font-size: 13px;
+          font-weight: 600;
+          padding: 0 8px;
+          margin-bottom: 0;
+        }
+      }
+
+      // Radio options container (horizontal layout)
+      .radio-options-container {
+        display: flex;
+        flex-direction: row;
+        gap: 20px;
+        padding: 8px 0 16px 0;
+        margin-top: 0;
+      }
+
+      // Radio button option
+      .radio-option {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        cursor: pointer;
+        position: relative;
+        padding: 4px 4px;
+        padding-left: 28px;
+        margin-bottom: 0;
+
+        input[type='radio'] {
+          position: absolute;
+          opacity: 0;
+          cursor: pointer;
+          height: 0;
+          width: 0;
+        }
+
+        .radio-circle {
+          position: absolute;
+          left: 4px;
+          height: 16px;
+          width: 16px;
+          background-color: transparent;
+          border: 2px solid $darkThemeThirdColor;
+          border-radius: 50%;
+          transition: all 0.2s;
+
+          &:after {
+            content: '';
+            position: absolute;
+            display: none;
+            left: 3px;
+            top: 3px;
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: white;
+          }
+        }
+
+        input:checked ~ .radio-circle {
+          border-color: $secondaryColor;
+
+          &:after {
+            display: block;
+          }
+        }
+
+        .radio-text {
+          color: white;
+          font-size: 14px;
+          user-select: none;
+        }
+      }
+
+      // Option group with note (wraps option-group and note)
+      .option-group-with-note {
+        display: flex;
+        flex-direction: row;
+        align-items: center;
+        gap: 12px;
+        margin-bottom: 0;
+        position: relative;
+
+        .location-security-note {
+          position: absolute;
+          top: 50%;
+          transform: translateY(-50%);
+          right: -12px;
+          left: auto;
+          font-size: 11px !important;
+          color: #4c4c4c !important;
+          font-style: italic;
+          padding-left: 12px;
+          opacity: 0;
+          transition: opacity 0.3s ease;
+          pointer-events: none;
+          white-space: nowrap;
+        }
+
+        &:hover .location-security-note {
+          opacity: 1;
+        }
+      }
+
+      // Option group vertical (label above control)
+      .option-group-vertical {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        margin-bottom: 16px;
+
+        .option-label {
+          color: white;
+          font-size: 13px;
+          font-weight: 600;
+          text-transform: uppercase;
+          letter-spacing: 0.3px;
+        }
+      }
+
+      // Option group (label and control on same line)
+      .option-group {
+        display: flex;
+        flex-direction: row;
+        align-items: center;
+        gap: 12px;
+        margin-bottom: 16px;
+
+        .option-group-with-note & {
+          margin-bottom: 0;
+        }
+
+        &:last-child {
+          margin-bottom: 0;
+        }
+
+        .option-label {
+          color: white;
+          font-size: 14px;
+          font-weight: 500;
+          white-space: nowrap;
+          min-width: 80px;
+          text-transform: none;
+        }
+
+        .option-select {
+          width: 100%;
+          padding: 8px 12px;
+          background: $darkThemeSecondColor;
+          color: white;
+          border: 1px solid $darkThemeThirdColor;
+          border-radius: 4px;
+          font-size: 14px;
+          cursor: pointer;
+          outline: none;
+          transition: all 0.2s;
+
+          &:focus {
+            border-color: $secondaryColor;
+          }
+
+          &:disabled {
+            opacity: 0.4;
+            cursor: not-allowed;
+            color: rgba(255, 255, 255, 0.5);
+          }
+
+          option {
+            background: $darkThemeSecondColor;
+            color: white;
+          }
+        }
+      }
+
+      // Location input group (used by both option-group and option-group-vertical)
+      .location-input-group {
+        display: flex;
+        width: 100%;
+        gap: 0;
+
+        .location-input {
+          flex: 1;
+          padding: 8px 12px;
+          background: $darkThemeSecondColor;
+          color: white;
+          border: 1px solid $darkThemeThirdColor;
+          border-top-left-radius: 4px;
+          border-bottom-left-radius: 4px;
+          border-right: none;
+          font-size: 13px;
+          font-family: 'Courier New', monospace;
+          outline: none;
+          transition: all 0.2s;
+
+          &::placeholder {
+            color: rgba(255, 255, 255, 0.4);
+            font-style: italic;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+          }
+
+          &:focus {
+            border-color: $secondaryColor;
+          }
+        }
+
+        .browse-button {
+          padding: 8px 20px;
+          background: $darkThemeSecondColor;
+          color: white;
+          border: 1px solid $darkThemeThirdColor;
+          border-top-right-radius: 4px;
+          border-bottom-right-radius: 4px;
+          font-size: 14px;
+          font-weight: 500;
+          cursor: pointer;
+          outline: none;
+          transition: all 0.2s;
+          white-space: nowrap;
+
+          &:hover {
+            background: lighten($darkThemeSecondColor, 5%);
+            border-color: $secondaryColor;
+          }
+
+          &:active {
+            transform: translateY(1px);
+          }
+        }
+      }
+
+      // Download backups button (for Firefox - horizontal layout)
+      .download-backups-button {
+        flex: 1;
+        padding: 8px 20px;
+        background: $darkThemeSecondColor;
+        color: white;
+        border: 1px solid $darkThemeThirdColor;
+        border-radius: 4px;
+        font-size: 14px;
+        font-weight: 500;
+        cursor: pointer;
+        outline: none;
+        transition: all 0.2s;
+        white-space: nowrap;
+
+        &:hover {
+          background: lighten($darkThemeSecondColor, 5%);
+          border-color: $secondaryColor;
+        }
+
+        &:active {
+          transform: translateY(1px);
+        }
+      }
+
+      // Location note (used by both option-group and option-group-vertical)
+      .location-note {
+        margin-top: 6px;
+        font-size: 11px;
+        color: rgba(255, 255, 255, 0.5);
+        font-style: italic;
+        line-height: 1.3;
+
+        &.location-success {
+          color: $primaryColor;
+          font-weight: 500;
+          font-style: normal;
+        }
+
+        &.location-info {
+          color: #1e90ff;
+          background: rgba(30, 144, 255, 0.12);
+          padding: 8px 10px;
+          border-radius: 4px;
+          font-style: normal;
+          font-size: 11px;
+          border-left: 3px solid #1e90ff;
+          line-height: 1.4;
+          margin-top: 12px;
+          margin-bottom: 0;
+        }
+      }
+
+      // Thin gray separator line
+      .separator {
+        height: 1px;
+        background: rgba(255, 255, 255, 0.1);
+        margin: 16px 0;
+      }
+
+      // Status section
+      .status-section {
+        margin-top: 4px;
+      }
+
+      // Status messages
+      .status-error {
+        color: #ff3838;
+        background: rgba(255, 56, 56, 0.12);
+        padding: 10px 12px;
+        border-radius: 4px;
+        font-size: 13px;
+        border-left: 3px solid #ff3838;
+      }
+
+      .status-success {
+        color: $primaryColor;
+        background: rgba(42, 245, 152, 0.12);
+        padding: 10px 12px;
+        border-radius: 4px;
+        font-size: 13px;
+        border-left: 3px solid $primaryColor;
+      }
+
+      .status-idle {
+        color: rgba(255, 255, 255, 0.7);
+        padding: 10px 12px;
+        font-size: 13px;
+      }
+
+      .status-saving {
+        color: #ffb21d;
+        background: rgba(255, 178, 29, 0.12);
+        padding: 10px 12px;
+        border-radius: 4px;
+        font-size: 13px;
+        border-left: 3px solid #ffb21d;
+      }
+
+      // Export Format Selection
+      .export-format-selection {
+        display: flex;
+        flex-direction: row;
+        align-items: center;
+        gap: 12px;
+
+        .selection-label {
+          color: white;
+          font-size: 14px;
+          font-weight: 500;
+          white-space: nowrap;
+          min-width: 80px;
+          text-transform: none;
+        }
+
+        .shape-icons-container {
+          display: flex;
+          flex-direction: row;
+          gap: 8px;
+          flex: 1;
+
+          .shape-icon-button {
+            width: 40px;
+            height: 40px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: $darkThemeSecondColor;
+            border: 1px solid $darkThemeThirdColor;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: all 0.2s;
+
+            img {
+              width: 24px;
+              height: 24px;
+              filter: invert(1);
+              transition: filter 0.2s;
+            }
+
+            &:hover {
+              border-color: $secondaryColor;
+
+              img {
+                filter: invert(1) brightness(1.2);
+              }
+            }
+
+            &.active {
+              background: $darkThemeFirstColor;
+              border-color: $primaryColor;
+
+              img {
+                filter: invert(1) brightness(1.3);
+              }
+            }
+
+            &.disabled {
+              cursor: not-allowed;
+              pointer-events: none;
+
+              &:hover {
+                border-color: $darkThemeThirdColor;
+
+                img {
+                  filter: invert(1);
+                }
+              }
+
+              // When both active and disabled, remove the green border and keep default styling
+              &.active {
+                border-color: $darkThemeThirdColor;
+                background: $darkThemeSecondColor;
+
+                img {
+                  filter: invert(1);
+                }
+              }
+            }
+          }
+        }
+      }
+    }
   }
 }

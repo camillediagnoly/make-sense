@@ -31,7 +31,7 @@ interface IProps {
     updateHighlightedLabelId: (highlightedLabelId: string) => any;
     updateActiveLabelId: (highlightedLabelId: string) => any;
     updateActivePopupType: (activePopupType: PopupWindowType) => any;
-    toggleLabelVisibility?: (labelNameId: string) => any;
+    toggleLabelVisibility?: (labelId: string) => any;
 }
 
 interface IState {
@@ -148,18 +148,27 @@ class LabelInputField extends React.Component<IProps, IState> {
     };
 
     private getToggleVisibilityButton = (id: string) => {
-        if (this.props.toggleLabelVisibility === undefined) {
-            return null
+        const { toggleLabelVisibility, isVisible } = this.props;
+        if (!toggleLabelVisibility) {
+            return null;
         }
-        return(
+
+        const currentVisibility = isVisible !== false;
+
+        const onClick = (event: React.MouseEvent) => {
+            event.stopPropagation();
+            toggleLabelVisibility(id);
+        };
+
+        return (
             <ImageButton
                 externalClassName={'icon'}
-                image={this.props.isVisible ? 'ico/eye.png' : 'ico/hide.png'}
-                imageAlt={'label is hidden'}
-                buttonSize={{width: 28, height: 28}}
-                onClick={() => this.props.toggleLabelVisibility(id)}
+                image={currentVisibility ? 'ico/eye.png' : 'ico/hide.png'}
+                imageAlt={'label visibility'}
+                buttonSize={{ width: 28, height: 28 }}
+                onClick={onClick}
             />
-        )
+        );
     }
 
     public render() {

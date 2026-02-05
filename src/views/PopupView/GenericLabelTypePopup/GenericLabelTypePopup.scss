@@ -46,5 +46,7 @@
   .RightContainer {
     align-self: stretch;
     flex: 1;
+    overflow-y: auto;
+    overflow-x: hidden;
   }
 }

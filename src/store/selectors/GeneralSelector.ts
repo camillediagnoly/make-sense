@@ -3,6 +3,7 @@ import { PopupWindowType } from "../../data/enums/PopupWindowType";
 import { ContextType } from "../../data/enums/ContextType";
 import { CustomCursorStyle } from "../../data/enums/CustomCursorStyle";
 import { ProjectType } from "../../data/enums/ProjectType";
+import { ImageFilterMode } from "../../data/enums/ImageFilterMode";
 
 export class GeneralSelector {
     public static getActivePopupType(): PopupWindowType {
@@ -71,5 +72,17 @@ export class GeneralSelector {
 
     public static getEnablePerClassColorationStatus(): boolean {
         return store.getState().general.enablePerClassColoration;
+    }
+
+    public static getPolygonLassoMode(): boolean {
+        return store.getState().general.polygonLassoMode;
+    }
+
+    public static getImageListFilterMode(): ImageFilterMode {
+        return store.getState().general.imageListFilterMode;
+    }
+
+    public static getImageListSearchText(): string {
+        return store.getState().general.imageListSearchText;
     }
 }

@@ -1,4 +1,4 @@
-import {LabelsActionTypes, LabelsState, ImageData} from './types';
+import {LabelsActionTypes, LabelsState, ImageData, LabelName} from './types';
 import {Action} from '../Actions';
 
 const initialState: LabelsState = {
@@ -72,6 +72,16 @@ export function labelsReducer(
                 ...state,
                 labels: action.payload.labels
             }
+        }
+        case Action.UPDATE_LABEL_VISIBILITY: {
+            return {
+                ...state,
+                labels: state.labels.map((label: LabelName) =>
+                    label.id === action.payload.labelId
+                        ? { ...label, isVisible: action.payload.isVisible }
+                        : label
+                ),
+            };
         }
         case Action.UPDATE_FIRST_LABEL_CREATED_FLAG: {
             return {

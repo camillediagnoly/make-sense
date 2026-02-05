@@ -10,7 +10,7 @@ export interface ImageButtonProps extends React.HTMLProps<HTMLDivElement> {
     image:string,
     imageAlt:string,
     href?:string
-    onClick?:() => any;
+    onClick?: (event: React.MouseEvent<HTMLDivElement, MouseEvent>) => any;
     style?:React.CSSProperties
     isActive?:boolean;
     isDisabled?:boolean;
@@ -21,9 +21,12 @@ export const ImageButton = React.forwardRef((props: ImageButtonProps, ref: Legac
     const {buttonSize, padding, image, imageAlt, href, onClick, style, isActive, isDisabled, externalClassName} = props;
     const imagePadding:number = !!padding ? padding : 10;
 
-    const onClickHandler = (event: React.MouseEvent<HTMLDivElement, MouseEvent>) => {
+    const onClickHandler = (event: React.MouseEvent<HTMLDivElement, MouseEvent>) => {
         event.stopPropagation();
-        !!onClick && onClick();
+        if (isDisabled) {
+            return;
+        }
+        !!onClick && onClick(event);
     };
 
     const buttonStyle:React.CSSProperties = {

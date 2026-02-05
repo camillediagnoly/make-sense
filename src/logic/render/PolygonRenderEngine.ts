@@ -94,7 +94,12 @@ const ratioAtrVMGKeypointNames_F = [
     "p-f.k:Vp-1",
     "p-f.k:Vp-2",
 ];
-
+const ratio4VKeypointNames_G = [
+    "p-g.k:4V-1",
+    "p-g.k:4V-2",
+    "p-g.k:4V-3",
+    "p-g.k:4V-4",
+];
 const allKeypointNames = [
     ...asymKeypointNames_B,
     ...angleKeypointNames_B,
@@ -109,7 +114,11 @@ const allKeypointNames = [
     ...angleSFKeypointNames_F,
     ...ratioSFKeypointNames_F,
     ...ratioAtrVMGKeypointNames_F,
+    ...ratio4VKeypointNames_G,
 ];
+
+const LASSO_MIN_SAMPLE_DISTANCE = 5;
+const LASSO_PERIMETER_RATIO = 0.07; // 10%
 
 export class PolygonRenderEngine extends BaseRenderEngine {
     // =================================================================================================================
@@ -135,6 +144,8 @@ export class PolygonRenderEngine extends BaseRenderEngine {
     // State to track dragging
     private draggingPolygon: LabelPolygon = null;
     private dragOffset: IPoint = null;
+    private isLassoDrawing: boolean = false;
+    private lastLassoPoint: IPoint = null;
 
     public constructor(canvas: HTMLCanvasElement) {
         super(canvas);
@@ -237,10 +248,29 @@ export class PolygonRenderEngine extends BaseRenderEngine {
     }
 
     public mouseDownHandler(data: EditorData): void {
+        const mouseEvent: MouseEvent = data.event as MouseEvent;
+        const isRightClick: boolean = mouseEvent && mouseEvent.button === 2;
+        const isLeftClick: boolean = !mouseEvent || mouseEvent.button === 0;
         const isMouseOverCanvas: boolean =
             RenderEngineUtil.isMouseOverCanvas(data);
         if (isMouseOverCanvas) {
+            if (isRightClick) {
+                if (this.isCreationInProgress()) {
+                    this.toggleLassoDrawingMode();
+                }
+                return;
+            }
+
+            if (!isLeftClick) {
+                return;
+            }
+
             if (this.isCreationInProgress()) {
+                if (this.isLassoDrawing) {
+                    this.addPointFromLasso(data, true);
+                    this.addLabelAndFinishCreation(data);
+                    return;
+                }
                 const isMouseOverStartAnchor: boolean = this.isMouseOverAnchor(
                     data.mousePositionOnViewPortContent,
                     this.activePath[0]
@@ -324,6 +354,9 @@ export class PolygonRenderEngine extends BaseRenderEngine {
             !!data.viewPortContentImageRect &&
             !!data.mousePositionOnViewPortContent
         ) {
+            if (this.isCreationInProgress() && this.isLassoDrawing) {
+                this.addPointFromLasso(data);
+            }
             const isOverImage: boolean =
                 RenderEngineUtil.isMouseOverImage(data);
             if (isOverImage && !this.isCreationInProgress()) {
@@ -378,6 +411,12 @@ export class PolygonRenderEngine extends BaseRenderEngine {
     private removeLastPoint(): void {
         if (this.isCreationInProgress() && this.activePath.length > 0) {
             this.activePath.pop();
+            if (this.isLassoDrawing) {
+                this.lastLassoPoint =
+                    this.activePath.length > 0
+                        ? this.activePath[this.activePath.length - 1]
+                        : null;
+            }
         }
     }
 
@@ -470,35 +509,23 @@ export class PolygonRenderEngine extends BaseRenderEngine {
         const path = standardizedPoints.concat(
             data.mousePositionOnViewPortContent
         );
-        const lines: ILine[] = PolygonUtil.getEdges(path, false);
         const lineColor: string = BaseRenderEngine.resolveLabelLineColor(
             null,
             true
         );
-        const anchorColor: string =
-            BaseRenderEngine.resolveLabelAnchorColor(true);
         DrawUtil.drawPolygonWithFill(
             this.canvas,
             path,
             DrawUtil.hexToRGB(lineColor, 0.2)
         );
-        lines.forEach((line: ILine) => {
-            DrawUtil.drawLine(
-                this.canvas,
-                line.start,
-                line.end,
-                lineColor,
-                RenderEngineSettings.LINE_THICKNESS
-            );
-        });
-        standardizedPoints.forEach((point: IPoint) => {
-            DrawUtil.drawCircleWithFill(
-                this.canvas,
-                point,
-                Settings.RESIZE_HANDLE_DIMENSION_PX / 2,
-                anchorColor
-            );
-        });
+        DrawUtil.drawDashedPolygon(
+            this.canvas,
+            path,
+            lineColor,
+            RenderEngineSettings.LINE_THICKNESS,
+            [8, 4],
+            false
+        );
         if (this.isDrawingEllipse)
             this.surfaceAnnotator.processAnnotation(
                 this.canvas,
@@ -536,7 +563,7 @@ export class PolygonRenderEngine extends BaseRenderEngine {
         const imageData: ImageData = LabelsSelector.getActiveImageData();
 
         imageData.labelPolygons.forEach((labelPolygon: LabelPolygon) => {
-            if (labelPolygon.isVisible) {
+            if (labelPolygon.isVisible !== false) {
                 const isActive: boolean =
                     labelPolygon.id === activeLabelId ||
                     labelPolygon.id === highlightedLabelId;
@@ -572,6 +599,7 @@ export class PolygonRenderEngine extends BaseRenderEngine {
             ...asymCSPKeypointNames_F,
             ...asymCIKeypointNames_F,
             ...ratioAtrVMGKeypointNames_F,
+            ...ratio4VKeypointNames_G,
         ];
         for (let i = 0; i < keypointNamesPairedToDrawLine.length; i++) {
             const selectedCenter = allKeypointCenters.find(
@@ -829,25 +857,204 @@ export class PolygonRenderEngine extends BaseRenderEngine {
                 EditorActions.setViewPortActionsDisabledStatus(true);
                 this.activePath.push(data.mousePositionOnViewPortContent);
                 store.dispatch(updateActiveLabelId(null));
+                this.applyPreferredCreationMode();
             }
         }
+    }
+
+    private toggleLassoDrawingMode(): void {
+        if (this.isLassoDrawing) {
+            this.stopLassoDrawingMode();
+        } else {
+            this.startLassoDrawingMode();
+        }
+    }
+
+    private startLassoDrawingMode(): void {
+        if (!this.isCreationInProgress() || this.activePath.length === 0) return;
+        this.isLassoDrawing = true;
+        const lastPoint = this.activePath[this.activePath.length - 1];
+        this.lastLassoPoint = lastPoint
+            ? { x: lastPoint.x, y: lastPoint.y }
+            : null;
+    }
+
+    private stopLassoDrawingMode(): void {
+        this.isLassoDrawing = false;
+        this.lastLassoPoint = null;
+    }
+
+    private applyPreferredCreationMode(): void {
+        if (!this.isCreationInProgress()) return;
+        const preferLasso = GeneralSelector.getPolygonLassoMode();
+        if (preferLasso) {
+            this.startLassoDrawingMode();
+        } else {
+            this.stopLassoDrawingMode();
+        }
+    }
+
+    private addPointFromLasso(data: EditorData, force: boolean = false): void {
+        if (!this.isLassoDrawing || !this.isCreationInProgress()) return;
+        const { viewPortContentImageRect, mousePositionOnViewPortContent } = data;
+        if (!viewPortContentImageRect || !mousePositionOnViewPortContent) return;
+
+        const snappedPoint = RectUtil.snapPointToRect(
+            mousePositionOnViewPortContent,
+            viewPortContentImageRect
+        );
+        if (!snappedPoint) return;
+
+        const normalizedPoint: IPoint = {
+            x: snappedPoint.x,
+            y: snappedPoint.y,
+        };
+
+        if (!this.lastLassoPoint) {
+            this.lastLassoPoint = normalizedPoint;
+            if (this.activePath.length === 0) {
+                this.activePath.push(normalizedPoint);
+            }
+            return;
+        }
+
+        const dx = normalizedPoint.x - this.lastLassoPoint.x;
+        const dy = normalizedPoint.y - this.lastLassoPoint.y;
+        const distance = Math.hypot(dx, dy);
+
+        if (!force && distance < LASSO_MIN_SAMPLE_DISTANCE) {
+            return;
+        }
+
+        if (force && distance === 0) {
+            return;
+        }
+
+        this.activePath.push(normalizedPoint);
+        this.lastLassoPoint = normalizedPoint;
+    }
+
+    private prepareActivePathForSaving(): IPoint[] {
+        if (!this.activePath || this.activePath.length === 0) {
+            return [];
+        }
+        if (this.isLassoDrawing) {
+            const spacing = this.calculateLassoSpacing(this.activePath);
+            const resampled = this.resamplePath(
+                this.activePath,
+                spacing
+            );
+            if (resampled.length >= 3) {
+                return resampled;
+            }
+        }
+        return this.activePath.map((point: IPoint) => ({ ...point }));
+    }
+
+    private calculateLassoSpacing(points: IPoint[]): number {
+        const pathLength = this.calculatePathLength(points);
+        if (pathLength <= 0) {
+            return 1;
+        }
+
+        return pathLength * LASSO_PERIMETER_RATIO;
+    }
+
+    private calculatePathLength(points: IPoint[]): number {
+        if (!points || points.length < 2) return 0;
+        let total = 0;
+        for (let i = 1; i < points.length; i++) {
+            const prev = points[i - 1];
+            const curr = points[i];
+            total += Math.hypot(curr.x - prev.x, curr.y - prev.y);
+        }
+        // include closing segment
+        const first = points[0];
+        const last = points[points.length - 1];
+        total += Math.hypot(first.x - last.x, first.y - last.y);
+        return total;
+    }
+
+    private resamplePath(points: IPoint[], spacing: number): IPoint[] {
+        if (!points || points.length < 2) {
+            return points ? points.slice() : [];
+        }
+
+        const normalizedPoints = points.map((point) => ({ ...point }));
+        const isClosed = this.arePointsEqual(
+            normalizedPoints[0],
+            normalizedPoints[normalizedPoints.length - 1]
+        );
+        if (!isClosed) {
+            normalizedPoints.push({ ...normalizedPoints[0] });
+        }
+
+        const resampled: IPoint[] = [{ ...normalizedPoints[0] }];
+        let previousPoint = normalizedPoints[0];
+        let accumulated = 0;
+
+        for (let i = 1; i < normalizedPoints.length; i++) {
+            const currentPoint = normalizedPoints[i];
+            let dx = currentPoint.x - previousPoint.x;
+            let dy = currentPoint.y - previousPoint.y;
+            let segmentLength = Math.hypot(dx, dy);
+
+            if (segmentLength === 0) continue;
+
+            while (accumulated + segmentLength >= spacing) {
+                const ratio = (spacing - accumulated) / segmentLength;
+                const newPoint: IPoint = {
+                    x: previousPoint.x + dx * ratio,
+                    y: previousPoint.y + dy * ratio,
+                };
+                resampled.push(newPoint);
+                previousPoint = newPoint;
+                dx = currentPoint.x - previousPoint.x;
+                dy = currentPoint.y - previousPoint.y;
+                segmentLength = Math.hypot(dx, dy);
+                accumulated = 0;
+            }
+
+            accumulated += segmentLength;
+            previousPoint = currentPoint;
+        }
+
+        if (
+            resampled.length > 2 &&
+            this.arePointsEqual(resampled[resampled.length - 1], resampled[0])
+        ) {
+            resampled.pop();
+        }
+
+        return resampled.length >= 3 ? resampled : points.slice();
+    }
+
+    private arePointsEqual(pointA: IPoint, pointB: IPoint): boolean {
+        if (!pointA || !pointB) return false;
+        return (
+            Math.abs(pointA.x - pointB.x) < 0.001 &&
+            Math.abs(pointA.y - pointB.y) < 0.001
+        );
     }
 
     public cancelLabelCreation() {
         this.activePath = [];
         EditorActions.setViewPortActionsDisabledStatus(false);
+        this.stopLassoDrawingMode();
     }
 
     private finishLabelCreation() {
         this.activePath = [];
         EditorActions.setViewPortActionsDisabledStatus(false);
+        this.stopLassoDrawingMode();
     }
 
     public addLabelAndFinishCreation(data: EditorData) {
-        if (this.isCreationInProgress() && this.activePath.length > 2) {
+        const pathForSaving: IPoint[] = this.prepareActivePathForSaving();
+        if (this.isCreationInProgress() && pathForSaving.length > 2) {
             const polygonOnImage: IPoint[] =
                 RenderEngineUtil.transferPolygonFromViewPortContentToImage(
-                    this.activePath,
+                    pathForSaving,
                     data
                 );
             this.addPolygonLabel(polygonOnImage);
@@ -1594,6 +1801,10 @@ export class KeypointUtils {
             allKeypointCenters,
             ratioAtrVMGKeypointNames_F
         );
+        const ratio4V_G = this.computeDistanceRatio(
+            allKeypointCenters,
+            ratio4VKeypointNames_G
+        );
 
         return [
             asymRatio_B,
@@ -1609,6 +1820,7 @@ export class KeypointUtils {
             angleSF_F,
             ratioSF_F,
             ratioAtrVMG_F,
+            ratio4V_G,
         ];
     }
 

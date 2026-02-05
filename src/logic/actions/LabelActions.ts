@@ -2,7 +2,7 @@ import { LabelsSelector } from '../../store/selectors/LabelsSelector';
 import { ImageData, LabelLine, LabelName, LabelPoint, LabelPolygon, LabelRect } from '../../store/labels/types';
 import { filter } from 'lodash';
 import { store } from '../../index';
-import { updateImageData, updateImageDataById } from '../../store/labels/actionCreators';
+import { updateImageData, updateImageDataById, updateLabelVisibility } from '../../store/labels/actionCreators';
 import { LabelType } from '../../data/enums/LabelType';
 import { LabelUtil } from '../../utils/LabelUtil';
 
@@ -131,6 +131,72 @@ export class LabelActions {
             return LabelActions.removeLabelNamesFromImageData(imageData, labelNamesIds);
         });
         store.dispatch(updateImageData(newImagesData))
+    }
+
+    public static setLabelVisibilityForLabelName(labelNameId: string, isVisible: boolean) {
+        const imagesData: ImageData[] = LabelsSelector.getImagesData();
+        const newImagesData: ImageData[] = imagesData.map((imageData: ImageData) => ({
+            ...imageData,
+            labelRects: imageData.labelRects.map((labelRect: LabelRect) =>
+                labelRect.labelId === labelNameId ? { ...labelRect, isVisible } : labelRect
+            ),
+            labelPoints: imageData.labelPoints.map((labelPoint: LabelPoint) =>
+                labelPoint.labelId === labelNameId ? { ...labelPoint, isVisible } : labelPoint
+            ),
+            labelPolygons: imageData.labelPolygons.map((labelPolygon: LabelPolygon) =>
+                labelPolygon.labelId === labelNameId ? { ...labelPolygon, isVisible } : labelPolygon
+            ),
+            labelLines: imageData.labelLines.map((labelLine: LabelLine) =>
+                labelLine.labelId === labelNameId ? { ...labelLine, isVisible } : labelLine
+            )
+        }));
+        store.dispatch(updateImageData(newImagesData));
+        store.dispatch(updateLabelVisibility(labelNameId, isVisible));
+    }
+
+    public static setLabelVisibilityForLabelNames(labelNameIds: string[], isVisible: boolean) {
+        if (!labelNameIds.length) {
+            return;
+        }
+
+        const labelNameIdSet = new Set(labelNameIds);
+        const imagesData: ImageData[] = LabelsSelector.getImagesData();
+        const newImagesData: ImageData[] = imagesData.map((imageData: ImageData) => ({
+            ...imageData,
+            labelRects: imageData.labelRects.map((labelRect: LabelRect) =>
+                labelRect.labelId && labelNameIdSet.has(labelRect.labelId)
+                    ? { ...labelRect, isVisible }
+                    : labelRect
+            ),
+            labelPoints: imageData.labelPoints.map((labelPoint: LabelPoint) =>
+                labelPoint.labelId && labelNameIdSet.has(labelPoint.labelId)
+                    ? { ...labelPoint, isVisible }
+                    : labelPoint
+            ),
+            labelPolygons: imageData.labelPolygons.map((labelPolygon: LabelPolygon) =>
+                labelPolygon.labelId && labelNameIdSet.has(labelPolygon.labelId)
+                    ? { ...labelPolygon, isVisible }
+                    : labelPolygon
+            ),
+            labelLines: imageData.labelLines.map((labelLine: LabelLine) =>
+                labelLine.labelId && labelNameIdSet.has(labelLine.labelId)
+                    ? { ...labelLine, isVisible }
+                    : labelLine
+            )
+        }));
+        store.dispatch(updateImageData(newImagesData));
+
+        labelNameIds.forEach((labelNameId) => {
+            store.dispatch(updateLabelVisibility(labelNameId, isVisible));
+        });
+    }
+
+    public static toggleLabelNameVisibility(labelNameId: string) {
+        const labelNames = LabelsSelector.getLabelNames();
+        const labelName = labelNames.find((label) => label.id === labelNameId);
+        if (!labelName) return;
+        const nextVisibility = !(labelName.isVisible !== false);
+        LabelActions.setLabelVisibilityForLabelName(labelNameId, nextVisibility);
     }
 
     private static removeLabelNamesFromImageData(imageData: ImageData, labelNamesIds: string[]): ImageData {

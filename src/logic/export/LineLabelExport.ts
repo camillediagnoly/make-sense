@@ -16,6 +16,18 @@ export class LineLabelsExporter {
         }
     }
 
+    /**
+     * Get export content without triggering download (for automatic backup)
+     */
+    public static getExportContent(): string {
+        return LabelsSelector.getImagesData()
+            .map((imageData: ImageData) => {
+                return LineLabelsExporter.wrapLineLabelsIntoCSV(imageData)})
+            .filter((imageLabelData: string) => {
+                return !!imageLabelData})
+            .join("\n");
+    }
+
     private static exportAsCSV(): void {
         const content: string = LabelsSelector.getImagesData()
             .map((imageData: ImageData) => {

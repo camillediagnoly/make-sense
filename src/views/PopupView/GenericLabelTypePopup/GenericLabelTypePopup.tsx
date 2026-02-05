@@ -17,9 +17,13 @@ interface IProps {
     onAccept: (labelType: LabelType) => any;
     skipAcceptButton?: boolean;
     disableAcceptButton?: boolean;
+    disabledTooltip?: string;
     rejectLabel: string;
     onReject: (labelType: LabelType) => any;
     renderInternalContent: (labelType: LabelType) => any;
+    showSettingsIcon?: boolean;
+    onSettingsIconClick?: () => void;
+    settingsIconActive?: boolean;
 }
 
 const GenericLabelTypePopup: React.FC<IProps> = (
@@ -32,15 +36,19 @@ const GenericLabelTypePopup: React.FC<IProps> = (
         onAccept,
         skipAcceptButton,
         disableAcceptButton,
+        disabledTooltip,
         rejectLabel,
         onReject,
-        renderInternalContent
+        renderInternalContent,
+        showSettingsIcon,
+        onSettingsIconClick,
+        settingsIconActive,
     }) => {
 
     const [labelType, setLabelType] = useState(activeLabelType);
 
     const getSidebarButtons = () => {
-        return LabelToolkitData
+        const buttons = LabelToolkitData
             .filter((label: ILabelToolkit) => label.projectType === projectType)
             .map((label: ILabelToolkit) => {
                 return <ImageButton
@@ -53,9 +61,26 @@ const GenericLabelTypePopup: React.FC<IProps> = (
                         setLabelType(label.labelType);
                         onLabelTypeChange(label.labelType);
                     }}
-                    isActive={labelType === label.labelType}
+                    isActive={labelType === label.labelType && !settingsIconActive}
                 />
-            })
+            });
+
+        // Add settings icon after polygon (if showSettingsIcon is true)
+        if (showSettingsIcon && onSettingsIconClick) {
+            buttons.push(
+                <ImageButton
+                    key="settings"
+                    image="ico/gears.png"
+                    imageAlt="backup settings"
+                    buttonSize={{width: 40, height: 40}}
+                    padding={20}
+                    onClick={onSettingsIconClick}
+                    isActive={settingsIconActive}
+                />
+            );
+        }
+
+        return buttons;
     }
 
     const renderContent = () => {
@@ -77,6 +102,7 @@ const GenericLabelTypePopup: React.FC<IProps> = (
             onAccept={() => onAccept(labelType)}
             skipAcceptButton={skipAcceptButton}
             disableAcceptButton={disableAcceptButton}
+            disabledTooltip={disabledTooltip}
             rejectLabel={rejectLabel}
             onReject={() => onReject(labelType)}
         />

@@ -114,7 +114,7 @@ export class PointRenderEngine extends BaseRenderEngine {
         const imageData: ImageData = LabelsSelector.getActiveImageData();
         if (imageData) {
             imageData.labelPoints.forEach((labelPoint: LabelPoint) => {
-                if (labelPoint.isVisible) {
+                if (labelPoint.isVisible !== false) {
                     if (labelPoint.id === activeLabelId) {
                         if (this.isInProgress()) {
                             const pointSnapped: IPoint = RectUtil.snapPointToRect(data.mousePositionOnViewPortContent, data.viewPortContentImageRect);
