@@ -94,18 +94,50 @@ class Editor extends React.Component<IProps, IState> {
     // =================================================================================================================
 
     private mountEventListeners() {
-        window.addEventListener(EventType.MOUSE_MOVE, this.update);
-        window.addEventListener(EventType.MOUSE_UP, this.update);
-        EditorModel.canvas.addEventListener(EventType.MOUSE_DOWN, this.update);
+        if (this.hasPointerEvents()) {
+            window.addEventListener(EventType.POINTER_MOVE, this.update);
+            window.addEventListener(EventType.POINTER_UP, this.handlePointerUpOrCancel);
+            window.addEventListener(EventType.POINTER_CANCEL, this.handlePointerUpOrCancel);
+            EditorModel.canvas.addEventListener(EventType.POINTER_DOWN, this.handlePointerDown);
+        } else {
+            window.addEventListener(EventType.MOUSE_MOVE, this.update);
+            window.addEventListener(EventType.MOUSE_UP, this.update);
+            EditorModel.canvas.addEventListener(EventType.MOUSE_DOWN, this.update);
+        }
+
         EditorModel.canvas.addEventListener(EventType.MOUSE_WHEEL, this.handleZoom);
     }
 
     private unmountEventListeners() {
-        window.removeEventListener(EventType.MOUSE_MOVE, this.update);
-        window.removeEventListener(EventType.MOUSE_UP, this.update);
-        EditorModel.canvas.removeEventListener(EventType.MOUSE_DOWN, this.update);
+        if (this.hasPointerEvents()) {
+            window.removeEventListener(EventType.POINTER_MOVE, this.update);
+            window.removeEventListener(EventType.POINTER_UP, this.handlePointerUpOrCancel);
+            window.removeEventListener(EventType.POINTER_CANCEL, this.handlePointerUpOrCancel);
+            EditorModel.canvas.removeEventListener(EventType.POINTER_DOWN, this.handlePointerDown);
+        } else {
+            window.removeEventListener(EventType.MOUSE_MOVE, this.update);
+            window.removeEventListener(EventType.MOUSE_UP, this.update);
+            EditorModel.canvas.removeEventListener(EventType.MOUSE_DOWN, this.update);
+        }
+
         EditorModel.canvas.removeEventListener(EventType.MOUSE_WHEEL, this.handleZoom);
     }
+
+    private hasPointerEvents = (): boolean => typeof window !== "undefined" && "PointerEvent" in window;
+
+    private handlePointerDown = (event: PointerEvent) => {
+        if (EditorModel.canvas && !EditorModel.canvas.hasPointerCapture(event.pointerId)) {
+            EditorModel.canvas.setPointerCapture(event.pointerId);
+        }
+        this.update(event);
+    };
+
+    private handlePointerUpOrCancel = (event: PointerEvent) => {
+        if (EditorModel.canvas && EditorModel.canvas.hasPointerCapture(event.pointerId)) {
+            EditorModel.canvas.releasePointerCapture(event.pointerId);
+        }
+        this.update(event);
+    };
 
     // =================================================================================================================
     // LOAD IMAGE
@@ -151,7 +183,17 @@ class Editor extends React.Component<IProps, IState> {
         EditorActions.fullRender();
     };
 
-    private update = (event: MouseEvent) => {
+    private update = (event: Event) => {
+        const pointerEvent: PointerEvent = event as PointerEvent;
+        const cancelableEvent = event as Event & { cancelable: boolean };
+        if (
+            pointerEvent.pointerType &&
+            pointerEvent.pointerType !== "mouse" &&
+            cancelableEvent.cancelable
+        ) {
+            event.preventDefault();
+        }
+
         const editorData: EditorData = EditorActions.getEditorData(event);
         EditorModel.mousePositionOnViewPortContent = CanvasUtil.getMousePositionOnCanvasFromEvent(event, EditorModel.canvas);
         EditorModel.primaryRenderingEngine.update(editorData);
