@@ -118,7 +118,7 @@ const allKeypointNames = [
 ];
 
 const LASSO_MIN_SAMPLE_DISTANCE = 5;
-const LASSO_PERIMETER_RATIO = 0.07; // 10%
+const LASSO_PERIMETER_RATIO = 0.05; // 10%
 
 export class PolygonRenderEngine extends BaseRenderEngine {
     // =================================================================================================================
@@ -146,6 +146,7 @@ export class PolygonRenderEngine extends BaseRenderEngine {
     private dragOffset: IPoint = null;
     private isLassoDrawing: boolean = false;
     private lastLassoPoint: IPoint = null;
+    private lassoHadContactSinceStart: boolean = false;
 
     public constructor(canvas: HTMLCanvasElement) {
         super(canvas);
@@ -346,6 +347,9 @@ export class PolygonRenderEngine extends BaseRenderEngine {
             this.endExistingLabelResize(data);
         } else if (this.draggingPolygon) {
             this.handleMouseUpForDragging();
+        } else if (this.shouldFinishLassoCreationOnPointerUp(data)) {
+            this.addPointFromLasso(data, true);
+            this.addLabelAndFinishCreation(data);
         }
     }
 
@@ -355,7 +359,13 @@ export class PolygonRenderEngine extends BaseRenderEngine {
             !!data.mousePositionOnViewPortContent
         ) {
             if (this.isCreationInProgress() && this.isLassoDrawing) {
+                this.updateLassoContactState(data.event);
                 this.addPointFromLasso(data);
+                if (this.shouldFinishLassoCreationFromMoveRelease(data)) {
+                    this.addPointFromLasso(data, true);
+                    this.addLabelAndFinishCreation(data);
+                    return;
+                }
             }
             const isOverImage: boolean =
                 RenderEngineUtil.isMouseOverImage(data);
@@ -873,6 +883,7 @@ export class PolygonRenderEngine extends BaseRenderEngine {
     private startLassoDrawingMode(): void {
         if (!this.isCreationInProgress() || this.activePath.length === 0) return;
         this.isLassoDrawing = true;
+        this.lassoHadContactSinceStart = false;
         const lastPoint = this.activePath[this.activePath.length - 1];
         this.lastLassoPoint = lastPoint
             ? { x: lastPoint.x, y: lastPoint.y }
@@ -881,7 +892,94 @@ export class PolygonRenderEngine extends BaseRenderEngine {
 
     private stopLassoDrawingMode(): void {
         this.isLassoDrawing = false;
+        this.lassoHadContactSinceStart = false;
         this.lastLassoPoint = null;
+    }
+
+    private updateLassoContactState(event?: Event): void {
+        if (!event || !this.isLassoDrawing || !this.isCreationInProgress()) {
+            return;
+        }
+
+        if (this.isInputInContact(event)) {
+            this.lassoHadContactSinceStart = true;
+        }
+    }
+
+    private shouldFinishLassoCreationFromMoveRelease(data: EditorData): boolean {
+        if (!this.lassoHadContactSinceStart || !this.isLassoDrawing || !this.isCreationInProgress()) {
+            return false;
+        }
+
+        const eventType = data.event?.type;
+        if (eventType !== EventType.POINTER_MOVE && eventType !== EventType.MOUSE_MOVE && eventType !== EventType.TOUCH_MOVE) {
+            return false;
+        }
+
+        return !this.isInputInContact(data.event);
+    }
+
+    private shouldFinishLassoCreationOnPointerUp(data: EditorData): boolean {
+        if (!this.isLassoDrawing || !this.isCreationInProgress()) {
+            return false;
+        }
+
+        const hasPointerEvents = typeof window !== "undefined" && "PointerEvent" in window;
+        const hasTouchCapability = typeof navigator !== "undefined" && navigator.maxTouchPoints > 0;
+        const eventType = data.event?.type;
+        if (eventType === EventType.TOUCH_END) {
+            return this.activePath.length > 0;
+        }
+
+        if (eventType === EventType.POINTER_UP || eventType === EventType.POINTER_CANCEL) {
+            const pointerEvent = data.event as PointerEvent;
+            if (pointerEvent.pointerType !== "mouse") {
+                return this.activePath.length > 0;
+            }
+
+            // Some tablet browsers report stylus as "mouse"; allow close on touch-capable devices.
+            return hasTouchCapability && this.activePath.length > 0;
+        }
+
+        if (eventType === EventType.MOUSE_UP) {
+            const mouseEvent = data.event as MouseEvent & {
+                sourceCapabilities?: { firesTouchEvents?: boolean };
+            };
+            const fromTouchCompatMouse = !!mouseEvent.sourceCapabilities?.firesTouchEvents;
+
+            // Fallback for tablets/browsers that emit compatibility mouse events for pen/touch.
+            if ((!hasPointerEvents || hasTouchCapability || fromTouchCompatMouse) && this.lassoHadContactSinceStart) {
+                return this.activePath.length > 0;
+            }
+        }
+
+        return false;
+    }
+
+    private isInputInContact(event: Event): boolean {
+        if (!event) {
+            return false;
+        }
+
+        const pointerEvent = event as PointerEvent;
+        if (typeof pointerEvent.pointerType === "string") {
+            if (pointerEvent.pointerType === "touch") {
+                return true;
+            }
+            return (pointerEvent.buttons || 0) > 0 || (pointerEvent.pressure || 0) > 0;
+        }
+
+        const touchEvent = event as TouchEvent;
+        if (touchEvent.touches) {
+            return touchEvent.touches.length > 0;
+        }
+
+        const mouseEvent = event as MouseEvent;
+        if (typeof mouseEvent.buttons === "number") {
+            return mouseEvent.buttons > 0;
+        }
+
+        return false;
     }
 
     private applyPreferredCreationMode(): void {
