@@ -297,6 +297,62 @@ export class PolygonRenderEngine extends BaseRenderEngine {
         }
     }
 
+    private drawSurfaceEllipsesForSequence(
+        keypointNameSequence: string[],
+        keypointCenterMap: Map<
+            string,
+            Map<string, { id: string; labelName: string; centroid: IPoint }>
+        >,
+        data: EditorData
+    ): void {
+        for (let i = 0; i < keypointNameSequence.length - 2; i += 3) {
+            const firstBaseName = keypointNameSequence[i];
+            const secondBaseName = keypointNameSequence[i + 1];
+            const thirdBaseName = keypointNameSequence[i + 2];
+            const firstBySuffix = keypointCenterMap.get(firstBaseName);
+            const secondBySuffix = keypointCenterMap.get(secondBaseName);
+            const thirdBySuffix = keypointCenterMap.get(thirdBaseName);
+            if (!firstBySuffix || !secondBySuffix || !thirdBySuffix) {
+                continue;
+            }
+
+            firstBySuffix.forEach((firstPointData, suffix) => {
+                const secondPointData = secondBySuffix.get(suffix);
+                const thirdPointData = thirdBySuffix.get(suffix);
+                if (!secondPointData || !thirdPointData) {
+                    return;
+                }
+
+                const pointsOnCanvas =
+                    RenderEngineUtil.transferPolygonFromImageToViewPortContent(
+                        [
+                            firstPointData.centroid,
+                            secondPointData.centroid,
+                            thirdPointData.centroid,
+                        ],
+                        data
+                    );
+                const startPoint = RenderEngineUtil.setPointBetweenPixels(
+                    pointsOnCanvas[0]
+                );
+                const endPoint = RenderEngineUtil.setPointBetweenPixels(
+                    pointsOnCanvas[1]
+                );
+                const constrainPoint = RenderEngineUtil.setPointBetweenPixels(
+                    pointsOnCanvas[2]
+                );
+                const ellipseColor = this.resolveLineColorBySuffix(suffix);
+                this.surfaceAnnotator.drawEllipse(
+                    this.canvas,
+                    startPoint,
+                    endPoint,
+                    constrainPoint,
+                    ellipseColor
+                );
+            });
+        }
+    }
+
     // =================================================================================================================
     // EVENT HANDLERS
     // =================================================================================================================
@@ -731,12 +787,9 @@ export class PolygonRenderEngine extends BaseRenderEngine {
             }
         });
 
-        // Create a map of keypoints' centers for Angle and Asym annotations
-        const allKeypointCenters =
-            this.keypointUtils.getKeypointsFromPolygons();
+        // Create a map of keypoints' centers for rendering.
         const renderableKeypointCenterMap =
             this.buildRenderableKeypointCenterMap();
-        let keypoints = [];
         const keypointNamesPairedToDrawLine = [
             ...angleKeypointNames_B.slice(0, -1),
             ...positionKeypointNames_B.slice(0, 2),
@@ -754,7 +807,6 @@ export class PolygonRenderEngine extends BaseRenderEngine {
             data
         );
 
-        keypoints = [];
         const keypointNamesUnPairedToDrawLine = [
             ...asymKeypointNames_B,
             ...veinsKeypointNames_B,
@@ -769,60 +821,16 @@ export class PolygonRenderEngine extends BaseRenderEngine {
             data
         );
 
-        // Create a map of keypoints' centers for Surface annotations
-        keypoints = [];
+        // Create a map of keypoints' centers for Surface annotations.
         const keypointNamesSurfaceAndPositionB = [
             ...surfaceKeypointNames_B,
             ...positionKeypointNames_B.slice(2),
         ];
-        for (let i = 0; i < keypointNamesSurfaceAndPositionB.length; i++) {
-            const selectedCenter = allKeypointCenters.find(
-                (polygon) =>
-                    polygon.labelName === keypointNamesSurfaceAndPositionB[i]
-            );
-            keypoints.push(selectedCenter);
-        }
-        for (
-            let i = 0;
-            i < keypointNamesSurfaceAndPositionB.length - 2;
-            i += 3
-        ) {
-            const subset = [
-                keypointNamesSurfaceAndPositionB[i],
-                keypointNamesSurfaceAndPositionB[i + 1],
-                keypointNamesSurfaceAndPositionB[i + 2],
-            ];
-            if (
-                subset.every((name) =>
-                    keypoints.some((kpt) => kpt?.labelName === name)
-                )
-            ) {
-                const matchingKpts = keypoints.filter((item) =>
-                    subset.includes(item?.labelName ?? "")
-                );
-                const centroids = matchingKpts.map((x) => x.centroid);
-                const pointsOnCanvas =
-                    RenderEngineUtil.transferPolygonFromImageToViewPortContent(
-                        centroids,
-                        data
-                    );
-                let startPoint = RenderEngineUtil.setPointBetweenPixels(
-                    pointsOnCanvas[0]
-                );
-                let endPoint = RenderEngineUtil.setPointBetweenPixels(
-                    pointsOnCanvas[1]
-                );
-                let constrainPoint = RenderEngineUtil.setPointBetweenPixels(
-                    pointsOnCanvas[2]
-                );
-                this.surfaceAnnotator.drawEllipse(
-                    this.canvas,
-                    startPoint,
-                    endPoint,
-                    constrainPoint
-                );
-            }
-        }
+        this.drawSurfaceEllipsesForSequence(
+            keypointNamesSurfaceAndPositionB,
+            renderableKeypointCenterMap,
+            data
+        );
 
         //
         // const [positionRatio_B, _ellipsePointsForRatio] = this.keypointUtils.computePositionRatio(allKeypointCenters, positionKeypointNames_B);
@@ -1744,7 +1752,8 @@ export class KeypointSurfaceAnnotation {
         canvas: HTMLCanvasElement,
         startPoint: IPoint,
         endPoint: IPoint,
-        constrainPoint: IPoint
+        constrainPoint: IPoint,
+        color: string = "#ffffff"
     ) {
         const ellipseProperties = KeypointSurfaceAnnotation.computeEllipse(
             startPoint,
@@ -1760,7 +1769,8 @@ export class KeypointSurfaceAnnotation {
             ellipseProperties.rotateAngle,
             0,
             360,
-            1
+            1,
+            color
         );
     }
 
