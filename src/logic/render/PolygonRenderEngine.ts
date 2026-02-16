@@ -134,6 +134,16 @@ export class PolygonRenderEngine extends BaseRenderEngine {
 
     private keypointUtils = new KeypointUtils();
     private surfaceAnnotator: KeypointSurfaceAnnotation;
+    private readonly suffixSetLineColors: string[] = [
+        "#00E5FF",
+        "#FFEA00",
+        "#00FF85",
+        "#FF6BFF",
+        "#FFA000",
+        "#7CFF00",
+        "#40C4FF",
+        "#FF5252",
+    ];
     public isDrawingEllipse: boolean;
     public isMovingAnnotation: boolean;
     public copyPolygons: boolean;
@@ -151,6 +161,140 @@ export class PolygonRenderEngine extends BaseRenderEngine {
         super(canvas);
         this.labelType = LabelType.POLYGON;
         this.surfaceAnnotator = new KeypointSurfaceAnnotation();
+    }
+
+    private buildRenderableKeypointCenterMap(): Map<
+        string,
+        Map<string, { id: string; labelName: string; centroid: IPoint }>
+    > {
+        const imageData: ImageData = LabelsSelector.getActiveImageData();
+        const labelNames: LabelName[] = LabelsSelector.getLabelNames();
+        const labelMap = labelNames.reduce((map, label) => {
+            map[label.id] = label.name;
+            return map;
+        }, {});
+        const centerMap = new Map<
+            string,
+            Map<string, { id: string; labelName: string; centroid: IPoint }>
+        >();
+        const sortedBaseNames = [...allKeypointNames].sort(
+            (a, b) => b.length - a.length
+        );
+
+        imageData.labelPolygons
+            .filter((annotation) => annotation.isVisible)
+            .forEach((annotation) => {
+                const labelName = annotation.labelId
+                    ? labelMap[annotation.labelId] || null
+                    : null;
+                if (!labelName) {
+                    return;
+                }
+
+                const baseLabelName =
+                    sortedBaseNames.find(
+                        (baseName) =>
+                            labelName === baseName ||
+                            labelName.startsWith(baseName)
+                    ) || null;
+                if (!baseLabelName) {
+                    return;
+                }
+
+                const suffix = labelName.slice(baseLabelName.length);
+                const perBaseMap =
+                    centerMap.get(baseLabelName) ||
+                    new Map<
+                        string,
+                        { id: string; labelName: string; centroid: IPoint }
+                    >();
+                perBaseMap.set(suffix, {
+                    id: annotation.id,
+                    labelName,
+                    centroid: this.keypointUtils.computeCentroid(annotation),
+                });
+                centerMap.set(baseLabelName, perBaseMap);
+            });
+
+        return centerMap;
+    }
+
+    private drawLineBetweenKeypointCenters(
+        startCenter: IPoint,
+        endCenter: IPoint,
+        lineColor: string,
+        data: EditorData
+    ): void {
+        const lineToDraw: ILine = {
+            start: startCenter,
+            end: endCenter,
+        };
+        const lineOnCanvas = RenderEngineUtil.transferLineFromImageToViewPortContent(
+            lineToDraw,
+            data
+        );
+        const standardizedLine: ILine = {
+            start: RenderEngineUtil.setPointBetweenPixels(lineOnCanvas.start),
+            end: RenderEngineUtil.setPointBetweenPixels(lineOnCanvas.end),
+        };
+        DrawUtil.drawLine(
+            this.canvas,
+            standardizedLine.start,
+            standardizedLine.end,
+            lineColor,
+            RenderEngineSettings.LINE_THICKNESS
+        );
+    }
+
+    private resolveLineColorBySuffix(suffix: string): string {
+        if (!suffix) {
+            return RenderEngineSettings.defaultAnchorColor;
+        }
+        const colorIndex =
+            this.getStableStringHash(suffix) % this.suffixSetLineColors.length;
+        return this.suffixSetLineColors[colorIndex];
+    }
+
+    private getStableStringHash(value: string): number {
+        let hash = 0;
+        for (let i = 0; i < value.length; i++) {
+            hash = (hash * 31 + value.charCodeAt(i)) >>> 0;
+        }
+        return hash;
+    }
+
+    private drawKeypointLinesForSequence(
+        keypointNameSequence: string[],
+        step: number,
+        keypointCenterMap: Map<
+            string,
+            Map<string, { id: string; labelName: string; centroid: IPoint }>
+        >,
+        data: EditorData
+    ): void {
+        for (let i = 0; i < keypointNameSequence.length - 1; i += step) {
+            const startBaseName = keypointNameSequence[i];
+            const endBaseName = keypointNameSequence[i + 1];
+            const startBySuffix = keypointCenterMap.get(startBaseName);
+            const endBySuffix = keypointCenterMap.get(endBaseName);
+            if (!startBySuffix || !endBySuffix) {
+                continue;
+            }
+
+            startBySuffix.forEach((startPointData, suffix) => {
+                const endPointData = endBySuffix.get(suffix);
+                if (!endPointData) {
+                    return;
+                }
+                const lineColor = this.resolveLineColorBySuffix(suffix);
+                this.drawLineBetweenKeypointCenters(
+                    startPointData.centroid,
+                    endPointData.centroid,
+                    lineColor,
+                    data
+                );
+            });
+        }
     }
 
     // =================================================================================================================
@@ -590,6 +734,8 @@ export class PolygonRenderEngine extends BaseRenderEngine {
         // Create a map of keypoints' centers for Angle and Asym annotations
         const allKeypointCenters =
             this.keypointUtils.getKeypointsFromPolygons();
+        const renderableKeypointCenterMap =
+            this.buildRenderableKeypointCenterMap();
         let keypoints = [];
         const keypointNamesPairedToDrawLine = [
             ...angleKeypointNames_B.slice(0, -1),
@@ -601,52 +747,12 @@ export class PolygonRenderEngine extends BaseRenderEngine {
             ...ratioAtrVMGKeypointNames_F,
             ...ratio4VKeypointNames_G,
         ];
-        for (let i = 0; i < keypointNamesPairedToDrawLine.length; i++) {
-            const selectedCenter = allKeypointCenters.find(
-                (polygon) =>
-                    polygon.labelName === keypointNamesPairedToDrawLine[i]
-            );
-            keypoints.push(selectedCenter);
-        }
-        for (let i = 0; i < keypointNamesPairedToDrawLine.length - 1; i += 2) {
-            const subset = [
-                keypointNamesPairedToDrawLine[i],
-                keypointNamesPairedToDrawLine[i + 1],
-            ];
-            if (
-                subset.every((name) =>
-                    keypoints.some((kpt) => kpt?.labelName === name)
-                )
-            ) {
-                const matchingKpts = keypoints.filter((item) =>
-                    subset.includes(item?.labelName ?? "")
-                );
-                const lineToDraw: ILine = {
-                    start: matchingKpts[0].centroid,
-                    end: matchingKpts[1].centroid,
-                };
-                const lineOnCanvas =
-                    RenderEngineUtil.transferLineFromImageToViewPortContent(
-                        lineToDraw,
-                        data
-                    );
-                const standardizedLine: ILine = {
-                    start: RenderEngineUtil.setPointBetweenPixels(
-                        lineOnCanvas.start
-                    ),
-                    end: RenderEngineUtil.setPointBetweenPixels(
-                        lineOnCanvas.end
-                    ),
-                };
-                DrawUtil.drawLine(
-                    this.canvas,
-                    standardizedLine.start,
-                    standardizedLine.end,
-                    RenderEngineSettings.defaultAnchorColor,
-                    RenderEngineSettings.LINE_THICKNESS
-                );
-            }
-        }
+        this.drawKeypointLinesForSequence(
+            keypointNamesPairedToDrawLine,
+            2,
+            renderableKeypointCenterMap,
+            data
+        );
 
         keypoints = [];
         const keypointNamesUnPairedToDrawLine = [
@@ -656,56 +762,12 @@ export class PolygonRenderEngine extends BaseRenderEngine {
             ...angleSFKeypointNames_F,
             ...ratioSFKeypointNames_F,
         ];
-        for (let i = 0; i < keypointNamesUnPairedToDrawLine.length; i++) {
-            const selectedCenter = allKeypointCenters.find(
-                (polygon) =>
-                    polygon.labelName === keypointNamesUnPairedToDrawLine[i]
-            );
-            keypoints.push(selectedCenter);
-        }
-        for (
-            let i = 0;
-            i < keypointNamesUnPairedToDrawLine.length - 1;
-            i += 1
-        ) {
-            const subset = [
-                keypointNamesUnPairedToDrawLine[i],
-                keypointNamesUnPairedToDrawLine[i + 1],
-            ];
-            if (
-                subset.every((name) =>
-                    keypoints.some((kpt) => kpt?.labelName === name)
-                )
-            ) {
-                const matchingKpts = keypoints.filter((item) =>
-                    subset.includes(item?.labelName ?? "")
-                );
-                const lineToDraw: ILine = {
-                    start: matchingKpts[0].centroid,
-                    end: matchingKpts[1].centroid,
-                };
-                const lineOnCanvas =
-                    RenderEngineUtil.transferLineFromImageToViewPortContent(
-                        lineToDraw,
-                        data
-                    );
-                const standardizedLine: ILine = {
-                    start: RenderEngineUtil.setPointBetweenPixels(
-                        lineOnCanvas.start
-                    ),
-                    end: RenderEngineUtil.setPointBetweenPixels(
-                        lineOnCanvas.end
-                    ),
-                };
-                DrawUtil.drawLine(
-                    this.canvas,
-                    standardizedLine.start,
-                    standardizedLine.end,
-                    RenderEngineSettings.defaultAnchorColor,
-                    RenderEngineSettings.LINE_THICKNESS
-                );
-            }
-        }
+        this.drawKeypointLinesForSequence(
+            keypointNamesUnPairedToDrawLine,
+            1,
+            renderableKeypointCenterMap,
+            data
+        );
 
         // Create a map of keypoints' centers for Surface annotations
         keypoints = [];
