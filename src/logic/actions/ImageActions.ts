@@ -21,6 +21,7 @@ import { remove } from "lodash";
 import { GeneralSelector } from "../../store/selectors/GeneralSelector";
 import { ImageFilterUtil } from "../../utils/ImageFilterUtil";
 import { ImageFilterMode } from "../../data/enums/ImageFilterMode";
+import { ImageClassCriteria } from "../../store/general/types";
 
 export class ImageActions {
   private static getFilteredImageIndices(): number[] {
@@ -28,11 +29,13 @@ export class ImageActions {
     const activeLabelType = LabelsSelector.getActiveLabelType();
     const filterMode: ImageFilterMode = GeneralSelector.getImageListFilterMode();
     const searchText: string = GeneralSelector.getImageListSearchText();
+    const imageClassCriteria: ImageClassCriteria[] = GeneralSelector.getImageClassCriteria();
     return ImageFilterUtil.getFilteredImageIndices(
       imagesData,
       activeLabelType,
       filterMode,
-      searchText
+      searchText,
+      imageClassCriteria
     );
   }
 

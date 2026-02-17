@@ -1,7 +1,14 @@
-import { ImageData, LabelPoint, LabelRect } from "../store/labels/types";
+import {
+    ImageData,
+    LabelLine,
+    LabelPoint,
+    LabelPolygon,
+    LabelRect,
+} from "../store/labels/types";
 import { LabelType } from "../data/enums/LabelType";
 import { LabelStatus } from "../data/enums/LabelStatus";
 import { ImageFilterMode } from "../data/enums/ImageFilterMode";
+import { ImageClassCriteria } from "../store/general/types";
 
 export class ImageFilterUtil {
     public static isImageLabeled(imageData: ImageData, labelType: LabelType): boolean {
@@ -25,11 +32,56 @@ export class ImageFilterUtil {
         }
     }
 
+    private static getImageAssignedLabelIds(imageData: ImageData): Set<string> {
+        const assignedLabelIds = new Set<string>(imageData.labelNameIds || []);
+
+        imageData.labelRects
+            .filter(
+                (labelRect: LabelRect) =>
+                    labelRect.status === LabelStatus.ACCEPTED && !!labelRect.labelId
+            )
+            .forEach((labelRect: LabelRect) => {
+                if (labelRect.labelId) {
+                    assignedLabelIds.add(labelRect.labelId);
+                }
+            });
+
+        imageData.labelPoints
+            .filter(
+                (labelPoint: LabelPoint) =>
+                    labelPoint.status === LabelStatus.ACCEPTED && !!labelPoint.labelId
+            )
+            .forEach((labelPoint: LabelPoint) => {
+                if (labelPoint.labelId) {
+                    assignedLabelIds.add(labelPoint.labelId);
+                }
+            });
+
+        imageData.labelPolygons
+            .filter((labelPolygon: LabelPolygon) => !!labelPolygon.labelId)
+            .forEach((labelPolygon: LabelPolygon) => {
+                if (labelPolygon.labelId) {
+                    assignedLabelIds.add(labelPolygon.labelId);
+                }
+            });
+
+        imageData.labelLines
+            .filter((labelLine: LabelLine) => !!labelLine.labelId)
+            .forEach((labelLine: LabelLine) => {
+                if (labelLine.labelId) {
+                    assignedLabelIds.add(labelLine.labelId);
+                }
+            });
+
+        return assignedLabelIds;
+    }
+
     public static getFilteredImageIndices(
         imagesData: ImageData[],
         labelType: LabelType,
         filterMode: ImageFilterMode,
-        searchText: string
+        searchText: string,
+        classCriteria: ImageClassCriteria[] = []
     ): number[] {
         const normalizedSearchText = (searchText || "").toLowerCase();
 
@@ -48,7 +100,31 @@ export class ImageFilterUtil {
                     matchesFilter = !ImageFilterUtil.isImageLabeled(image, labelType);
                 }
 
-                return matchesSearch && matchesFilter;
+                const assignedLabelIds = ImageFilterUtil.getImageAssignedLabelIds(image);
+                const activeCriteria = classCriteria.filter(
+                    (criteria: ImageClassCriteria) => !!criteria.labelId
+                );
+
+                let criteriaResult = true;
+                if (activeCriteria.length > 0) {
+                    const firstCriteria = activeCriteria[0];
+                    criteriaResult = firstCriteria.mode === "include"
+                        ? assignedLabelIds.has(firstCriteria.labelId)
+                        : !assignedLabelIds.has(firstCriteria.labelId);
+
+                    for (let i = 1; i < activeCriteria.length; i++) {
+                        const criteria = activeCriteria[i];
+                        const criteriaValue = criteria.mode === "include"
+                            ? assignedLabelIds.has(criteria.labelId)
+                            : !assignedLabelIds.has(criteria.labelId);
+
+                        criteriaResult = criteria.operator === "and"
+                            ? criteriaResult && criteriaValue
+                            : criteriaResult || criteriaValue;
+                    }
+                }
+
+                return matchesSearch && matchesFilter && criteriaResult;
             })
             .map(({ index }) => index);
     }

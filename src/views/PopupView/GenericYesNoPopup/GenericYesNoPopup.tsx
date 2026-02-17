@@ -3,6 +3,7 @@ import './GenericYesNoPopup.scss'
 import {TextButton} from '../../Common/TextButton/TextButton';
 import {ContextManager} from '../../../logic/context/ContextManager';
 import {ContextType} from '../../../data/enums/ContextType';
+import classNames from 'classnames';
 
 interface IProps {
     title: string;
@@ -16,6 +17,7 @@ interface IProps {
     onReject?: () => any;
     skipRejectButton?: boolean;
     disableRejectButton?: boolean;
+    popupClassName?: string;
 }
 
 export const GenericYesNoPopup: React.FC<IProps> = (
@@ -30,7 +32,8 @@ export const GenericYesNoPopup: React.FC<IProps> = (
         rejectLabel,
         onReject,
         skipRejectButton,
-        disableRejectButton
+        disableRejectButton,
+        popupClassName
     }) => {
 
     const [status, setMountStatus] = useState(false);
@@ -51,7 +54,7 @@ export const GenericYesNoPopup: React.FC<IProps> = (
     };
 
     return (
-        <div className='GenericYesNoPopup'>
+        <div className={classNames('GenericYesNoPopup', popupClassName)}>
             <div className='Header'>
                 {title}
             </div>

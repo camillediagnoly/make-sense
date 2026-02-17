@@ -17,6 +17,7 @@ import LoadYOLOv5ModelPopup from './LoadYOLOv5ModelPopup/LoadYOLOv5ModelPopup';
 import ConnectInferenceServerPopup from './ConnectInferenceServerPopup/ConnectInferenceServerPopup';
 import EditShortcutsPopup from './EditShortcutsPopup/EditShortcutsPopup';
 import BackupSettingsPopup from './BackupSettingsPopup/BackupSettingsPopup';
+import ImageClassFilterPopup from './ImageClassFilterPopup/ImageClassFilterPopup';
 
 interface IProps {
     activePopupType: PopupWindowType;
@@ -56,6 +57,8 @@ const PopupView: React.FC<IProps> = ({ activePopupType }) => {
                 return <EditShortcutsPopup />;
             case PopupWindowType.BACKUP_SETTINGS:
                 return <BackupSettingsPopup />;
+            case PopupWindowType.IMAGE_CLASS_FILTER:
+                return <ImageClassFilterPopup />;
             case PopupWindowType.LOADER:
                 return <ClipLoader
                     size={50}

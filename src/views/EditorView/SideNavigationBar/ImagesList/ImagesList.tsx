@@ -14,6 +14,7 @@ import {EventType} from "../../../../data/enums/EventType";
 import {ImageFilterMode} from "../../../../data/enums/ImageFilterMode";
 import {ImageFilterUtil} from "../../../../utils/ImageFilterUtil";
 import {updateImageListFilterMode, updateImageListSearchText} from "../../../../store/general/actionCreators";
+import {ImageClassCriteria} from "../../../../store/general/types";
 
 interface IProps {
     activeImageIndex: number;
@@ -21,24 +22,26 @@ interface IProps {
     activeLabelType: LabelType;
     filterMode: ImageFilterMode;
     searchText: string;
+    imageClassCriteria: ImageClassCriteria[];
     updateImageListFilterModeAction: (filterMode: ImageFilterMode) => any;
     updateImageListSearchTextAction: (searchText: string) => any;
 }
 
 interface IState {
     size: ISize;
-    key: number; // Used to force refresh the VirtualList
+    key: number;
 }
 
 class ImagesList extends React.Component<IProps, IState> {
     private imagesListRef: HTMLDivElement;
+    private controlsRef: HTMLDivElement;
 
     constructor(props) {
         super(props);
 
         this.state = {
             size: null,
-            key: 0
+            key: 0,
         }
     }
 
@@ -56,10 +59,13 @@ class ImagesList extends React.Component<IProps, IState> {
             return;
 
         const listBoundingBox = this.imagesListRef.getBoundingClientRect();
+        const controlsHeight = this.controlsRef
+            ? this.controlsRef.getBoundingClientRect().height
+            : 0;
         this.setState({
             size: {
                 width: listBoundingBox.width,
-                height: listBoundingBox.height - 80 // Adjust height to account for search and filter controls
+                height: Math.max(listBoundingBox.height - controlsHeight, 0)
             }
         })
     };
@@ -70,12 +76,19 @@ class ImagesList extends React.Component<IProps, IState> {
     };
 
     private getFilteredImages = (): number[] => {
-        const { imagesData, activeLabelType, filterMode, searchText } = this.props;
+        const {
+            imagesData,
+            activeLabelType,
+            filterMode,
+            searchText,
+            imageClassCriteria,
+        } = this.props;
         return ImageFilterUtil.getFilteredImageIndices(
             imagesData,
             activeLabelType,
             filterMode,
-            searchText
+            searchText,
+            imageClassCriteria
         );
     };
 
@@ -83,19 +96,22 @@ class ImagesList extends React.Component<IProps, IState> {
         ImageActions.getImageByIndex(index)
     };
 
-    // Force VirtualList to re-render and reset its scroll position when filters change
-    componentDidUpdate(prevProps) {
-        if (prevProps.searchText !== this.props.searchText ||
-            prevProps.filterMode !== this.props.filterMode) {
-            // Increment key to force VirtualList to completely re-render
-            this.setState(prevState => ({ key: prevState.key + 1 }));
+    componentDidUpdate(prevProps: IProps) {
+        const filterChanged =
+            prevProps.searchText !== this.props.searchText ||
+            prevProps.filterMode !== this.props.filterMode ||
+            prevProps.imageClassCriteria !== this.props.imageClassCriteria;
+
+        if (filterChanged) {
+            this.setState((state) => ({ key: state.key + 1 }));
+            this.updateListSize();
         }
     }
 
     private renderImagePreview = (index: number, isScrolling: boolean, isVisible: boolean, style: React.CSSProperties) => {
         const filteredIndices = this.getFilteredImages();
         const actualIndex = filteredIndices[index];
-        
+
         return <ImagePreview
             key={actualIndex}
             style={style}
@@ -119,10 +135,10 @@ class ImagesList extends React.Component<IProps, IState> {
     private renderSearchAndFilter = () => {
         const { filterMode, searchText } = this.props;
         return (
-            <div className="ImagesListControls">
+            <div className="ImagesListControls" ref={(ref) => this.controlsRef = ref}>
                 <div className="SearchContainer">
-                    <input 
-                        type="text" 
+                    <input
+                        type="text"
                         className="SearchInput"
                         placeholder="Search images by name..."
                         value={searchText}
@@ -130,19 +146,19 @@ class ImagesList extends React.Component<IProps, IState> {
                     />
                 </div>
                 <div className="FilterButtons">
-                    <button 
+                    <button
                         className={`FilterButton ${filterMode === ImageFilterMode.ALL ? 'active' : ''}`}
                         onClick={() => this.setFilterMode(ImageFilterMode.ALL)}
                     >
                         All
                     </button>
-                    <button 
+                    <button
                         className={`FilterButton ${filterMode === ImageFilterMode.LABELED ? 'active' : ''}`}
                         onClick={() => this.setFilterMode(ImageFilterMode.LABELED)}
                     >
                         Labeled
                     </button>
-                    <button 
+                    <button
                         className={`FilterButton ${filterMode === ImageFilterMode.UNLABELED ? 'active' : ''}`}
                         onClick={() => this.setFilterMode(ImageFilterMode.UNLABELED)}
                     >
@@ -156,7 +172,7 @@ class ImagesList extends React.Component<IProps, IState> {
     public render() {
         const { size, key } = this.state;
         const filteredIndices = this.getFilteredImages();
-        
+
         return(
             <div
                 className="ImagesList"
@@ -166,18 +182,18 @@ class ImagesList extends React.Component<IProps, IState> {
                 {this.renderSearchAndFilter()}
                 {size && filteredIndices.length > 0 && (
                     <VirtualList
-                        key={key} // Force complete re-render when filters change
+                        key={key}
                         size={size}
                         childSize={{width: 150, height: 150}}
                         childCount={filteredIndices.length}
                         childRender={this.renderImagePreview}
                         overScanHeight={200}
-                        scrollToIndex={0} // Always reset scroll position
+                        scrollToIndex={0}
                     />
                 )}
                 {filteredIndices.length === 0 && (
                     <div className="NoImagesFound">
-                        No images match your search criteria
+                        No images match the current filters
                     </div>
                 )}
             </div>
@@ -190,13 +206,14 @@ const mapStateToProps = (state: AppState) => ({
     imagesData: state.labels.imagesData,
     activeLabelType: state.labels.activeLabelType,
     filterMode: state.general.imageListFilterMode,
-    searchText: state.general.imageListSearchText
+    searchText: state.general.imageListSearchText,
+    imageClassCriteria: state.general.imageClassCriteria,
 });
 
 export default connect(
     mapStateToProps,
     {
         updateImageListFilterModeAction: updateImageListFilterMode,
-        updateImageListSearchTextAction: updateImageListSearchText
+        updateImageListSearchTextAction: updateImageListSearchText,
     }
 )(ImagesList);

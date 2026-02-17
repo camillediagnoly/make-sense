@@ -27,6 +27,7 @@ const initialState: GeneralState = {
     polygonLassoMode: false,
     imageListFilterMode: ImageFilterMode.ALL,
     imageListSearchText: "",
+    imageClassCriteria: [],
     keyboardShortcuts: [
         {
             id: "finish-polygon-creation",
@@ -292,6 +293,12 @@ export function generalReducer(
             return {
                 ...state,
                 imageListSearchText: action.payload.imageListSearchText,
+            };
+        }
+        case Action.UPDATE_IMAGE_CLASS_CRITERIA: {
+            return {
+                ...state,
+                imageClassCriteria: action.payload.imageClassCriteria,
             };
         }
 

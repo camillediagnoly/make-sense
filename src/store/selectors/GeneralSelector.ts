@@ -4,6 +4,7 @@ import { ContextType } from "../../data/enums/ContextType";
 import { CustomCursorStyle } from "../../data/enums/CustomCursorStyle";
 import { ProjectType } from "../../data/enums/ProjectType";
 import { ImageFilterMode } from "../../data/enums/ImageFilterMode";
+import { ImageClassCriteria } from "../general/types";
 
 export class GeneralSelector {
     public static getActivePopupType(): PopupWindowType {
@@ -84,5 +85,9 @@ export class GeneralSelector {
 
     public static getImageListSearchText(): string {
         return store.getState().general.imageListSearchText;
+    }
+
+    public static getImageClassCriteria(): ImageClassCriteria[] {
+        return store.getState().general.imageClassCriteria;
     }
 }
