@@ -19,6 +19,15 @@ export type ShortcutItem = {
 	description?: string;
 }
 
+export type ImageClassCriteriaMode = 'include' | 'exclude';
+export type ImageClassCriteriaOperator = 'and' | 'or';
+
+export type ImageClassCriteria = {
+    labelId: string;
+    mode: ImageClassCriteriaMode;
+    operator: ImageClassCriteriaOperator;
+}
+
 export type GeneralState = {
     windowSize: ISize;
     activePopupType: PopupWindowType;
@@ -39,6 +48,7 @@ export type GeneralState = {
     polygonLassoMode: boolean;
     imageListFilterMode: ImageFilterMode;
     imageListSearchText: string;
+    imageClassCriteria: ImageClassCriteria[];
 };
 
 interface UpdateProjectData {
@@ -166,6 +176,13 @@ interface UpdateImageListSearchText {
     };
 }
 
+interface UpdateImageClassCriteria {
+    type: typeof Action.UPDATE_IMAGE_CLASS_CRITERIA;
+    payload: {
+        imageClassCriteria: ImageClassCriteria[];
+    };
+}
+
 interface UpdateKeyboardShortcuts {
     type: typeof Action.UPDATE_KEYBOARD_SHORTCUTS;
     payload: {
@@ -209,4 +226,5 @@ export type GeneralActionTypes =
     | ResetKeyboardShortcutAction
     | UpdatePolygonDrawMode
     | UpdateImageListFilterMode
-    | UpdateImageListSearchText;
+    | UpdateImageListSearchText
+    | UpdateImageClassCriteria;

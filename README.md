@@ -119,11 +119,6 @@ We don't store your images, because we don't send them anywhere in the first pla
 
 If you are just starting your adventure with deep learning and would like to learn and create something cool along the way, [makesense.ai][1] can help you with that. Leverage our bounding box labeling functionality to prepare a data set and use it to train your first state-of-the-art object detection model. Follow [instructions][12] and [examples][13] but most importantly, free your creativity.
 
-## Git management
-
-```
-git push origin develop
-```
 
 ## 🏆 Contribution
 

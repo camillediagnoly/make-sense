@@ -4,7 +4,7 @@ import React from 'react';
 import classNames from 'classnames';
 import { AppState } from '../../../store';
 import { connect } from 'react-redux';
-import { updateCrossHairVisibleStatus, updateImageDragModeStatus, updateFixedZoomStatus, updateEllipseDrawStatus, updateMovingAnnotationStatus, updateCopyPolygonsStatus, updatePasteAnnotationsStatus, updatePolygonDrawMode } from '../../../store/general/actionCreators';
+import { updateCrossHairVisibleStatus, updateImageDragModeStatus, updateFixedZoomStatus, updateEllipseDrawStatus, updateMovingAnnotationStatus, updateCopyPolygonsStatus, updatePasteAnnotationsStatus, updatePolygonDrawMode, updateActivePopupType } from '../../../store/general/actionCreators';
 import { GeneralSelector } from '../../../store/selectors/GeneralSelector';
 import { ViewPointSettings } from '../../../settings/ViewPointSettings';
 import { ImageButton } from '../../Common/ImageButton/ImageButton';
@@ -15,6 +15,7 @@ import { AISelector } from '../../../store/selectors/AISelector';
 import { ISize } from '../../../interfaces/ISize';
 import { AIActions } from '../../../logic/actions/AIActions';
 import { Fade, styled, Tooltip, tooltipClasses, TooltipProps } from '@mui/material';
+import { PopupWindowType } from '../../../data/enums/PopupWindowType';
 const BUTTON_SIZE: ISize = { width: 30, height: 30 };
 const BUTTON_PADDING: number = 10;
 
@@ -72,6 +73,7 @@ interface IProps {
     updateCopyPolygonsAction: (copyPolygons: boolean) => any;
     updatePastePolygonsAction: (pastePolygons: boolean) => any;
     updatePolygonDrawModeAction: (polygonLassoMode: boolean) => any;
+    updateActivePopupTypeAction: (activePopupType: PopupWindowType) => any;
     imageDragMode: boolean;
     crossHairVisible: boolean;
     fixedZoom: boolean;
@@ -94,6 +96,7 @@ const EditorTopNavigationBar: React.FC<IProps> = (
         updateCopyPolygonsAction,
         updatePastePolygonsAction,
         updatePolygonDrawModeAction,
+        updateActivePopupTypeAction,
         imageDragMode,
         crossHairVisible,
         fixedZoom,
@@ -148,6 +151,10 @@ const EditorTopNavigationBar: React.FC<IProps> = (
 
     const polygonModeOnClick = () => {
         updatePolygonDrawModeAction(!polygonLassoMode);
+    };
+
+    const openImageClassFilter = () => {
+        updateActivePopupTypeAction(PopupWindowType.IMAGE_CLASS_FILTER);
     };
 
     const withAI = (
@@ -278,6 +285,17 @@ const EditorTopNavigationBar: React.FC<IProps> = (
             <div className='ButtonWrapper'>
                 {
                     getButtonWithTooltip(
+                        'image-class-filter',
+                        'open labels filter',
+                        'ico/filter.svg',
+                        'image-class-filter',
+                        false,
+                        undefined,
+                        openImageClassFilter
+                    )
+                }
+                {
+                    getButtonWithTooltip(
                         'copy-polygons',
                         copyPolygons ? '' : 'copy all polygons',
                         'ico/copy-polygons.png',
@@ -336,6 +354,7 @@ const mapDispatchToProps = {
     updateCopyPolygonsAction: updateCopyPolygonsStatus,
     updatePastePolygonsAction: updatePasteAnnotationsStatus,
     updatePolygonDrawModeAction: updatePolygonDrawMode,
+    updateActivePopupTypeAction: updateActivePopupType,
 };
 
 const mapStateToProps = (state: AppState) => ({

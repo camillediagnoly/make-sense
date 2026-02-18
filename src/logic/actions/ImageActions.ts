@@ -21,6 +21,7 @@ import { remove } from "lodash";
 import { GeneralSelector } from "../../store/selectors/GeneralSelector";
 import { ImageFilterUtil } from "../../utils/ImageFilterUtil";
 import { ImageFilterMode } from "../../data/enums/ImageFilterMode";
+import { ImageClassCriteria } from "../../store/general/types";
 
 export class ImageActions {
   private static getFilteredImageIndices(): number[] {
@@ -28,12 +29,42 @@ export class ImageActions {
     const activeLabelType = LabelsSelector.getActiveLabelType();
     const filterMode: ImageFilterMode = GeneralSelector.getImageListFilterMode();
     const searchText: string = GeneralSelector.getImageListSearchText();
+    const imageClassCriteria: ImageClassCriteria[] = GeneralSelector.getImageClassCriteria();
     return ImageFilterUtil.getFilteredImageIndices(
       imagesData,
       activeLabelType,
       filterMode,
-      searchText
+      searchText,
+      imageClassCriteria
     );
+  }
+
+  public static syncActiveImageWithFilters(): void {
+    const filteredIndices = ImageActions.getFilteredImageIndices();
+    if (!filteredIndices.length) {
+      return;
+    }
+
+    const currentImageIndex: number = LabelsSelector.getActiveImageIndex();
+    if (currentImageIndex === null || currentImageIndex === undefined) {
+      ImageActions.getImageByIndex(filteredIndices[0]);
+      return;
+    }
+
+    if (filteredIndices.includes(currentImageIndex)) {
+      return;
+    }
+
+    const nextImageInOriginalOrder = filteredIndices.find(
+      (index: number) => index > currentImageIndex
+    );
+
+    if (nextImageInOriginalOrder !== undefined) {
+      ImageActions.getImageByIndex(nextImageInOriginalOrder);
+      return;
+    }
+
+    ImageActions.getImageByIndex(filteredIndices[filteredIndices.length - 1]);
   }
 
   public static getPreviousImage(): void {

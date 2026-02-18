@@ -118,7 +118,7 @@ const allKeypointNames = [
 ];
 
 const LASSO_MIN_SAMPLE_DISTANCE = 5;
-const LASSO_PERIMETER_RATIO = 0.07; // 10%
+const LASSO_PERIMETER_RATIO = 0.05; // 10%
 
 export class PolygonRenderEngine extends BaseRenderEngine {
     // =================================================================================================================
@@ -134,16 +134,6 @@ export class PolygonRenderEngine extends BaseRenderEngine {
 
     private keypointUtils = new KeypointUtils();
     private surfaceAnnotator: KeypointSurfaceAnnotation;
-    private readonly suffixSetLineColors: string[] = [
-        "#00E5FF",
-        "#FFEA00",
-        "#00FF85",
-        "#FF6BFF",
-        "#FFA000",
-        "#7CFF00",
-        "#40C4FF",
-        "#FF5252",
-    ];
     public isDrawingEllipse: boolean;
     public isMovingAnnotation: boolean;
     public copyPolygons: boolean;
@@ -156,201 +146,12 @@ export class PolygonRenderEngine extends BaseRenderEngine {
     private dragOffset: IPoint = null;
     private isLassoDrawing: boolean = false;
     private lastLassoPoint: IPoint = null;
+    private lassoHadContactSinceStart: boolean = false;
 
     public constructor(canvas: HTMLCanvasElement) {
         super(canvas);
         this.labelType = LabelType.POLYGON;
         this.surfaceAnnotator = new KeypointSurfaceAnnotation();
-    }
-
-    private buildRenderableKeypointCenterMap(): Map<
-        string,
-        Map<string, { id: string; labelName: string; centroid: IPoint }>
-    > {
-        const imageData: ImageData = LabelsSelector.getActiveImageData();
-        const labelNames: LabelName[] = LabelsSelector.getLabelNames();
-        const labelMap = labelNames.reduce((map, label) => {
-            map[label.id] = label.name;
-            return map;
-        }, {});
-        const centerMap = new Map<
-            string,
-            Map<string, { id: string; labelName: string; centroid: IPoint }>
-        >();
-        const sortedBaseNames = [...allKeypointNames].sort(
-            (a, b) => b.length - a.length
-        );
-
-        imageData.labelPolygons
-            .filter((annotation) => annotation.isVisible)
-            .forEach((annotation) => {
-                const labelName = annotation.labelId
-                    ? labelMap[annotation.labelId] || null
-                    : null;
-                if (!labelName) {
-                    return;
-                }
-
-                const baseLabelName =
-                    sortedBaseNames.find(
-                        (baseName) =>
-                            labelName === baseName ||
-                            labelName.startsWith(baseName)
-                    ) || null;
-                if (!baseLabelName) {
-                    return;
-                }
-
-                const suffix = labelName.slice(baseLabelName.length);
-                const perBaseMap =
-                    centerMap.get(baseLabelName) ||
-                    new Map<
-                        string,
-                        { id: string; labelName: string; centroid: IPoint }
-                    >();
-                perBaseMap.set(suffix, {
-                    id: annotation.id,
-                    labelName,
-                    centroid: this.keypointUtils.computeCentroid(annotation),
-                });
-                centerMap.set(baseLabelName, perBaseMap);
-            });
-
-        return centerMap;
-    }
-
-    private drawLineBetweenKeypointCenters(
-        startCenter: IPoint,
-        endCenter: IPoint,
-        lineColor: string,
-        data: EditorData
-    ): void {
-        const lineToDraw: ILine = {
-            start: startCenter,
-            end: endCenter,
-        };
-        const lineOnCanvas = RenderEngineUtil.transferLineFromImageToViewPortContent(
-            lineToDraw,
-            data
-        );
-        const standardizedLine: ILine = {
-            start: RenderEngineUtil.setPointBetweenPixels(lineOnCanvas.start),
-            end: RenderEngineUtil.setPointBetweenPixels(lineOnCanvas.end),
-        };
-        DrawUtil.drawLine(
-            this.canvas,
-            standardizedLine.start,
-            standardizedLine.end,
-            lineColor,
-            RenderEngineSettings.LINE_THICKNESS
-        );
-    }
-
-    private resolveLineColorBySuffix(suffix: string): string {
-        if (!suffix) {
-            return RenderEngineSettings.defaultAnchorColor;
-        }
-        const colorIndex =
-            this.getStableStringHash(suffix) % this.suffixSetLineColors.length;
-        return this.suffixSetLineColors[colorIndex];
-    }
-
-    private getStableStringHash(value: string): number {
-        let hash = 0;
-        for (let i = 0; i < value.length; i++) {
-            hash = (hash * 31 + value.charCodeAt(i)) >>> 0;
-        }
-        return hash;
-    }
-
-    private drawKeypointLinesForSequence(
-        keypointNameSequence: string[],
-        step: number,
-        keypointCenterMap: Map<
-            string,
-            Map<string, { id: string; labelName: string; centroid: IPoint }>
-        >,
-        data: EditorData
-    ): void {
-        for (let i = 0; i < keypointNameSequence.length - 1; i += step) {
-            const startBaseName = keypointNameSequence[i];
-            const endBaseName = keypointNameSequence[i + 1];
-            const startBySuffix = keypointCenterMap.get(startBaseName);
-            const endBySuffix = keypointCenterMap.get(endBaseName);
-            if (!startBySuffix || !endBySuffix) {
-                continue;
-            }
-
-            startBySuffix.forEach((startPointData, suffix) => {
-                const endPointData = endBySuffix.get(suffix);
-                if (!endPointData) {
-                    return;
-                }
-                const lineColor = this.resolveLineColorBySuffix(suffix);
-                this.drawLineBetweenKeypointCenters(
-                    startPointData.centroid,
-                    endPointData.centroid,
-                    lineColor,
-                    data
-                );
-            });
-        }
-    }
-
-    private drawSurfaceEllipsesForSequence(
-        keypointNameSequence: string[],
-        keypointCenterMap: Map<
-            string,
-            Map<string, { id: string; labelName: string; centroid: IPoint }>
-        >,
-        data: EditorData
-    ): void {
-        for (let i = 0; i < keypointNameSequence.length - 2; i += 3) {
-            const firstBaseName = keypointNameSequence[i];
-            const secondBaseName = keypointNameSequence[i + 1];
-            const thirdBaseName = keypointNameSequence[i + 2];
-            const firstBySuffix = keypointCenterMap.get(firstBaseName);
-            const secondBySuffix = keypointCenterMap.get(secondBaseName);
-            const thirdBySuffix = keypointCenterMap.get(thirdBaseName);
-            if (!firstBySuffix || !secondBySuffix || !thirdBySuffix) {
-                continue;
-            }
-
-            firstBySuffix.forEach((firstPointData, suffix) => {
-                const secondPointData = secondBySuffix.get(suffix);
-                const thirdPointData = thirdBySuffix.get(suffix);
-                if (!secondPointData || !thirdPointData) {
-                    return;
-                }
-
-                const pointsOnCanvas =
-                    RenderEngineUtil.transferPolygonFromImageToViewPortContent(
-                        [
-                            firstPointData.centroid,
-                            secondPointData.centroid,
-                            thirdPointData.centroid,
-                        ],
-                        data
-                    );
-                const startPoint = RenderEngineUtil.setPointBetweenPixels(
-                    pointsOnCanvas[0]
-                );
-                const endPoint = RenderEngineUtil.setPointBetweenPixels(
-                    pointsOnCanvas[1]
-                );
-                const constrainPoint = RenderEngineUtil.setPointBetweenPixels(
-                    pointsOnCanvas[2]
-                );
-                const ellipseColor = this.resolveLineColorBySuffix(suffix);
-                this.surfaceAnnotator.drawEllipse(
-                    this.canvas,
-                    startPoint,
-                    endPoint,
-                    constrainPoint,
-                    ellipseColor
-                );
-            });
-        }
     }
 
     // =================================================================================================================
@@ -546,6 +347,9 @@ export class PolygonRenderEngine extends BaseRenderEngine {
             this.endExistingLabelResize(data);
         } else if (this.draggingPolygon) {
             this.handleMouseUpForDragging();
+        } else if (this.shouldFinishLassoCreationOnPointerUp(data)) {
+            this.addPointFromLasso(data, true);
+            this.addLabelAndFinishCreation(data);
         }
     }
 
@@ -555,7 +359,13 @@ export class PolygonRenderEngine extends BaseRenderEngine {
             !!data.mousePositionOnViewPortContent
         ) {
             if (this.isCreationInProgress() && this.isLassoDrawing) {
+                this.updateLassoContactState(data.event);
                 this.addPointFromLasso(data);
+                if (this.shouldFinishLassoCreationFromMoveRelease(data)) {
+                    this.addPointFromLasso(data, true);
+                    this.addLabelAndFinishCreation(data);
+                    return;
+                }
             }
             const isOverImage: boolean =
                 RenderEngineUtil.isMouseOverImage(data);
@@ -787,9 +597,10 @@ export class PolygonRenderEngine extends BaseRenderEngine {
             }
         });
 
-        // Create a map of keypoints' centers for rendering.
-        const renderableKeypointCenterMap =
-            this.buildRenderableKeypointCenterMap();
+        // Create a map of keypoints' centers for Angle and Asym annotations
+        const allKeypointCenters =
+            this.keypointUtils.getKeypointsFromPolygons();
+        let keypoints = [];
         const keypointNamesPairedToDrawLine = [
             ...angleKeypointNames_B.slice(0, -1),
             ...positionKeypointNames_B.slice(0, 2),
@@ -800,13 +611,54 @@ export class PolygonRenderEngine extends BaseRenderEngine {
             ...ratioAtrVMGKeypointNames_F,
             ...ratio4VKeypointNames_G,
         ];
-        this.drawKeypointLinesForSequence(
-            keypointNamesPairedToDrawLine,
-            2,
-            renderableKeypointCenterMap,
-            data
-        );
+        for (let i = 0; i < keypointNamesPairedToDrawLine.length; i++) {
+            const selectedCenter = allKeypointCenters.find(
+                (polygon) =>
+                    polygon.labelName === keypointNamesPairedToDrawLine[i]
+            );
+            keypoints.push(selectedCenter);
+        }
+        for (let i = 0; i < keypointNamesPairedToDrawLine.length - 1; i += 2) {
+            const subset = [
+                keypointNamesPairedToDrawLine[i],
+                keypointNamesPairedToDrawLine[i + 1],
+            ];
+            if (
+                subset.every((name) =>
+                    keypoints.some((kpt) => kpt?.labelName === name)
+                )
+            ) {
+                const matchingKpts = keypoints.filter((item) =>
+                    subset.includes(item?.labelName ?? "")
+                );
+                const lineToDraw: ILine = {
+                    start: matchingKpts[0].centroid,
+                    end: matchingKpts[1].centroid,
+                };
+                const lineOnCanvas =
+                    RenderEngineUtil.transferLineFromImageToViewPortContent(
+                        lineToDraw,
+                        data
+                    );
+                const standardizedLine: ILine = {
+                    start: RenderEngineUtil.setPointBetweenPixels(
+                        lineOnCanvas.start
+                    ),
+                    end: RenderEngineUtil.setPointBetweenPixels(
+                        lineOnCanvas.end
+                    ),
+                };
+                DrawUtil.drawLine(
+                    this.canvas,
+                    standardizedLine.start,
+                    standardizedLine.end,
+                    RenderEngineSettings.defaultAnchorColor,
+                    RenderEngineSettings.LINE_THICKNESS
+                );
+            }
+        }
 
+        keypoints = [];
         const keypointNamesUnPairedToDrawLine = [
             ...asymKeypointNames_B,
             ...veinsKeypointNames_B,
@@ -814,23 +666,111 @@ export class PolygonRenderEngine extends BaseRenderEngine {
             ...angleSFKeypointNames_F,
             ...ratioSFKeypointNames_F,
         ];
-        this.drawKeypointLinesForSequence(
-            keypointNamesUnPairedToDrawLine,
-            1,
-            renderableKeypointCenterMap,
-            data
-        );
+        for (let i = 0; i < keypointNamesUnPairedToDrawLine.length; i++) {
+            const selectedCenter = allKeypointCenters.find(
+                (polygon) =>
+                    polygon.labelName === keypointNamesUnPairedToDrawLine[i]
+            );
+            keypoints.push(selectedCenter);
+        }
+        for (
+            let i = 0;
+            i < keypointNamesUnPairedToDrawLine.length - 1;
+            i += 1
+        ) {
+            const subset = [
+                keypointNamesUnPairedToDrawLine[i],
+                keypointNamesUnPairedToDrawLine[i + 1],
+            ];
+            if (
+                subset.every((name) =>
+                    keypoints.some((kpt) => kpt?.labelName === name)
+                )
+            ) {
+                const matchingKpts = keypoints.filter((item) =>
+                    subset.includes(item?.labelName ?? "")
+                );
+                const lineToDraw: ILine = {
+                    start: matchingKpts[0].centroid,
+                    end: matchingKpts[1].centroid,
+                };
+                const lineOnCanvas =
+                    RenderEngineUtil.transferLineFromImageToViewPortContent(
+                        lineToDraw,
+                        data
+                    );
+                const standardizedLine: ILine = {
+                    start: RenderEngineUtil.setPointBetweenPixels(
+                        lineOnCanvas.start
+                    ),
+                    end: RenderEngineUtil.setPointBetweenPixels(
+                        lineOnCanvas.end
+                    ),
+                };
+                DrawUtil.drawLine(
+                    this.canvas,
+                    standardizedLine.start,
+                    standardizedLine.end,
+                    RenderEngineSettings.defaultAnchorColor,
+                    RenderEngineSettings.LINE_THICKNESS
+                );
+            }
+        }
 
-        // Create a map of keypoints' centers for Surface annotations.
+        // Create a map of keypoints' centers for Surface annotations
+        keypoints = [];
         const keypointNamesSurfaceAndPositionB = [
             ...surfaceKeypointNames_B,
             ...positionKeypointNames_B.slice(2),
         ];
-        this.drawSurfaceEllipsesForSequence(
-            keypointNamesSurfaceAndPositionB,
-            renderableKeypointCenterMap,
-            data
-        );
+        for (let i = 0; i < keypointNamesSurfaceAndPositionB.length; i++) {
+            const selectedCenter = allKeypointCenters.find(
+                (polygon) =>
+                    polygon.labelName === keypointNamesSurfaceAndPositionB[i]
+            );
+            keypoints.push(selectedCenter);
+        }
+        for (
+            let i = 0;
+            i < keypointNamesSurfaceAndPositionB.length - 2;
+            i += 3
+        ) {
+            const subset = [
+                keypointNamesSurfaceAndPositionB[i],
+                keypointNamesSurfaceAndPositionB[i + 1],
+                keypointNamesSurfaceAndPositionB[i + 2],
+            ];
+            if (
+                subset.every((name) =>
+                    keypoints.some((kpt) => kpt?.labelName === name)
+                )
+            ) {
+                const matchingKpts = keypoints.filter((item) =>
+                    subset.includes(item?.labelName ?? "")
+                );
+                const centroids = matchingKpts.map((x) => x.centroid);
+                const pointsOnCanvas =
+                    RenderEngineUtil.transferPolygonFromImageToViewPortContent(
+                        centroids,
+                        data
+                    );
+                let startPoint = RenderEngineUtil.setPointBetweenPixels(
+                    pointsOnCanvas[0]
+                );
+                let endPoint = RenderEngineUtil.setPointBetweenPixels(
+                    pointsOnCanvas[1]
+                );
+                let constrainPoint = RenderEngineUtil.setPointBetweenPixels(
+                    pointsOnCanvas[2]
+                );
+                this.surfaceAnnotator.drawEllipse(
+                    this.canvas,
+                    startPoint,
+                    endPoint,
+                    constrainPoint
+                );
+            }
+        }
 
         //
         // const [positionRatio_B, _ellipsePointsForRatio] = this.keypointUtils.computePositionRatio(allKeypointCenters, positionKeypointNames_B);
@@ -943,6 +883,7 @@ export class PolygonRenderEngine extends BaseRenderEngine {
     private startLassoDrawingMode(): void {
         if (!this.isCreationInProgress() || this.activePath.length === 0) return;
         this.isLassoDrawing = true;
+        this.lassoHadContactSinceStart = false;
         const lastPoint = this.activePath[this.activePath.length - 1];
         this.lastLassoPoint = lastPoint
             ? { x: lastPoint.x, y: lastPoint.y }
@@ -951,7 +892,94 @@ export class PolygonRenderEngine extends BaseRenderEngine {
 
     private stopLassoDrawingMode(): void {
         this.isLassoDrawing = false;
+        this.lassoHadContactSinceStart = false;
         this.lastLassoPoint = null;
+    }
+
+    private updateLassoContactState(event?: Event): void {
+        if (!event || !this.isLassoDrawing || !this.isCreationInProgress()) {
+            return;
+        }
+
+        if (this.isInputInContact(event)) {
+            this.lassoHadContactSinceStart = true;
+        }
+    }
+
+    private shouldFinishLassoCreationFromMoveRelease(data: EditorData): boolean {
+        if (!this.lassoHadContactSinceStart || !this.isLassoDrawing || !this.isCreationInProgress()) {
+            return false;
+        }
+
+        const eventType = data.event?.type;
+        if (eventType !== EventType.POINTER_MOVE && eventType !== EventType.MOUSE_MOVE && eventType !== EventType.TOUCH_MOVE) {
+            return false;
+        }
+
+        return !this.isInputInContact(data.event);
+    }
+
+    private shouldFinishLassoCreationOnPointerUp(data: EditorData): boolean {
+        if (!this.isLassoDrawing || !this.isCreationInProgress()) {
+            return false;
+        }
+
+        const hasPointerEvents = typeof window !== "undefined" && "PointerEvent" in window;
+        const hasTouchCapability = typeof navigator !== "undefined" && navigator.maxTouchPoints > 0;
+        const eventType = data.event?.type;
+        if (eventType === EventType.TOUCH_END) {
+            return this.activePath.length > 0;
+        }
+
+        if (eventType === EventType.POINTER_UP || eventType === EventType.POINTER_CANCEL) {
+            const pointerEvent = data.event as PointerEvent;
+            if (pointerEvent.pointerType !== "mouse") {
+                return this.activePath.length > 0;
+            }
+
+            // Some tablet browsers report stylus as "mouse"; allow close on touch-capable devices.
+            return hasTouchCapability && this.activePath.length > 0;
+        }
+
+        if (eventType === EventType.MOUSE_UP) {
+            const mouseEvent = data.event as MouseEvent & {
+                sourceCapabilities?: { firesTouchEvents?: boolean };
+            };
+            const fromTouchCompatMouse = !!mouseEvent.sourceCapabilities?.firesTouchEvents;
+
+            // Fallback for tablets/browsers that emit compatibility mouse events for pen/touch.
+            if ((!hasPointerEvents || hasTouchCapability || fromTouchCompatMouse) && this.lassoHadContactSinceStart) {
+                return this.activePath.length > 0;
+            }
+        }
+
+        return false;
+    }
+
+    private isInputInContact(event: Event): boolean {
+        if (!event) {
+            return false;
+        }
+
+        const pointerEvent = event as PointerEvent;
+        if (typeof pointerEvent.pointerType === "string") {
+            if (pointerEvent.pointerType === "touch") {
+                return true;
+            }
+            return (pointerEvent.buttons || 0) > 0 || (pointerEvent.pressure || 0) > 0;
+        }
+
+        const touchEvent = event as TouchEvent;
+        if (touchEvent.touches) {
+            return touchEvent.touches.length > 0;
+        }
+
+        const mouseEvent = event as MouseEvent;
+        if (typeof mouseEvent.buttons === "number") {
+            return mouseEvent.buttons > 0;
+        }
+
+        return false;
     }
 
     private applyPreferredCreationMode(): void {
@@ -1752,8 +1780,7 @@ export class KeypointSurfaceAnnotation {
         canvas: HTMLCanvasElement,
         startPoint: IPoint,
         endPoint: IPoint,
-        constrainPoint: IPoint,
-        color: string = "#ffffff"
+        constrainPoint: IPoint
     ) {
         const ellipseProperties = KeypointSurfaceAnnotation.computeEllipse(
             startPoint,
@@ -1769,8 +1796,7 @@ export class KeypointSurfaceAnnotation {
             ellipseProperties.rotateAngle,
             0,
             360,
-            1,
-            color
+            1
         );
     }
 

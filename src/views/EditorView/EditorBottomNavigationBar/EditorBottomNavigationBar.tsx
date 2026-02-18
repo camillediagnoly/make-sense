@@ -12,6 +12,7 @@ import { KeypointUtils } from "../../../logic/render/PolygonRenderEngine";
 import { ImageFilterMode } from "../../../data/enums/ImageFilterMode";
 import { ImageFilterUtil } from "../../../utils/ImageFilterUtil";
 import { LabelType } from "../../../data/enums/LabelType";
+import { ImageClassCriteria } from "../../../store/general/types";
 
 interface IProps {
     size: ISize;
@@ -22,16 +23,28 @@ interface IProps {
     activeLabelType: LabelType;
     filterMode: ImageFilterMode;
     searchText: string;
+    imageClassCriteria: ImageClassCriteria[];
 }
 
-const EditorBottomNavigationBar: React.FC<IProps> = ({ size, imageData, imagesData, activeImageIndex, activeContext, activeLabelType, filterMode, searchText }) => {
+const EditorBottomNavigationBar: React.FC<IProps> = ({
+    size,
+    imageData,
+    imagesData,
+    activeImageIndex,
+    activeContext,
+    activeLabelType,
+    filterMode,
+    searchText,
+    imageClassCriteria
+}) => {
     const minWidth: number = 400;
 
     const filteredIndices = ImageFilterUtil.getFilteredImageIndices(
         imagesData,
         activeLabelType,
         filterMode,
-        searchText
+        searchText,
+        imageClassCriteria
     );
     const activeFilteredIndex = filteredIndices.indexOf(activeImageIndex);
     const totalImageCount = filteredIndices.length;
@@ -143,7 +156,8 @@ const mapStateToProps = (state: AppState) => ({
     imagesData: state.labels.imagesData,
     activeLabelType: state.labels.activeLabelType,
     filterMode: state.general.imageListFilterMode,
-    searchText: state.general.imageListSearchText
+    searchText: state.general.imageListSearchText,
+    imageClassCriteria: state.general.imageClassCriteria
 });
 
 export default connect(

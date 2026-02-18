@@ -21,6 +21,8 @@
       top: 0;
       left: 0;
       cursor: none;
+      touch-action: none;
+      -ms-touch-action: none;
 
       &:hover {
         cursor: none;

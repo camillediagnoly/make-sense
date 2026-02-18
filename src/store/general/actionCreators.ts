@@ -1,5 +1,5 @@
 import { ISize } from "../../interfaces/ISize";
-import { GeneralActionTypes, ProjectData } from "./types";
+import { GeneralActionTypes, ImageClassCriteria, ProjectData } from "./types";
 import { Action } from "../Actions";
 import { PopupWindowType } from "../../data/enums/PopupWindowType";
 import { CustomCursorStyle } from "../../data/enums/CustomCursorStyle";
@@ -195,6 +195,17 @@ export function updateImageListSearchText(
         type: Action.UPDATE_IMAGE_LIST_SEARCH_TEXT,
         payload: {
             imageListSearchText,
+        },
+    };
+}
+
+export function updateImageClassCriteria(
+    imageClassCriteria: ImageClassCriteria[]
+): GeneralActionTypes {
+    return {
+        type: Action.UPDATE_IMAGE_CLASS_CRITERIA,
+        payload: {
+            imageClassCriteria,
         },
     };
 }
