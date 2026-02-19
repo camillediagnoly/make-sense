@@ -102,7 +102,20 @@ class ImagesList extends React.Component<IProps, IState> {
             prevProps.filterMode !== this.props.filterMode ||
             prevProps.imageClassCriteria !== this.props.imageClassCriteria;
 
-        if (filterChanged) {
+        const previousFilteredIndices = ImageFilterUtil.getFilteredImageIndices(
+            prevProps.imagesData,
+            prevProps.activeLabelType,
+            prevProps.filterMode,
+            prevProps.searchText,
+            prevProps.imageClassCriteria
+        );
+        const currentFilteredIndices = this.getFilteredImages();
+        const filteredImagesChanged =
+            previousFilteredIndices.length !== currentFilteredIndices.length ||
+            previousFilteredIndices.some((value, index) => value !== currentFilteredIndices[index]);
+
+        if (filterChanged || filteredImagesChanged) {
+            ImageActions.syncActiveImageWithFilters();
             this.setState((state) => ({ key: state.key + 1 }));
             this.updateListSize();
         }

@@ -39,6 +39,34 @@ export class ImageActions {
     );
   }
 
+  public static syncActiveImageWithFilters(): void {
+    const filteredIndices = ImageActions.getFilteredImageIndices();
+    if (!filteredIndices.length) {
+      return;
+    }
+
+    const currentImageIndex: number = LabelsSelector.getActiveImageIndex();
+    if (currentImageIndex === null || currentImageIndex === undefined) {
+      ImageActions.getImageByIndex(filteredIndices[0]);
+      return;
+    }
+
+    if (filteredIndices.includes(currentImageIndex)) {
+      return;
+    }
+
+    const nextImageInOriginalOrder = filteredIndices.find(
+      (index: number) => index > currentImageIndex
+    );
+
+    if (nextImageInOriginalOrder !== undefined) {
+      ImageActions.getImageByIndex(nextImageInOriginalOrder);
+      return;
+    }
+
+    ImageActions.getImageByIndex(filteredIndices[filteredIndices.length - 1]);
+  }
+
   public static getPreviousImage(): void {
     const filteredIndices = ImageActions.getFilteredImageIndices();
     if (!filteredIndices.length) {
