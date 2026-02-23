@@ -4,29 +4,43 @@ import { GenericYesNoPopup } from '../GenericYesNoPopup/GenericYesNoPopup';
 import { PopupWindowType } from '../../../data/enums/PopupWindowType';
 import { connect } from 'react-redux';
 import { AppState } from '../../../store';
-import { LabelName } from '../../../store/labels/types';
+import { ImageData, LabelName } from '../../../store/labels/types';
 import {
     ImageClassCriteria,
-    ImageClassCriteriaMode,
-    ImageClassCriteriaOperator,
+    ImageClassExpressionCriteria,
 } from '../../../store/general/types';
 import {
     updateActivePopupType,
     updateImageClassCriteria,
 } from '../../../store/general/actionCreators';
-import Scrollbars from 'react-custom-scrollbars-2';
 import { ImageFilterMode } from '../../../data/enums/ImageFilterMode';
-import { ImageData } from '../../../store/labels/types';
 import { LabelType } from '../../../data/enums/LabelType';
 import { ImageFilterUtil } from '../../../utils/ImageFilterUtil';
+import Scrollbars from 'react-custom-scrollbars-2';
 
-type CriteriaRow = {
-    labelId: string;
-    labelName: string;
-    enabled: boolean;
-    mode: ImageClassCriteriaMode;
-    operator: ImageClassCriteriaOperator;
-}
+const DRAG_DATA_TYPE = 'application/x-image-filter-criteria-token';
+
+const OPERATOR_LIBRARY: ImageClassExpressionCriteria[] = [
+    { type: 'operator', operator: 'AND' },
+    { type: 'operator', operator: 'OR' },
+    { type: 'operator', operator: 'NOT' },
+    { type: 'parenthesis', value: '(' },
+    { type: 'parenthesis', value: ')' },
+];
+
+type CanvasToken = ImageClassExpressionCriteria & {
+    id: string;
+};
+
+type DragPayload =
+    | {
+        source: 'palette';
+        token: ImageClassExpressionCriteria;
+    }
+    | {
+        source: 'canvas';
+        tokenId: string;
+    };
 
 interface IProps {
     labels: LabelName[];
@@ -39,25 +53,50 @@ interface IProps {
     updateImageClassCriteriaAction: (criteria: ImageClassCriteria[]) => any;
 }
 
-const buildRows = (
-    labels: LabelName[],
-    imageClassCriteria: ImageClassCriteria[]
-): CriteriaRow[] => {
-    const criteriaMap = new Map<string, ImageClassCriteria>();
-    imageClassCriteria.forEach((criteria: ImageClassCriteria) =>
-        criteriaMap.set(criteria.labelId, criteria)
+let tokenIdCounter = 0;
+const createTokenId = (): string => {
+    tokenIdCounter += 1;
+    return `image-filter-token-${tokenIdCounter}`;
+};
+
+const toCanvasToken = (token: ImageClassExpressionCriteria): CanvasToken => ({
+    ...token,
+    id: createTokenId(),
+});
+
+const toCanvasTokens = (criteria: ImageClassCriteria[]): CanvasToken[] =>
+    ImageFilterUtil.normalizeImageClassCriteria(criteria).map(
+        (token: ImageClassExpressionCriteria) => toCanvasToken(token)
     );
 
-    return labels.map((label: LabelName) => {
-            const rowCriteria = criteriaMap.get(label.id);
-            return {
-                labelId: label.id,
-                labelName: label.name,
-                enabled: !!rowCriteria,
-                mode: rowCriteria?.mode ?? 'include',
-                operator: rowCriteria?.operator ?? 'and',
-            };
-        });
+const toCriteriaTokens = (tokens: CanvasToken[]): ImageClassExpressionCriteria[] =>
+    tokens.map(({ id, ...token }: CanvasToken) => token);
+
+const serializeDragPayload = (payload: DragPayload): string => JSON.stringify(payload);
+
+const parseDragPayload = (rawPayload: string | null): DragPayload | null => {
+    if (!rawPayload) {
+        return null;
+    }
+
+    try {
+        const payload = JSON.parse(rawPayload) as DragPayload;
+        if (!payload || typeof payload !== 'object' || !('source' in payload)) {
+            return null;
+        }
+
+        if (payload.source === 'palette' && 'token' in payload) {
+            return payload;
+        }
+
+        if (payload.source === 'canvas' && 'tokenId' in payload) {
+            return payload;
+        }
+    } catch {
+        return null;
+    }
+
+    return null;
 };
 
 const ImageClassFilterPopup: React.FC<IProps> = (
@@ -72,93 +111,46 @@ const ImageClassFilterPopup: React.FC<IProps> = (
         updateImageClassCriteriaAction,
     }
 ) => {
-    const [rows, setRows] = useState<CriteriaRow[]>(
-        buildRows(labels, imageClassCriteria)
+    const [canvasTokens, setCanvasTokens] = useState<CanvasToken[]>(
+        toCanvasTokens(imageClassCriteria)
     );
+    const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
 
     useEffect(() => {
-        setRows(buildRows(labels, imageClassCriteria));
-    }, [labels, imageClassCriteria]);
+        setCanvasTokens(toCanvasTokens(imageClassCriteria));
+    }, [imageClassCriteria]);
 
-    const activeRows = useMemo(
-        () => rows.filter((row: CriteriaRow) => row.enabled),
-        [rows]
+    const labelNameById = useMemo(
+        () =>
+            new Map<string, string>(
+                labels.map((label: LabelName) => [label.id, label.name])
+            ),
+        [labels]
     );
 
-    const updateRow = (labelId: string, patch: Partial<CriteriaRow>) => {
-        setRows((prevRows: CriteriaRow[]) =>
-            prevRows.map((row: CriteriaRow) =>
-                row.labelId === labelId ? { ...row, ...patch } : row
-            )
-        );
-    };
+    const draftCriteria = useMemo(
+        () => toCriteriaTokens(canvasTokens),
+        [canvasTokens]
+    );
 
-    const onSetMode = (labelId: string, mode: ImageClassCriteriaMode) => {
-        setRows((prevRows: CriteriaRow[]) =>
-            prevRows.map((row: CriteriaRow) => {
-                if (row.labelId !== labelId) {
-                    return row;
-                }
+    const isExpressionValid = useMemo(
+        () => ImageFilterUtil.isImageClassCriteriaValid(draftCriteria),
+        [draftCriteria]
+    );
 
-                const shouldDisable = row.enabled && row.mode === mode;
-                if (shouldDisable) {
-                    return {
-                        ...row,
-                        enabled: false,
-                        mode: 'include',
-                        operator: 'and',
-                    };
-                }
+    const usedLabelIds = useMemo(() => {
+        const ids = new Set<string>();
+        canvasTokens.forEach((token: CanvasToken) => {
+            if (token.type === 'label') {
+                ids.add(token.labelId);
+            }
+        });
+        return ids;
+    }, [canvasTokens]);
 
-                return { ...row, mode, enabled: true };
-            })
-        );
-    };
-
-    const onSetOperator = (
-        labelId: string,
-        operator: ImageClassCriteriaOperator
-    ) => {
-        updateRow(labelId, { operator, enabled: true });
-    };
-
-    const onAccept = () => {
-        const normalizedCriteria: ImageClassCriteria[] = rows
-            .filter((row: CriteriaRow) => row.enabled)
-            .map((row: CriteriaRow) => ({
-                labelId: row.labelId,
-                mode: row.mode,
-                operator: row.operator,
-            }));
-        updateImageClassCriteriaAction(normalizedCriteria);
-        updateActivePopupTypeAction(null);
-    };
-
-    const onReject = () => {
-        updateActivePopupTypeAction(null);
-    };
-
-    const onClear = () => {
-        setRows((prevRows: CriteriaRow[]) =>
-            prevRows.map((row: CriteriaRow) => ({
-                ...row,
-                enabled: false,
-                mode: 'include',
-                operator: 'and',
-            }))
-        );
-    };
-
-    const draftCriteria: ImageClassCriteria[] = useMemo(
-        () =>
-            rows
-                .filter((row: CriteriaRow) => row.enabled)
-                .map((row: CriteriaRow) => ({
-                    labelId: row.labelId,
-                    mode: row.mode,
-                    operator: row.operator,
-                })),
-        [rows]
+    const availableLabels = useMemo(
+        () => labels.filter((label: LabelName) => !usedLabelIds.has(label.id)),
+        [labels, usedLabelIds]
     );
 
     const filteredImagesCount = useMemo(
@@ -173,74 +165,326 @@ const ImageClassFilterPopup: React.FC<IProps> = (
         [imagesData, activeLabelType, filterMode, searchText, draftCriteria]
     );
 
-    const renderRows = () => {
-        if (rows.length === 0) {
-            return <div className='EmptyState'>No labels found. Add labels first.</div>;
-        }
+    const appendToken = (token: ImageClassExpressionCriteria) => {
+        setCanvasTokens((previousTokens: CanvasToken[]) => {
+            if (
+                token.type === 'label' &&
+                previousTokens.some(
+                    (existingToken: CanvasToken) =>
+                        existingToken.type === 'label' &&
+                        existingToken.labelId === token.labelId
+                )
+            ) {
+                return previousTokens;
+            }
 
-        return rows.map((row: CriteriaRow) => {
-            return (
-                <div className={`CriteriaRow ${row.enabled ? 'enabled' : ''}`} key={row.labelId}>
-                    <div className='CriteriaCell label'>{row.labelName}</div>
-                    <div className='CriteriaCell mode'>
-                        <button
-                            className={`ToggleButton include ${row.enabled && row.mode === 'include' ? 'active' : ''}`}
-                            type='button'
-                            onClick={() => onSetMode(row.labelId, 'include')}
-                        >
-                            Include
-                        </button>
-                        <button
-                            className={`ToggleButton exclude ${row.enabled && row.mode === 'exclude' ? 'active' : ''}`}
-                            type='button'
-                            onClick={() => onSetMode(row.labelId, 'exclude')}
-                        >
-                            Exclude
-                        </button>
-                    </div>
-                    <div className='CriteriaCell operator'>
-                        <button
-                            className={`ToggleButton and ${row.enabled && row.operator === 'and' ? 'active' : ''}`}
-                            type='button'
-                            onClick={() => onSetOperator(row.labelId, 'and')}
-                        >
-                            AND
-                        </button>
-                        <button
-                            className={`ToggleButton or ${row.enabled && row.operator === 'or' ? 'active' : ''}`}
-                            type='button'
-                            onClick={() => onSetOperator(row.labelId, 'or')}
-                        >
-                            OR
-                        </button>
-                    </div>
-                </div>
-            );
+            return [...previousTokens, toCanvasToken(token)];
         });
     };
+
+    const insertTokenAt = (
+        token: ImageClassExpressionCriteria,
+        index: number
+    ) => {
+        setCanvasTokens((previousTokens: CanvasToken[]) => {
+            if (
+                token.type === 'label' &&
+                previousTokens.some(
+                    (existingToken: CanvasToken) =>
+                        existingToken.type === 'label' &&
+                        existingToken.labelId === token.labelId
+                )
+            ) {
+                return previousTokens;
+            }
+
+            const newToken = toCanvasToken(token);
+            const boundedIndex = Math.max(0, Math.min(index, previousTokens.length));
+
+            return [
+                ...previousTokens.slice(0, boundedIndex),
+                newToken,
+                ...previousTokens.slice(boundedIndex),
+            ];
+        });
+    };
+
+    const moveCanvasToken = (tokenId: string, targetIndex: number) => {
+        setCanvasTokens((previousTokens: CanvasToken[]) => {
+            const sourceIndex = previousTokens.findIndex(
+                (token: CanvasToken) => token.id === tokenId
+            );
+
+            if (sourceIndex < 0) {
+                return previousTokens;
+            }
+
+            const movedToken = previousTokens[sourceIndex];
+            const withoutToken = previousTokens.filter(
+                (token: CanvasToken) => token.id !== tokenId
+            );
+            const boundedTargetIndex = Math.max(
+                0,
+                Math.min(targetIndex, previousTokens.length)
+            );
+            const adjustedIndex =
+                sourceIndex < targetIndex ? boundedTargetIndex - 1 : boundedTargetIndex;
+            const safeIndex = Math.max(0, Math.min(adjustedIndex, withoutToken.length));
+
+            return [
+                ...withoutToken.slice(0, safeIndex),
+                movedToken,
+                ...withoutToken.slice(safeIndex),
+            ];
+        });
+    };
+
+    const removeTokenById = (tokenId: string) => {
+        setCanvasTokens((previousTokens: CanvasToken[]) =>
+            previousTokens.filter((token: CanvasToken) => token.id !== tokenId)
+        );
+    };
+
+    const onDragStart = (event: React.DragEvent, payload: DragPayload) => {
+        const serializedPayload = serializeDragPayload(payload);
+        event.dataTransfer.setData(DRAG_DATA_TYPE, serializedPayload);
+        event.dataTransfer.setData('text/plain', serializedPayload);
+        event.dataTransfer.effectAllowed = 'move';
+    };
+
+    const onDropAtIndex = (event: React.DragEvent, index: number) => {
+        event.preventDefault();
+        setDragOverIndex(null);
+
+        const payload = parseDragPayload(event.dataTransfer.getData(DRAG_DATA_TYPE))
+            || parseDragPayload(event.dataTransfer.getData('text/plain'));
+
+        if (!payload) {
+            return;
+        }
+
+        if (payload.source === 'palette') {
+            insertTokenAt(payload.token, index);
+            return;
+        }
+
+        moveCanvasToken(payload.tokenId, index);
+    };
+
+    const onDropToCanvasEnd = (event: React.DragEvent) => {
+        onDropAtIndex(event, canvasTokens.length);
+    };
+
+    const onAccept = () => {
+        if (!isExpressionValid) {
+            return;
+        }
+
+        updateImageClassCriteriaAction(draftCriteria);
+        updateActivePopupTypeAction(null);
+    };
+
+    const onReject = () => {
+        updateActivePopupTypeAction(null);
+    };
+
+    const onClear = () => {
+        setCanvasTokens([]);
+        setDragOverIndex(null);
+    };
+
+    const getTokenLabel = (token: CanvasToken): string => {
+        if (token.type === 'label') {
+            return labelNameById.get(token.labelId) || '[Missing label]';
+        }
+
+        if (token.type === 'operator') {
+            return token.operator;
+        }
+
+        return token.value;
+    };
+
+    const getCanvasTokenClassName = (token: CanvasToken): string => {
+        if (token.type === 'label') {
+            return 'CanvasToken label';
+        }
+
+        if (token.type === 'operator') {
+            return `CanvasToken operator ${token.operator.toLowerCase()}`;
+        }
+
+        return 'CanvasToken parenthesis';
+    };
+
+    const renderCanvasDropSlot = (index: number) => (
+        <div
+            key={`drop-slot-${index}`}
+            className={`DropSlot ${dragOverIndex === index ? 'active' : ''}`}
+            onDragOver={(event: React.DragEvent) => {
+                event.preventDefault();
+                setDragOverIndex(index);
+                event.dataTransfer.dropEffect = 'move';
+            }}
+            onDragLeave={() => {
+                if (dragOverIndex === index) {
+                    setDragOverIndex(null);
+                }
+            }}
+            onDrop={(event: React.DragEvent) => onDropAtIndex(event, index)}
+        />
+    );
+
+    const renderCanvasToken = (token: CanvasToken) => (
+        <div
+            key={token.id}
+            className={getCanvasTokenClassName(token)}
+            draggable={true}
+            onClick={() => removeTokenById(token.id)}
+            onDragStart={(event: React.DragEvent) =>
+                onDragStart(event, {
+                    source: 'canvas',
+                    tokenId: token.id,
+                })
+            }
+            title='Click to remove'
+        >
+            <span>{getTokenLabel(token)}</span>
+        </div>
+    );
 
     const renderContent = () => (
         <div className='ImageClassFilterPopup'>
             <div className='Toolbar'>
                 <div className='Stats'>
-                    <span>Active conditions: {activeRows.length}</span>
                     <span>Filtered images: {filteredImagesCount} / {imagesData.length}</span>
+                    <span className={isExpressionValid ? 'valid' : 'invalid'}>
+                        {isExpressionValid ? 'Expression valid' : 'Expression invalid'}
+                    </span>
                 </div>
                 <button className='ClearButton' type='button' onClick={onClear}>
                     Clear all
                 </button>
             </div>
-            <div className='HeaderRow'>
-                <div className='CriteriaCell label'>Label</div>
-                <div className='CriteriaCell mode'>Type</div>
-                <div className='CriteriaCell operator'>Join</div>
-            </div>
-            <div className='RowsContainer'>
-                <Scrollbars autoHide={true}>
-                    <div className='RowsContent'>
-                        {renderRows()}
+
+            <div className='ConditionCanvas'>
+                <div
+                    className='TokenSequence'
+                    onDragOver={(event: React.DragEvent) => {
+                        event.preventDefault();
+                        event.dataTransfer.dropEffect = 'move';
+                        setDragOverIndex(canvasTokens.length);
+                    }}
+                    onDrop={onDropToCanvasEnd}
+                    onDragLeave={() => {
+                        if (dragOverIndex === canvasTokens.length) {
+                            setDragOverIndex(null);
+                        }
+                    }}
+                >
+                    {canvasTokens.map((token: CanvasToken, index: number) => (
+                        <React.Fragment key={`fragment-${token.id}`}>
+                            {renderCanvasDropSlot(index)}
+                            <div
+                                className='TokenDropWrapper'
+                                onDragOver={(event: React.DragEvent) => {
+                                    event.preventDefault();
+                                    setDragOverIndex(index);
+                                    event.dataTransfer.dropEffect = 'move';
+                                }}
+                                onDrop={(event: React.DragEvent) => onDropAtIndex(event, index)}
+                            >
+                                {renderCanvasToken(token)}
+                            </div>
+                        </React.Fragment>
+                    ))}
+                    <div className='CanvasTailDropArea'>
+                        {renderCanvasDropSlot(canvasTokens.length)}
                     </div>
-                </Scrollbars>
+                </div>
+                {canvasTokens.length === 0 && (
+                    <div
+                        className='CanvasHint'
+                        onDragOver={(event: React.DragEvent) => {
+                            event.preventDefault();
+                            event.dataTransfer.dropEffect = 'move';
+                            setDragOverIndex(0);
+                        }}
+                        onDrop={(event: React.DragEvent) => onDropAtIndex(event, 0)}
+                    >
+                        Drag classes/operators here, or click below to append.
+                    </div>
+                )}
+            </div>
+
+            <div className='LibraryRow'>
+                <div className='ClassLibrary'>
+                    <div className='LibraryHeader'>Classes</div>
+                    <div className='LibraryBody'>
+                        {labels.length === 0 && (
+                            <div className='EmptyState'>No labels found. Add labels first.</div>
+                        )}
+
+                        {labels.length > 0 && availableLabels.length === 0 && (
+                            <div className='EmptyState'>All classes are already used in the condition.</div>
+                        )}
+
+                        {availableLabels.length > 0 && (
+                            <Scrollbars autoHide={true}>
+                                <div className='TokenBank'>
+                                    {availableLabels.map((label: LabelName) => (
+                                        <button
+                                            key={label.id}
+                                            type='button'
+                                            className='LibraryToken label'
+                                            onClick={() =>
+                                                appendToken({
+                                                    type: 'label',
+                                                    labelId: label.id,
+                                                })
+                                            }
+                                            draggable={true}
+                                            onDragStart={(event: React.DragEvent) =>
+                                                onDragStart(event, {
+                                                    source: 'palette',
+                                                    token: {
+                                                        type: 'label',
+                                                        labelId: label.id,
+                                                    },
+                                                })
+                                            }
+                                        >
+                                            {label.name}
+                                        </button>
+                                    ))}
+                                </div>
+                            </Scrollbars>
+                        )}
+                    </div>
+                </div>
+
+                <div className='OperatorLibrary'>
+                    <div className='LibraryHeader'>Logical Condition</div>
+                    <div className='TokenBank operators'>
+                        {OPERATOR_LIBRARY.map((token: ImageClassExpressionCriteria, index: number) => (
+                            <button
+                                key={`${token.type}-${index}`}
+                                type='button'
+                                className='LibraryToken operator'
+                                onClick={() => appendToken(token)}
+                                draggable={true}
+                                onDragStart={(event: React.DragEvent) =>
+                                    onDragStart(event, {
+                                        source: 'palette',
+                                        token,
+                                    })
+                                }
+                            >
+                                {token.type === 'operator' ? token.operator : token.value}
+                            </button>
+                        ))}
+                    </div>
+                </div>
             </div>
         </div>
     );
@@ -253,6 +497,8 @@ const ImageClassFilterPopup: React.FC<IProps> = (
             onAccept={onAccept}
             rejectLabel={'Cancel'}
             onReject={onReject}
+            disableAcceptButton={!isExpressionValid}
+            disabledTooltip={'Fix the expression before applying the filter.'}
             popupClassName={'ImageClassFilterPopupDialog'}
         />
     );

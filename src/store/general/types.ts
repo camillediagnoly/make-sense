@@ -19,14 +19,36 @@ export type ShortcutItem = {
 	description?: string;
 }
 
-export type ImageClassCriteriaMode = 'include' | 'exclude';
-export type ImageClassCriteriaOperator = 'and' | 'or';
+export type ImageClassBooleanOperator = 'AND' | 'OR' | 'NOT';
+export type ImageClassParenthesis = '(' | ')';
 
-export type ImageClassCriteria = {
+export type ImageClassExpressionCriteria =
+    | {
+        id?: string;
+        type: 'label';
+        labelId: string;
+    }
+    | {
+        id?: string;
+        type: 'operator';
+        operator: ImageClassBooleanOperator;
+    }
+    | {
+        id?: string;
+        type: 'parenthesis';
+        value: ImageClassParenthesis;
+    };
+
+export type LegacyImageClassCriteriaMode = 'include' | 'exclude';
+export type LegacyImageClassCriteriaOperator = 'and' | 'or';
+
+export type LegacyImageClassCriteria = {
     labelId: string;
-    mode: ImageClassCriteriaMode;
-    operator: ImageClassCriteriaOperator;
+    mode: LegacyImageClassCriteriaMode;
+    operator: LegacyImageClassCriteriaOperator;
 }
+
+export type ImageClassCriteria = ImageClassExpressionCriteria | LegacyImageClassCriteria;
 
 export type GeneralState = {
     windowSize: ISize;

@@ -1,6 +1,6 @@
 .GenericYesNoPopup.ImageClassFilterPopupDialog {
-  max-width: 760px;
-  width: 62%;
+  max-width: 960px;
+  width: 78%;
 }
 
 .ImageClassFilterPopup {
@@ -11,21 +11,31 @@
   flex-direction: column;
   padding: 14px 16px;
   box-sizing: border-box;
-  gap: 10px;
+  gap: 12px;
 
   .Toolbar {
     display: flex;
     align-items: center;
     justify-content: space-between;
+    gap: 10px;
   }
 
   .Stats {
     display: flex;
-    flex-direction: row;
-    gap: 18px;
-    font-size: 15px;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 14px;
+    font-size: 13px;
     font-weight: 700;
-    color: #d7d7d7;
+    color: #cfcfcf;
+
+    .valid {
+      color: #7adf9c;
+    }
+
+    .invalid {
+      color: #e58c8c;
+    }
   }
 
   .ClearButton {
@@ -43,110 +53,234 @@
     }
   }
 
-  .HeaderRow {
-    display: flex;
-    align-items: center;
-    border: 1px solid #3a3a3a;
-    border-radius: 6px 6px 0 0;
-    background: #242424;
-    min-height: 38px;
-    font-weight: 700;
-    font-size: 13px;
-  }
-
-  .RowsContainer {
-    flex: 1;
-    min-height: 300px;
-    border: 1px solid #3a3a3a;
-    border-top: 0;
-    border-radius: 0 0 6px 6px;
-    background: #1f1f1f;
-  }
-
-  .RowsContent {
-    min-height: 100%;
-  }
-
-  .CriteriaRow {
-    display: flex;
-    align-items: center;
-    border-bottom: 1px solid #2e2e2e;
-    min-height: 46px;
-
-    &.enabled {
-      background: rgba(255, 255, 255, 0.02);
-    }
-  }
-
-  .CriteriaCell {
-    padding: 0 10px;
+  .ConditionCanvas {
+    position: relative;
+    min-height: 112px;
+    border: 1px solid #3d4b57;
+    border-radius: 8px;
+    background: #1f2429;
+    padding: 10px;
     box-sizing: border-box;
-    display: flex;
-    align-items: center;
-    justify-content: flex-start;
-    height: 100%;
-
-    &.label {
-      width: 44%;
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      font-size: 13px;
-      color: #ececec;
-    }
-
-    &.mode {
-      width: 28%;
-      gap: 8px;
-      justify-content: center;
-    }
-
-    &.operator {
-      width: 28%;
-      gap: 8px;
-      justify-content: center;
-    }
   }
 
-  .ToggleButton {
-    min-width: 72px;
-    border: 1px solid #4d4d4d;
-    background: #2e2e2e;
-    color: #d4d4d4;
-    border-radius: 999px;
-    padding: 4px 10px;
-    font-size: 11px;
-    cursor: pointer;
+  .TokenSequence {
+    min-height: 84px;
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 6px;
+    width: 100%;
+  }
+
+  .TokenDropWrapper {
+    display: inline-flex;
+    align-items: center;
+    min-height: 34px;
+  }
+
+  .CanvasTailDropArea {
+    display: inline-flex;
+    align-items: center;
+    min-height: 34px;
+  }
+
+  .DropSlot {
+    width: 8px;
+    height: 34px;
+    border-radius: 4px;
+    background: transparent;
+    border: 1px dashed transparent;
+    transition: all 0.12s ease-in-out;
 
     &.active {
-      color: #fff;
+      width: 16px;
+      border-color: #5f9ed6;
+      background: rgba(95, 158, 214, 0.2);
+    }
+  }
+
+  .CanvasToken {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    min-height: 34px;
+    border-radius: 999px;
+    border: 1px solid #4d4d4d;
+    padding: 5px 10px;
+    background: #2e2e2e;
+    color: #f0f0f0;
+    font-size: 12px;
+    user-select: none;
+    cursor: pointer;
+
+    &.label {
+      border-color: #3577b2;
+      background: rgba(53, 119, 178, 0.25);
     }
 
-    &.include.active {
-      border-color: #238a46;
-      background: rgba(35, 138, 70, 0.28);
-    }
-
-    &.exclude.active {
-      border-color: #ad4747;
-      background: rgba(173, 71, 71, 0.28);
-    }
-
-    &.and.active {
+    &.operator.and {
       border-color: #2f7db3;
       background: rgba(47, 125, 179, 0.28);
     }
 
-    &.or.active {
+    &.operator.or {
       border-color: #8f6f2f;
       background: rgba(143, 111, 47, 0.28);
     }
 
+    &.operator.not {
+      border-color: #9461a1;
+      background: rgba(148, 97, 161, 0.25);
+    }
+
+    &.parenthesis {
+      border-color: #5f8d5f;
+      background: rgba(95, 141, 95, 0.25);
+      font-weight: 700;
+    }
+  }
+
+  .CanvasHint {
+    position: absolute;
+    inset: 10px;
+    color: #8f9aa4;
+    font-size: 12px;
+    border: 1px dashed #44525f;
+    border-radius: 6px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    padding: 12px;
+  }
+
+  .LibraryRow {
+    flex: 1;
+    min-height: 230px;
+    border: 1px solid #3a3a3a;
+    border-radius: 8px;
+    background: #1f1f1f;
+    display: flex;
+    overflow: hidden;
+  }
+
+  .ClassLibrary {
+    flex: 1;
+    min-width: 0;
+    border-right: 1px solid #3a3a3a;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .OperatorLibrary {
+    width: 190px;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .LibraryHeader {
+    min-height: 40px;
+    display: flex;
+    align-items: center;
+    padding: 0 12px;
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+    color: #c5c5c5;
+    border-bottom: 1px solid #353535;
+    background: #242424;
+  }
+
+  .LibraryBody {
+    flex: 1;
+    min-height: 0;
+    padding: 10px;
+    box-sizing: border-box;
+  }
+
+  .TokenBank {
+    display: flex;
+    flex-wrap: wrap;
+    align-content: flex-start;
+    gap: 8px;
+    padding: 0 2px 4px 0;
+    min-height: 100%;
+
+    &.operators {
+      padding: 12px;
+      min-height: 0;
+      align-content: flex-start;
+    }
+  }
+
+  .LibraryToken {
+    border: 1px solid #4d4d4d;
+    border-radius: 999px;
+    background: #2c2c2c;
+    color: #e2e2e2;
+    font-size: 12px;
+    padding: 6px 12px;
+    cursor: pointer;
+    white-space: nowrap;
+
+    &:hover {
+      border-color: #6e6e6e;
+      color: #fff;
+    }
+
+    &.label {
+      border-color: #43617d;
+      background: rgba(67, 97, 125, 0.25);
+    }
+
+    &.operator {
+      border-color: #5d5d5d;
+      width: 100%;
+      text-align: center;
+      border-radius: 6px;
+      padding: 8px 12px;
+      background: #2f2f2f;
+      font-weight: 700;
+    }
   }
 
   .EmptyState {
-    color: #a6a6a6;
-    padding: 12px;
-    font-size: 13px;
+    color: #999;
+    font-size: 12px;
+    padding: 4px;
+  }
+}
+
+@media (max-width: 900px) {
+  .GenericYesNoPopup.ImageClassFilterPopupDialog {
+    width: 92%;
+  }
+
+  .ImageClassFilterPopup {
+    .LibraryRow {
+      flex-direction: column;
+      min-height: 300px;
+    }
+
+    .ClassLibrary {
+      border-right: 0;
+      border-bottom: 1px solid #3a3a3a;
+    }
+
+    .OperatorLibrary {
+      width: 100%;
+    }
+
+    .TokenBank.operators {
+      display: grid;
+      grid-template-columns: repeat(5, minmax(0, 1fr));
+      gap: 8px;
+    }
+
+    .LibraryToken.operator {
+      width: auto;
+      border-radius: 999px;
+      padding: 6px 8px;
+    }
   }
 }

@@ -8,7 +8,27 @@ import {
 import { LabelType } from "../data/enums/LabelType";
 import { LabelStatus } from "../data/enums/LabelStatus";
 import { ImageFilterMode } from "../data/enums/ImageFilterMode";
-import { ImageClassCriteria } from "../store/general/types";
+import {
+    ImageClassBooleanOperator,
+    ImageClassCriteria,
+    ImageClassExpressionCriteria,
+    LegacyImageClassCriteria,
+} from "../store/general/types";
+
+type CriteriaAstNode =
+    | {
+        type: "label";
+        labelId: string;
+    }
+    | {
+        type: "not";
+        child: CriteriaAstNode;
+    }
+    | {
+        type: "and" | "or";
+        left: CriteriaAstNode;
+        right: CriteriaAstNode;
+    };
 
 export class ImageFilterUtil {
     public static isImageLabeled(imageData: ImageData, labelType: LabelType): boolean {
@@ -76,6 +96,294 @@ export class ImageFilterUtil {
         return assignedLabelIds;
     }
 
+    private static isLegacyCriteria(
+        criteria: ImageClassCriteria
+    ): criteria is LegacyImageClassCriteria {
+        const candidate = criteria as LegacyImageClassCriteria;
+        return (
+            !!candidate &&
+            typeof candidate === "object" &&
+            typeof candidate.labelId === "string" &&
+            (candidate.mode === "include" || candidate.mode === "exclude") &&
+            (candidate.operator === "and" || candidate.operator === "or")
+        );
+    }
+
+    private static isExpressionCriteria(
+        criteria: ImageClassCriteria
+    ): criteria is ImageClassExpressionCriteria {
+        const candidate = criteria as ImageClassExpressionCriteria;
+        return (
+            !!candidate &&
+            typeof candidate === "object" &&
+            (candidate.type === "label" ||
+                candidate.type === "operator" ||
+                candidate.type === "parenthesis")
+        );
+    }
+
+    private static convertLegacyCriteria(
+        legacyCriteria: LegacyImageClassCriteria[]
+    ): ImageClassExpressionCriteria[] {
+        if (!legacyCriteria.length) {
+            return [];
+        }
+
+        let expression: ImageClassExpressionCriteria[] = [];
+
+        legacyCriteria.forEach((criteria: LegacyImageClassCriteria, index: number) => {
+            const criterionTokens: ImageClassExpressionCriteria[] =
+                criteria.mode === "exclude"
+                    ? [
+                        {
+                            type: "operator",
+                            operator: "NOT",
+                        },
+                        {
+                            type: "label",
+                            labelId: criteria.labelId,
+                        },
+                    ]
+                    : [
+                        {
+                            type: "label",
+                            labelId: criteria.labelId,
+                        },
+                    ];
+
+            if (index === 0) {
+                expression = criterionTokens;
+                return;
+            }
+
+            expression = [
+                {
+                    type: "parenthesis",
+                    value: "(",
+                },
+                ...expression,
+                {
+                    type: "operator",
+                    operator: criteria.operator === "or" ? "OR" : "AND",
+                },
+                ...criterionTokens,
+                {
+                    type: "parenthesis",
+                    value: ")",
+                },
+            ];
+        });
+
+        return expression;
+    }
+
+    public static normalizeImageClassCriteria(
+        classCriteria: ImageClassCriteria[] = []
+    ): ImageClassExpressionCriteria[] {
+        if (!classCriteria.length) {
+            return [];
+        }
+
+        const expressionCriteria = classCriteria
+            .filter((criteria: ImageClassCriteria) =>
+                ImageFilterUtil.isExpressionCriteria(criteria)
+            )
+            .map((criteria: ImageClassExpressionCriteria) => {
+                if (criteria.type === "label") {
+                    return {
+                        type: "label",
+                        labelId: criteria.labelId,
+                    };
+                }
+
+                if (criteria.type === "operator") {
+                    return {
+                        type: "operator",
+                        operator: criteria.operator,
+                    };
+                }
+
+                return {
+                    type: "parenthesis",
+                    value: criteria.value,
+                };
+            });
+
+        if (expressionCriteria.length > 0) {
+            return expressionCriteria;
+        }
+
+        const legacyCriteria = classCriteria.filter((criteria: ImageClassCriteria) =>
+            ImageFilterUtil.isLegacyCriteria(criteria)
+        ) as LegacyImageClassCriteria[];
+
+        return ImageFilterUtil.convertLegacyCriteria(legacyCriteria);
+    }
+
+    private static parseImageClassCriteria(
+        criteriaTokens: ImageClassExpressionCriteria[]
+    ): CriteriaAstNode | null {
+        let index = 0;
+
+        const peek = (): ImageClassExpressionCriteria | null =>
+            index < criteriaTokens.length ? criteriaTokens[index] : null;
+
+        const consume = (): ImageClassExpressionCriteria | null => {
+            const token = peek();
+            if (token) {
+                index += 1;
+            }
+            return token;
+        };
+
+        const matchOperator = (operator: ImageClassBooleanOperator): boolean => {
+            const token = peek();
+            if (token?.type === "operator" && token.operator === operator) {
+                index += 1;
+                return true;
+            }
+            return false;
+        };
+
+        const parseExpression = (): CriteriaAstNode | null => parseOr();
+
+        const parseOr = (): CriteriaAstNode | null => {
+            let left = parseAnd();
+            if (!left) {
+                return null;
+            }
+
+            while (matchOperator("OR")) {
+                const right = parseAnd();
+                if (!right) {
+                    return null;
+                }
+
+                left = {
+                    type: "or",
+                    left,
+                    right,
+                };
+            }
+
+            return left;
+        };
+
+        const parseAnd = (): CriteriaAstNode | null => {
+            let left = parseUnary();
+            if (!left) {
+                return null;
+            }
+
+            while (matchOperator("AND")) {
+                const right = parseUnary();
+                if (!right) {
+                    return null;
+                }
+
+                left = {
+                    type: "and",
+                    left,
+                    right,
+                };
+            }
+
+            return left;
+        };
+
+        const parseUnary = (): CriteriaAstNode | null => {
+            if (matchOperator("NOT")) {
+                const child = parseUnary();
+                if (!child) {
+                    return null;
+                }
+
+                return {
+                    type: "not",
+                    child,
+                };
+            }
+
+            return parsePrimary();
+        };
+
+        const parsePrimary = (): CriteriaAstNode | null => {
+            const token = consume();
+            if (!token) {
+                return null;
+            }
+
+            if (token.type === "label") {
+                return {
+                    type: "label",
+                    labelId: token.labelId,
+                };
+            }
+
+            if (token.type === "parenthesis" && token.value === "(") {
+                const node = parseExpression();
+                if (!node) {
+                    return null;
+                }
+
+                const closing = consume();
+                if (
+                    !closing ||
+                    closing.type !== "parenthesis" ||
+                    closing.value !== ")"
+                ) {
+                    return null;
+                }
+
+                return node;
+            }
+
+            return null;
+        };
+
+        const rootNode = parseExpression();
+        if (!rootNode || index !== criteriaTokens.length) {
+            return null;
+        }
+
+        return rootNode;
+    }
+
+    public static isImageClassCriteriaValid(
+        classCriteria: ImageClassCriteria[] = []
+    ): boolean {
+        const normalizedCriteria = ImageFilterUtil.normalizeImageClassCriteria(classCriteria);
+        if (!normalizedCriteria.length) {
+            return true;
+        }
+
+        return !!ImageFilterUtil.parseImageClassCriteria(normalizedCriteria);
+    }
+
+    private static evaluateImageClassCriteria(
+        node: CriteriaAstNode,
+        assignedLabelIds: Set<string>
+    ): boolean {
+        switch (node.type) {
+            case "label":
+                return assignedLabelIds.has(node.labelId);
+            case "not":
+                return !ImageFilterUtil.evaluateImageClassCriteria(node.child, assignedLabelIds);
+            case "and":
+                return (
+                    ImageFilterUtil.evaluateImageClassCriteria(node.left, assignedLabelIds) &&
+                    ImageFilterUtil.evaluateImageClassCriteria(node.right, assignedLabelIds)
+                );
+            case "or":
+                return (
+                    ImageFilterUtil.evaluateImageClassCriteria(node.left, assignedLabelIds) ||
+                    ImageFilterUtil.evaluateImageClassCriteria(node.right, assignedLabelIds)
+                );
+            default:
+                return true;
+        }
+    }
+
     public static getFilteredImageIndices(
         imagesData: ImageData[],
         labelType: LabelType,
@@ -84,6 +392,11 @@ export class ImageFilterUtil {
         classCriteria: ImageClassCriteria[] = []
     ): number[] {
         const normalizedSearchText = (searchText || "").toLowerCase();
+        const normalizedCriteria = ImageFilterUtil.normalizeImageClassCriteria(classCriteria);
+        const criteriaAst = normalizedCriteria.length > 0
+            ? ImageFilterUtil.parseImageClassCriteria(normalizedCriteria)
+            : null;
+        const hasValidCriteria = normalizedCriteria.length === 0 || !!criteriaAst;
 
         return imagesData
             .map((image, index) => ({ image, index }))
@@ -101,27 +414,13 @@ export class ImageFilterUtil {
                 }
 
                 const assignedLabelIds = ImageFilterUtil.getImageAssignedLabelIds(image);
-                const activeCriteria = classCriteria.filter(
-                    (criteria: ImageClassCriteria) => !!criteria.labelId
-                );
 
                 let criteriaResult = true;
-                if (activeCriteria.length > 0) {
-                    const firstCriteria = activeCriteria[0];
-                    criteriaResult = firstCriteria.mode === "include"
-                        ? assignedLabelIds.has(firstCriteria.labelId)
-                        : !assignedLabelIds.has(firstCriteria.labelId);
-
-                    for (let i = 1; i < activeCriteria.length; i++) {
-                        const criteria = activeCriteria[i];
-                        const criteriaValue = criteria.mode === "include"
-                            ? assignedLabelIds.has(criteria.labelId)
-                            : !assignedLabelIds.has(criteria.labelId);
-
-                        criteriaResult = criteria.operator === "and"
-                            ? criteriaResult && criteriaValue
-                            : criteriaResult || criteriaValue;
-                    }
+                if (criteriaAst && hasValidCriteria) {
+                    criteriaResult = ImageFilterUtil.evaluateImageClassCriteria(
+                        criteriaAst,
+                        assignedLabelIds
+                    );
                 }
 
                 return matchesSearch && matchesFilter && criteriaResult;

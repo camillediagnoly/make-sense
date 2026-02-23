@@ -1,5 +1,5 @@
 import { ISize } from "../../interfaces/ISize";
-import { GeneralActionTypes, ImageClassCriteria, ProjectData } from "./types";
+import { GeneralActionTypes, ImageClassCriteria, ProjectData, ShortcutItem } from "./types";
 import { Action } from "../Actions";
 import { PopupWindowType } from "../../data/enums/PopupWindowType";
 import { CustomCursorStyle } from "../../data/enums/CustomCursorStyle";
