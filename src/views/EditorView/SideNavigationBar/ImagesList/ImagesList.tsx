@@ -35,6 +35,7 @@ interface IState {
 class ImagesList extends React.Component<IProps, IState> {
     private imagesListRef: HTMLDivElement;
     private controlsRef: HTMLDivElement;
+    private lastFilteredIndices: number[];
 
     constructor(props) {
         super(props);
@@ -43,6 +44,8 @@ class ImagesList extends React.Component<IProps, IState> {
             size: null,
             key: 0,
         }
+
+        this.lastFilteredIndices = this.getFilteredImagesFromProps(props);
     }
 
     public componentDidMount(): void {
@@ -75,14 +78,15 @@ class ImagesList extends React.Component<IProps, IState> {
         return ImageFilterUtil.isImageLabeled(imageData, this.props.activeLabelType);
     };
 
-    private getFilteredImages = (): number[] => {
+    private getFilteredImagesFromProps = (props: IProps): number[] => {
         const {
             imagesData,
             activeLabelType,
             filterMode,
             searchText,
             imageClassCriteria,
-        } = this.props;
+        } = props;
+
         return ImageFilterUtil.getFilteredImageIndices(
             imagesData,
             activeLabelType,
@@ -92,33 +96,33 @@ class ImagesList extends React.Component<IProps, IState> {
         );
     };
 
+    private getFilteredImages = (): number[] => {
+        return this.getFilteredImagesFromProps(this.props);
+    };
+
     private onClickHandler = (index: number) => {
         ImageActions.getImageByIndex(index)
     };
 
     componentDidUpdate(prevProps: IProps) {
         const filterChanged =
+            prevProps.activeLabelType !== this.props.activeLabelType ||
             prevProps.searchText !== this.props.searchText ||
             prevProps.filterMode !== this.props.filterMode ||
             prevProps.imageClassCriteria !== this.props.imageClassCriteria;
 
-        const previousFilteredIndices = ImageFilterUtil.getFilteredImageIndices(
-            prevProps.imagesData,
-            prevProps.activeLabelType,
-            prevProps.filterMode,
-            prevProps.searchText,
-            prevProps.imageClassCriteria
-        );
         const currentFilteredIndices = this.getFilteredImages();
         const filteredImagesChanged =
-            previousFilteredIndices.length !== currentFilteredIndices.length ||
-            previousFilteredIndices.some((value, index) => value !== currentFilteredIndices[index]);
+            this.lastFilteredIndices.length !== currentFilteredIndices.length ||
+            this.lastFilteredIndices.some((value, index) => value !== currentFilteredIndices[index]);
 
         if (filterChanged || filteredImagesChanged) {
             ImageActions.syncActiveImageWithFilters();
             this.setState((state) => ({ key: state.key + 1 }));
             this.updateListSize();
         }
+
+        this.lastFilteredIndices = currentFilteredIndices;
     }
 
     private renderImagePreview = (index: number, isScrolling: boolean, isVisible: boolean, style: React.CSSProperties) => {

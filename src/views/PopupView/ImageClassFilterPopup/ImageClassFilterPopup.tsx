@@ -254,6 +254,7 @@ const ImageClassFilterPopup: React.FC<IProps> = (
 
     const onDropAtIndex = (event: React.DragEvent, index: number) => {
         event.preventDefault();
+        event.stopPropagation();
         setDragOverIndex(null);
 
         const payload = parseDragPayload(event.dataTransfer.getData(DRAG_DATA_TYPE))
@@ -272,7 +273,21 @@ const ImageClassFilterPopup: React.FC<IProps> = (
     };
 
     const onDropToCanvasEnd = (event: React.DragEvent) => {
+        if (event.target !== event.currentTarget) {
+            return;
+        }
         onDropAtIndex(event, canvasTokens.length);
+    };
+
+    const getDropIndexFromPointer = (
+        event: React.DragEvent<HTMLDivElement>,
+        index: number
+    ): number => {
+        const target = event.currentTarget;
+        const { left, width } = target.getBoundingClientRect();
+        const midpoint = left + width / 2;
+
+        return event.clientX >= midpoint ? index + 1 : index;
     };
 
     const onAccept = () => {
@@ -323,6 +338,7 @@ const ImageClassFilterPopup: React.FC<IProps> = (
             className={`DropSlot ${dragOverIndex === index ? 'active' : ''}`}
             onDragOver={(event: React.DragEvent) => {
                 event.preventDefault();
+                event.stopPropagation();
                 setDragOverIndex(index);
                 event.dataTransfer.dropEffect = 'move';
             }}
@@ -371,7 +387,11 @@ const ImageClassFilterPopup: React.FC<IProps> = (
                 <div
                     className='TokenSequence'
                     onDragOver={(event: React.DragEvent) => {
+                        if (event.target !== event.currentTarget) {
+                            return;
+                        }
                         event.preventDefault();
+                        event.stopPropagation();
                         event.dataTransfer.dropEffect = 'move';
                         setDragOverIndex(canvasTokens.length);
                     }}
@@ -389,10 +409,13 @@ const ImageClassFilterPopup: React.FC<IProps> = (
                                 className='TokenDropWrapper'
                                 onDragOver={(event: React.DragEvent) => {
                                     event.preventDefault();
-                                    setDragOverIndex(index);
+                                    event.stopPropagation();
+                                    setDragOverIndex(getDropIndexFromPointer(event, index));
                                     event.dataTransfer.dropEffect = 'move';
                                 }}
-                                onDrop={(event: React.DragEvent) => onDropAtIndex(event, index)}
+                                onDrop={(event: React.DragEvent) =>
+                                    onDropAtIndex(event, getDropIndexFromPointer(event, index))
+                                }
                             >
                                 {renderCanvasToken(token)}
                             </div>
@@ -407,6 +430,7 @@ const ImageClassFilterPopup: React.FC<IProps> = (
                         className='CanvasHint'
                         onDragOver={(event: React.DragEvent) => {
                             event.preventDefault();
+                            event.stopPropagation();
                             event.dataTransfer.dropEffect = 'move';
                             setDragOverIndex(0);
                         }}
