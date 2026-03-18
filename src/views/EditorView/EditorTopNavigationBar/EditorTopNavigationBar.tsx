@@ -4,7 +4,7 @@ import React from 'react';
 import classNames from 'classnames';
 import { AppState } from '../../../store';
 import { connect } from 'react-redux';
-import { updateCrossHairVisibleStatus, updateImageDragModeStatus, updateFixedZoomStatus, updateEllipseDrawStatus, updateMovingAnnotationStatus, updateCopyPolygonsStatus, updatePasteAnnotationsStatus, updatePolygonDrawMode, updateActivePopupType } from '../../../store/general/actionCreators';
+import { updateCrossHairVisibleStatus, updateImageDragModeStatus, updateFixedZoomStatus, updateEllipseDrawStatus, updateMovingAnnotationStatus, updateCopyPolygonsStatus, updatePasteAnnotationsStatus, updatePolygonDrawMode, updateActivePopupType, updateLineKeypointMode } from '../../../store/general/actionCreators';
 import { GeneralSelector } from '../../../store/selectors/GeneralSelector';
 import { ViewPointSettings } from '../../../settings/ViewPointSettings';
 import { ImageButton } from '../../Common/ImageButton/ImageButton';
@@ -73,6 +73,7 @@ interface IProps {
     updateCopyPolygonsAction: (copyPolygons: boolean) => any;
     updatePastePolygonsAction: (pastePolygons: boolean) => any;
     updatePolygonDrawModeAction: (polygonLassoMode: boolean) => any;
+    updateLineKeypointModeAction: (lineKeypointMode: boolean) => any;
     updateActivePopupTypeAction: (activePopupType: PopupWindowType) => any;
     imageDragMode: boolean;
     crossHairVisible: boolean;
@@ -83,6 +84,7 @@ interface IProps {
     pastePolygons: boolean;
     activeLabelType: LabelType;
     polygonLassoMode: boolean;
+    lineKeypointMode: boolean;
 }
 
 const EditorTopNavigationBar: React.FC<IProps> = (
@@ -96,6 +98,7 @@ const EditorTopNavigationBar: React.FC<IProps> = (
         updateCopyPolygonsAction,
         updatePastePolygonsAction,
         updatePolygonDrawModeAction,
+        updateLineKeypointModeAction,
         updateActivePopupTypeAction,
         imageDragMode,
         crossHairVisible,
@@ -105,7 +108,8 @@ const EditorTopNavigationBar: React.FC<IProps> = (
         copyPolygons,
         pastePolygons,
         activeLabelType,
-        polygonLassoMode
+        polygonLassoMode,
+        lineKeypointMode
     }) => {
     const getClassName = () => {
         return classNames(
@@ -151,6 +155,14 @@ const EditorTopNavigationBar: React.FC<IProps> = (
 
     const polygonModeOnClick = () => {
         updatePolygonDrawModeAction(!polygonLassoMode);
+    };
+
+    const lineKeypointModeOnClick = () => {
+        const next = !lineKeypointMode;
+        updateLineKeypointModeAction(next);
+        if (next) {
+            updateMovingAnnotationAction(true);
+        }
     };
 
     const openImageClassFilter = () => {
@@ -259,6 +271,17 @@ const EditorTopNavigationBar: React.FC<IProps> = (
                 }
                 {
                     getButtonWithTooltip(
+                        'line-keypoint-mode',
+                        lineKeypointMode ? 'turn-off line keypoints mode' : 'turn-on line keypoints mode (n clicks → n sequential keypoint polygons)',
+                        'ico/keypoint-line.svg',
+                        'line-keypoints',
+                        lineKeypointMode,
+                        undefined,
+                        lineKeypointModeOnClick
+                    )
+                }
+                {
+                    getButtonWithTooltip(
                         'polygon-draw-mode',
                         polygonLassoMode ? 'switch to point-click polygon mode' : 'switch to freehand polygon mode',
                         polygonLassoMode ? 'ico/polyline.png' : 'ico/polygon.png',
@@ -354,6 +377,7 @@ const mapDispatchToProps = {
     updateCopyPolygonsAction: updateCopyPolygonsStatus,
     updatePastePolygonsAction: updatePasteAnnotationsStatus,
     updatePolygonDrawModeAction: updatePolygonDrawMode,
+    updateLineKeypointModeAction: updateLineKeypointMode,
     updateActivePopupTypeAction: updateActivePopupType,
 };
 
@@ -368,6 +392,7 @@ const mapStateToProps = (state: AppState) => ({
     pastePolygons: state.general.pastePolygons,
     activeLabelType: state.labels.activeLabelType,
     polygonLassoMode: state.general.polygonLassoMode,
+    lineKeypointMode: state.general.lineKeypointMode,
 });
 
 export default connect(

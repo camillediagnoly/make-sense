@@ -177,6 +177,17 @@ export function updatePolygonDrawMode(
     };
 }
 
+export function updateLineKeypointMode(
+    lineKeypointMode: boolean
+): GeneralActionTypes {
+    return {
+        type: Action.UPDATE_LINE_KEYPOINT_MODE,
+        payload: {
+            lineKeypointMode,
+        },
+    };
+}
+
 export function updateImageListFilterMode(
     imageListFilterMode: ImageFilterMode
 ): GeneralActionTypes {

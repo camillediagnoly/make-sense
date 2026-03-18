@@ -79,6 +79,10 @@ export class GeneralSelector {
         return store.getState().general.polygonLassoMode;
     }
 
+    public static getLineKeypointModeStatus(): boolean {
+        return store.getState().general.lineKeypointMode;
+    }
+
     public static getImageListFilterMode(): ImageFilterMode {
         return store.getState().general.imageListFilterMode;
     }

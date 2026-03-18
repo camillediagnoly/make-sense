@@ -25,6 +25,7 @@ const initialState: GeneralState = {
     },
     zoom: ViewPointSettings.MIN_ZOOM,
     polygonLassoMode: false,
+    lineKeypointMode: false,
     imageListFilterMode: ImageFilterMode.ALL,
     imageListSearchText: "",
     imageClassCriteria: [],
@@ -281,6 +282,12 @@ export function generalReducer(
             return {
                 ...state,
                 polygonLassoMode: action.payload.polygonLassoMode,
+            };
+        }
+        case Action.UPDATE_LINE_KEYPOINT_MODE: {
+            return {
+                ...state,
+                lineKeypointMode: action.payload.lineKeypointMode,
             };
         }
         case Action.UPDATE_IMAGE_LIST_FILTER_MODE: {

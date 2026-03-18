@@ -68,6 +68,7 @@ export type GeneralState = {
     zoom: number;
     keyboardShortcuts: ShortcutItem[];
     polygonLassoMode: boolean;
+    lineKeypointMode: boolean;
     imageListFilterMode: ImageFilterMode;
     imageListSearchText: string;
     imageClassCriteria: ImageClassCriteria[];
@@ -184,6 +185,13 @@ interface UpdatePolygonDrawMode {
     };
 }
 
+interface UpdateLineKeypointMode {
+    type: typeof Action.UPDATE_LINE_KEYPOINT_MODE;
+    payload: {
+        lineKeypointMode: boolean;
+    };
+}
+
 interface UpdateImageListFilterMode {
     type: typeof Action.UPDATE_IMAGE_LIST_FILTER_MODE;
     payload: {
@@ -247,6 +255,7 @@ export type GeneralActionTypes =
     | UpdateKeyboardShortcut
     | ResetKeyboardShortcutAction
     | UpdatePolygonDrawMode
+    | UpdateLineKeypointMode
     | UpdateImageListFilterMode
     | UpdateImageListSearchText
     | UpdateImageClassCriteria;
