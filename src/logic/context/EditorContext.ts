@@ -27,6 +27,7 @@ export class EditorContext extends BaseContext {
         // Create a mapping of action handlers
         const actionHandlers: {[key: string]: (event: KeyboardEvent) => void} = {
             'Finish Polygon Creation': (event: KeyboardEvent) => {
+                event.preventDefault();
                 if (EditorModel.supportRenderingEngine && EditorModel.supportRenderingEngine.labelType === LabelType.POLYGON) {
                     const editorData: EditorData = EditorActions.getEditorData();
                     const isDrawingEllipse: boolean = (EditorModel.supportRenderingEngine as PolygonRenderEngine).isDrawingEllipse;
