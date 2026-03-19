@@ -63,7 +63,7 @@ const EditorBottomNavigationBar: React.FC<IProps> = ({
         );
     };
     const keypointUtilsInstance = new KeypointUtils();
-    const [asymRatio_B, angle_B, areaRatio_B, positionRatio_B, veinsRatio_B,
+    const [asymRatio_B, angle_B, areaRatio_B, positionRatio_B, veinsRatio_B, avRatio_B,
         tgaRatio_D, asymRatio_E, tgaRatio_E, asymRatioCSP_F, 
         asymRatioCI_F, angleSF_F, ratioSF_F, ratioAtrVMG_F, ratio4V_G] = keypointUtilsInstance.buildMeasurements()
 
@@ -109,6 +109,9 @@ const EditorBottomNavigationBar: React.FC<IProps> = ({
                     </div>
                     <div className="RatioMeasurement">
                         B-Veins = {veinsRatio_B?.toFixed(3) ?? 'null'}
+                    </div>
+                    <div className="RatioMeasurement">
+                        B-AVL = {avRatio_B?.toFixed(3) ?? 'null'}
                     </div>
                     <div className="RatioMeasurement">
                         B-Angle = {angle_B != null ? `${angle_B.toFixed(3)}°` : 'null'}
