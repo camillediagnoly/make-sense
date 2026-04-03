@@ -43,6 +43,7 @@ export type LabelName = {
 export type ImageData = {
     id: string;
     fileData: File;
+    groupName?: string;
     loadStatus: boolean;
     labelRects: LabelRect[];
     labelPoints: LabelPoint[];

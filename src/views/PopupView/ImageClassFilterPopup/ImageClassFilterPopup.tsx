@@ -17,6 +17,7 @@ import { ImageFilterMode } from '../../../data/enums/ImageFilterMode';
 import { LabelType } from '../../../data/enums/LabelType';
 import { ImageFilterUtil } from '../../../utils/ImageFilterUtil';
 import Scrollbars from 'react-custom-scrollbars-2';
+import { ImageGroupUtil } from '../../../utils/ImageGroupUtil';
 
 const DRAG_DATA_TYPE = 'application/x-image-filter-criteria-token';
 
@@ -120,12 +121,29 @@ const ImageClassFilterPopup: React.FC<IProps> = (
         setCanvasTokens(toCanvasTokens(imageClassCriteria));
     }, [imageClassCriteria]);
 
-    const labelNameById = useMemo(
-        () =>
-            new Map<string, string>(
-                labels.map((label: LabelName) => [label.id, label.name])
-            ),
-        [labels]
+    const filterableGroupNames = useMemo(
+        () => ImageGroupUtil.getFilterableGroupNames(imagesData),
+        [imagesData]
+    );
+
+    const filterItemNameById = useMemo(
+        () => {
+            const itemNames = new Map<string, string>();
+
+            labels.forEach((label: LabelName) => {
+                itemNames.set(label.id, label.name);
+            });
+
+            filterableGroupNames.forEach((groupName: string) => {
+                itemNames.set(
+                    ImageGroupUtil.getGroupFilterTokenId(groupName),
+                    groupName
+                );
+            });
+
+            return itemNames;
+        },
+        [labels, filterableGroupNames]
     );
 
     const draftCriteria = useMemo(
@@ -138,7 +156,7 @@ const ImageClassFilterPopup: React.FC<IProps> = (
         [draftCriteria]
     );
 
-    const usedLabelIds = useMemo(() => {
+    const usedFilterItemIds = useMemo(() => {
         const ids = new Set<string>();
         canvasTokens.forEach((token: CanvasToken) => {
             if (token.type === 'label') {
@@ -148,9 +166,21 @@ const ImageClassFilterPopup: React.FC<IProps> = (
         return ids;
     }, [canvasTokens]);
 
+    const availableGroupNames = useMemo(
+        () =>
+            filterableGroupNames.filter(
+                (groupName: string) =>
+                    !usedFilterItemIds.has(
+                        ImageGroupUtil.getGroupFilterTokenId(groupName)
+                    )
+            ),
+        [filterableGroupNames, usedFilterItemIds]
+    );
+
     const availableLabels = useMemo(
-        () => labels.filter((label: LabelName) => !usedLabelIds.has(label.id)),
-        [labels, usedLabelIds]
+        () =>
+            labels.filter((label: LabelName) => !usedFilterItemIds.has(label.id)),
+        [labels, usedFilterItemIds]
     );
 
     const filteredImagesCount = useMemo(
@@ -310,7 +340,7 @@ const ImageClassFilterPopup: React.FC<IProps> = (
 
     const getTokenLabel = (token: CanvasToken): string => {
         if (token.type === 'label') {
-            return labelNameById.get(token.labelId) || '[Missing label]';
+            return filterItemNameById.get(token.labelId) || '[Missing filter item]';
         }
 
         if (token.type === 'operator') {
@@ -322,7 +352,9 @@ const ImageClassFilterPopup: React.FC<IProps> = (
 
     const getCanvasTokenClassName = (token: CanvasToken): string => {
         if (token.type === 'label') {
-            return 'CanvasToken label';
+            return ImageGroupUtil.isGroupFilterTokenId(token.labelId)
+                ? 'CanvasToken group'
+                : 'CanvasToken label';
         }
 
         if (token.type === 'operator') {
@@ -330,6 +362,95 @@ const ImageClassFilterPopup: React.FC<IProps> = (
         }
 
         return 'CanvasToken parenthesis';
+    };
+
+    const renderFilterItemLibrary = () => {
+        if (labels.length === 0 && filterableGroupNames.length === 0) {
+            return <div className='EmptyState'>No labels or groups found yet.</div>;
+        }
+
+        return (
+            <Scrollbars autoHide={true}>
+                <div className='LibrarySections'>
+                    {filterableGroupNames.length > 0 && (
+                        <div className='LibrarySection'>
+                            <div className='SectionLabel'>Image Groups</div>
+                            {availableGroupNames.length > 0 ? (
+                                <div className='TokenBank'>
+                                    {availableGroupNames.map((groupName: string) => {
+                                        const groupToken = {
+                                            type: 'label' as const,
+                                            labelId: ImageGroupUtil.getGroupFilterTokenId(groupName),
+                                        };
+
+                                        return (
+                                            <button
+                                                key={groupName}
+                                                type='button'
+                                                className='LibraryToken group'
+                                                onClick={() => appendToken(groupToken)}
+                                                draggable={true}
+                                                onDragStart={(event: React.DragEvent) =>
+                                                    onDragStart(event, {
+                                                        source: 'palette',
+                                                        token: groupToken,
+                                                    })
+                                                }
+                                            >
+                                                {groupName}
+                                            </button>
+                                        );
+                                    })}
+                                </div>
+                            ) : (
+                                <div className='EmptyState'>All image groups are already used in the condition.</div>
+                            )}
+                        </div>
+                    )}
+
+                    <div className='LibrarySection'>
+                        <div className='SectionLabel'>Classes</div>
+                        {labels.length === 0 && (
+                            <div className='EmptyState'>No labels found. Add labels first.</div>
+                        )}
+
+                        {labels.length > 0 && availableLabels.length === 0 && (
+                            <div className='EmptyState'>All classes are already used in the condition.</div>
+                        )}
+
+                        {availableLabels.length > 0 && (
+                            <div className='TokenBank'>
+                                {availableLabels.map((label: LabelName) => (
+                                    <button
+                                        key={label.id}
+                                        type='button'
+                                        className='LibraryToken label'
+                                        onClick={() =>
+                                            appendToken({
+                                                type: 'label',
+                                                labelId: label.id,
+                                            })
+                                        }
+                                        draggable={true}
+                                        onDragStart={(event: React.DragEvent) =>
+                                            onDragStart(event, {
+                                                source: 'palette',
+                                                token: {
+                                                    type: 'label',
+                                                    labelId: label.id,
+                                                },
+                                            })
+                                        }
+                                    >
+                                        {label.name}
+                                    </button>
+                                ))}
+                            </div>
+                        )}
+                    </div>
+                </div>
+            </Scrollbars>
+        );
     };
 
     const renderCanvasDropSlot = (index: number) => (
@@ -443,47 +564,9 @@ const ImageClassFilterPopup: React.FC<IProps> = (
 
             <div className='LibraryRow'>
                 <div className='ClassLibrary'>
-                    <div className='LibraryHeader'>Classes</div>
+                    <div className='LibraryHeader'>Filter Items</div>
                     <div className='LibraryBody'>
-                        {labels.length === 0 && (
-                            <div className='EmptyState'>No labels found. Add labels first.</div>
-                        )}
-
-                        {labels.length > 0 && availableLabels.length === 0 && (
-                            <div className='EmptyState'>All classes are already used in the condition.</div>
-                        )}
-
-                        {availableLabels.length > 0 && (
-                            <Scrollbars autoHide={true}>
-                                <div className='TokenBank'>
-                                    {availableLabels.map((label: LabelName) => (
-                                        <button
-                                            key={label.id}
-                                            type='button'
-                                            className='LibraryToken label'
-                                            onClick={() =>
-                                                appendToken({
-                                                    type: 'label',
-                                                    labelId: label.id,
-                                                })
-                                            }
-                                            draggable={true}
-                                            onDragStart={(event: React.DragEvent) =>
-                                                onDragStart(event, {
-                                                    source: 'palette',
-                                                    token: {
-                                                        type: 'label',
-                                                        labelId: label.id,
-                                                    },
-                                                })
-                                            }
-                                        >
-                                            {label.name}
-                                        </button>
-                                    ))}
-                                </div>
-                            </Scrollbars>
-                        )}
+                        {renderFilterItemLibrary()}
                     </div>
                 </div>
 

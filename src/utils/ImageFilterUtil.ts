@@ -14,6 +14,7 @@ import {
     ImageClassExpressionCriteria,
     LegacyImageClassCriteria,
 } from "../store/general/types";
+import { ImageGroupUtil } from "./ImageGroupUtil";
 
 type CriteriaAstNode =
     | {
@@ -54,6 +55,11 @@ export class ImageFilterUtil {
 
     private static getImageAssignedLabelIds(imageData: ImageData): Set<string> {
         const assignedLabelIds = new Set<string>(imageData.labelNameIds || []);
+        assignedLabelIds.add(
+            ImageGroupUtil.getGroupFilterTokenId(
+                ImageGroupUtil.getImageGroupName(imageData)
+            )
+        );
 
         imageData.labelRects
             .filter(

@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import './LoadMoreImagesPopup.scss';
 import { AppState } from '../../../store';
 import { connect } from 'react-redux';
@@ -8,12 +8,15 @@ import { useDropzone } from 'react-dropzone';
 import { ImageData } from '../../../store/labels/types';
 import { PopupActions } from '../../../logic/actions/PopupActions';
 import { ImageDataUtil } from '../../../utils/ImageDataUtil';
+import { StyledTextField } from '../../Common/StyledTextField/StyledTextField';
+import { DEFAULT_IMAGE_GROUP_NAME } from '../../../utils/ImageGroupUtil';
 
 interface IProps {
     addImageData: (imageData: ImageData[]) => any;
 }
 
 const LoadMoreImagesPopup: React.FC<IProps> = ({ addImageData }) => {
+    const [groupName, setGroupName] = useState('');
     const { acceptedFiles, getRootProps, getInputProps } = useDropzone({
         accept: {
             'image/*': ['.jpeg', '.png']
@@ -22,7 +25,9 @@ const LoadMoreImagesPopup: React.FC<IProps> = ({ addImageData }) => {
 
     const onAccept = () => {
         if (acceptedFiles.length > 0) {
-            addImageData(acceptedFiles.map((fileData: File) => ImageDataUtil.createImageDataFromFileData(fileData)));
+            addImageData(acceptedFiles.map((fileData: File) =>
+                ImageDataUtil.createImageDataFromFileData(fileData, groupName)
+            ));
             PopupActions.close();
         }
     };
@@ -69,6 +74,23 @@ const LoadMoreImagesPopup: React.FC<IProps> = ({ addImageData }) => {
         return (<div className='LoadMoreImagesPopupContent'>
             <div {...getRootProps({ className: 'DropZone' })}>
                 {getDropZoneContent()}
+            </div>
+            <div className='GroupInput'>
+                <StyledTextField
+                    variant='standard'
+                    id={'load-more-images-group-name'}
+                    autoComplete={'off'}
+                    type={'text'}
+                    margin={'dense'}
+                    label={'Image group (optional)'}
+                    value={groupName}
+                    onChange={(event: React.ChangeEvent<HTMLInputElement>) => setGroupName(event.target.value)}
+                    style={{ width: 320 }}
+                    InputLabelProps={{ shrink: true }}
+                />
+                <p>
+                    Leave empty to keep these images in <span>{DEFAULT_IMAGE_GROUP_NAME}</span>.
+                </p>
             </div>
         </div>);
     };

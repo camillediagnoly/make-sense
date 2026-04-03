@@ -118,6 +118,11 @@
       background: rgba(53, 119, 178, 0.25);
     }
 
+    &.group {
+      border-color: #3f8a6d;
+      background: rgba(63, 138, 109, 0.25);
+    }
+
     &.operator.and {
       border-color: #2f7db3;
       background: rgba(47, 125, 179, 0.28);
@@ -198,13 +203,35 @@
     box-sizing: border-box;
   }
 
+  .LibrarySections {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    min-height: 100%;
+    padding: 0 2px 4px 0;
+  }
+
+  .LibrarySection {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .SectionLabel {
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.4px;
+    text-transform: uppercase;
+    color: #97a2ac;
+  }
+
   .TokenBank {
     display: flex;
     flex-wrap: wrap;
     align-content: flex-start;
     gap: 8px;
-    padding: 0 2px 4px 0;
-    min-height: 100%;
+    padding: 0;
+    min-height: 0;
 
     &.operators {
       padding: 12px;
@@ -231,6 +258,11 @@
     &.label {
       border-color: #43617d;
       background: rgba(67, 97, 125, 0.25);
+    }
+
+    &.group {
+      border-color: #4e7d69;
+      background: rgba(78, 125, 105, 0.25);
     }
 
     &.operator {

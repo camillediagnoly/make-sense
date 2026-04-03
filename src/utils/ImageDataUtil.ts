@@ -2,12 +2,14 @@ import {ImageData} from '../store/labels/types';
 import { v4 as uuidv4 } from 'uuid';
 import {FileUtil} from './FileUtil';
 import {ImageRepository} from '../logic/imageRepository/ImageRepository';
+import { ImageGroupUtil } from './ImageGroupUtil';
 
 export class ImageDataUtil {
-    public static createImageDataFromFileData(fileData: File): ImageData {
+    public static createImageDataFromFileData(fileData: File, groupName?: string): ImageData {
         return {
             id: uuidv4(),
             fileData,
+            groupName: ImageGroupUtil.normalizeGroupName(groupName),
             loadStatus: false,
             labelRects: [],
             labelPoints: [],

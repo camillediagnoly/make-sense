@@ -52,4 +52,22 @@
       }
     }
   }
+
+  .GroupInput {
+    width: 320px;
+    margin-top: 10px;
+    align-self: center;
+
+    > p {
+      margin: 6px 0 0;
+      font-size: 12px;
+      color: #b9c0c6;
+      text-align: left;
+
+      > span {
+        color: #ffffff;
+        font-weight: 700;
+      }
+    }
+  }
 }

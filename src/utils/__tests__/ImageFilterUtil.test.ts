@@ -3,10 +3,12 @@ import { LabelType } from '../../data/enums/LabelType';
 import { ImageClassCriteria } from '../../store/general/types';
 import { ImageData } from '../../store/labels/types';
 import { ImageFilterUtil } from '../ImageFilterUtil';
+import { ImageGroupUtil } from '../ImageGroupUtil';
 
-const createImageData = (id: string, labelIds: string[]): ImageData => ({
+const createImageData = (id: string, labelIds: string[], groupName?: string): ImageData => ({
     id,
     fileData: new File([''], `${id}.png`, { type: 'image/png' }),
+    groupName,
     loadStatus: true,
     labelRects: [],
     labelPoints: [],
@@ -34,6 +36,22 @@ const getFilteredIndices = (
     );
 
 describe('ImageFilterUtil image class criteria expression support', () => {
+    it('should filter by imported image groups', () => {
+        const images = [
+            createImageData('image-0', ['A']),
+            createImageData('image-1', ['A'], 'review_batch'),
+            createImageData('image-2', ['B'], 'review_batch'),
+        ];
+
+        const criteria: ImageClassCriteria[] = [
+            { type: 'label', labelId: ImageGroupUtil.getGroupFilterTokenId('review_batch') },
+            { type: 'operator', operator: 'AND' },
+            { type: 'label', labelId: 'A' },
+        ];
+
+        expect(getFilteredIndices(images, criteria)).toEqual([1]);
+    });
+
     it('should evaluate expressions with AND, OR and NOT', () => {
         const images = [
             createImageData('image-0', ['A']),
