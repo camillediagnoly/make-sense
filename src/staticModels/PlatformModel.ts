@@ -5,4 +5,5 @@ export class PlatformModel {
     public static isMac: boolean;
     public static isSafari: boolean;
     public static isFirefox: boolean;
+    public static isIOS: boolean;
 }

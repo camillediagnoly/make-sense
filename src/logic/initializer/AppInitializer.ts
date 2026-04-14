@@ -59,5 +59,6 @@ export class AppInitializer {
         PlatformModel.isMac = PlatformUtil.isMac(userAgent);
         PlatformModel.isSafari = PlatformUtil.isSafari(userAgent);
         PlatformModel.isFirefox = PlatformUtil.isFirefox(userAgent);
+        PlatformModel.isIOS = PlatformUtil.isIOS(userAgent);
     };
 }

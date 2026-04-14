@@ -94,6 +94,18 @@ class Editor extends React.Component<IProps, IState> {
     // =================================================================================================================
 
     private mountEventListeners() {
+        const supportsPointer = typeof window !== 'undefined' && 'onpointerdown' in window;
+        if (supportsPointer) {
+            EditorModel.canvas.addEventListener(EventType.POINTER_DOWN, this.update);
+            window.addEventListener(EventType.POINTER_MOVE, this.update);
+            window.addEventListener(EventType.POINTER_UP, this.update);
+        } else {
+            // touch fallback (iOS)
+            EditorModel.canvas.addEventListener(EventType.TOUCH_START, this.update, { passive: false } as AddEventListenerOptions);
+            window.addEventListener(EventType.TOUCH_MOVE, this.update, { passive: false } as AddEventListenerOptions);
+            window.addEventListener(EventType.TOUCH_END, this.update);
+        }
+        // keep mouse handlers (desktop and browsers that synthesize mouse events)
         window.addEventListener(EventType.MOUSE_MOVE, this.update);
         window.addEventListener(EventType.MOUSE_UP, this.update);
         EditorModel.canvas.addEventListener(EventType.MOUSE_DOWN, this.update);
@@ -101,6 +113,17 @@ class Editor extends React.Component<IProps, IState> {
     }
 
     private unmountEventListeners() {
+        // remove pointer listeners
+        window.removeEventListener(EventType.POINTER_MOVE, this.update);
+        window.removeEventListener(EventType.POINTER_UP, this.update);
+        EditorModel.canvas.removeEventListener(EventType.POINTER_DOWN, this.update);
+
+        // remove touch listeners
+        window.removeEventListener(EventType.TOUCH_MOVE, this.update);
+        window.removeEventListener(EventType.TOUCH_END, this.update);
+        EditorModel.canvas.removeEventListener(EventType.TOUCH_START, this.update);
+
+        // remove mouse listeners
         window.removeEventListener(EventType.MOUSE_MOVE, this.update);
         window.removeEventListener(EventType.MOUSE_UP, this.update);
         EditorModel.canvas.removeEventListener(EventType.MOUSE_DOWN, this.update);
@@ -151,7 +174,7 @@ class Editor extends React.Component<IProps, IState> {
         EditorActions.fullRender();
     };
 
-    private update = (event: MouseEvent) => {
+    private update = (event: any) => {
         const editorData: EditorData = EditorActions.getEditorData(event);
         EditorModel.mousePositionOnViewPortContent = CanvasUtil.getMousePositionOnCanvasFromEvent(event, EditorModel.canvas);
         EditorModel.primaryRenderingEngine.update(editorData);
