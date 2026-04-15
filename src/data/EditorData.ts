@@ -6,11 +6,15 @@ export interface EditorData {
     viewPortContentSize: ISize,
     mousePositionOnViewPortContent: IPoint,
     activeKeyCombo: string[],
-    event?: Event
+    event?: Event,
     zoom: number,
     viewPortSize: ISize,
     defaultRenderImageRect: IRect,
     realImageSize: ISize,
     viewPortContentImageRect: IRect,
-    absoluteViewPortContentScrollPosition: IPoint
+    absoluteViewPortContentScrollPosition: IPoint,
+    // optional pointer metadata for pen/finger handling
+    pointerType?: string,
+    pressure?: number,
+    pointerId?: number
 }

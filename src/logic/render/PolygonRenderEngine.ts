@@ -433,12 +433,18 @@ export class PolygonRenderEngine extends BaseRenderEngine {
         if (!!data.event) {
             switch (MouseEventUtil.getEventType(data.event)) {
                 case EventType.MOUSE_MOVE:
+                case EventType.POINTER_MOVE:
+                case EventType.TOUCH_MOVE:
                     this.mouseMoveHandler(data);
                     break;
                 case EventType.MOUSE_UP:
+                case EventType.POINTER_UP:
+                case EventType.TOUCH_END:
                     this.mouseUpHandler(data);
                     break;
                 case EventType.MOUSE_DOWN:
+                case EventType.POINTER_DOWN:
+                case EventType.TOUCH_START:
                     this.mouseDownHandler(data);
                     break;
                 default:
@@ -450,7 +456,20 @@ export class PolygonRenderEngine extends BaseRenderEngine {
     public mouseDownHandler(data: EditorData): void {
         const mouseEvent: MouseEvent = data.event as MouseEvent;
         const isRightClick: boolean = mouseEvent && mouseEvent.button === 2;
-        const isLeftClick: boolean = !mouseEvent || mouseEvent.button === 0;
+        let isLeftClick: boolean = !mouseEvent || mouseEvent.button === 0;
+        // Treat pen/touch contact as left click so Apple Pencil starts creation on contact
+        const evt: any = data.event as any;
+        if (evt && evt.pointerType === 'pen') {
+            // if pen, consider contact when pressure>0; hover (pressure==0) should not trigger
+            if (evt.pressure == null || evt.pressure > 0) {
+                isLeftClick = true;
+            } else {
+                isLeftClick = false;
+            }
+        } else if (evt && evt.type && evt.type.indexOf('touch') === 0) {
+            // touchstart should be treated as left click
+            isLeftClick = true;
+        }
         const isMouseOverCanvas: boolean =
             RenderEngineUtil.isMouseOverCanvas(data);
         if (isMouseOverCanvas) {
@@ -463,6 +482,24 @@ export class PolygonRenderEngine extends BaseRenderEngine {
 
             if (!isLeftClick) {
                 return;
+            }
+
+            // If pen/touch contact and creation not started, start free-hand creation immediately
+            if (!this.isCreationInProgress()) {
+                if (evt && evt.pointerType === 'pen' && (evt.pressure == null || evt.pressure > 0)) {
+                    // For pen contact always start free-hand (lasso) creation immediately
+                    this.updateActivelyCreatedLabel(data);
+                    this.startLassoDrawingMode();
+                    this.addPointFromLasso(data, true);
+                    return;
+                }
+                if (evt && evt.type && evt.type.indexOf('touch') === 0 && GeneralSelector.getPolygonLassoMode()) {
+                    // For touch, preserve user preference for lasso mode
+                    this.updateActivelyCreatedLabel(data);
+                    this.startLassoDrawingMode();
+                    this.addPointFromLasso(data, true);
+                    return;
+                }
             }
 
             if (this.isCreationInProgress()) {
@@ -546,6 +583,14 @@ export class PolygonRenderEngine extends BaseRenderEngine {
             this.endExistingLabelResize(data);
         } else if (this.draggingPolygon) {
             this.handleMouseUpForDragging();
+        } else {
+            const evt: any = data.event as any;
+            // finish free-hand creation on pen/touch up
+            if (this.isLassoDrawing && this.isCreationInProgress() && evt) {
+                if (evt.pointerType === 'pen' || (evt.type && evt.type.indexOf('touch') === 0) || evt.type === EventType.POINTER_UP || evt.type === EventType.TOUCH_END) {
+                    this.addLabelAndFinishCreation(data);
+                }
+            }
         }
     }
 
@@ -554,6 +599,26 @@ export class PolygonRenderEngine extends BaseRenderEngine {
             !!data.viewPortContentImageRect &&
             !!data.mousePositionOnViewPortContent
         ) {
+            // If a pen contact occurs and creation hasn't started, begin lasso creation immediately
+            const evt: any = data.event as any;
+            if (
+                !this.isCreationInProgress() &&
+                evt &&
+                evt.pointerType === 'pen' &&
+                (evt.pressure == null || evt.pressure > 0)
+            ) {
+                const isOverImagePen: boolean = RenderEngineUtil.isMouseOverImage(data);
+                if (isOverImagePen) {
+                    // start creation at current pen position
+                    this.updateActivelyCreatedLabel(data);
+                    // always enable lasso for pen contact so Apple Pencil draws immediately
+                    this.startLassoDrawingMode();
+                    // add initial lasso point (force)
+                    this.addPointFromLasso(data, true);
+                    return;
+                }
+            }
+
             if (this.isCreationInProgress() && this.isLassoDrawing) {
                 this.addPointFromLasso(data);
             }
@@ -969,6 +1034,23 @@ export class PolygonRenderEngine extends BaseRenderEngine {
         const { viewPortContentImageRect, mousePositionOnViewPortContent } = data;
         if (!viewPortContentImageRect || !mousePositionOnViewPortContent) return;
 
+        const evt: any = data.event as any;
+        // Pen hover vs contact handling: require pressure>0 for pen to add points
+        if (evt && evt.pointerType === 'pen') {
+            if (!(evt.pressure == null || evt.pressure > 0)) {
+                if (!force) return;
+            }
+        } else if (evt && evt.type && evt.type.indexOf('touch') === 0) {
+            // Touch: if force available, require force>0
+            try {
+                const touch = (evt as TouchEvent).changedTouches && (evt as TouchEvent).changedTouches[0];
+                const force = touch && (touch as any).force;
+                if (force != null && force <= 0 && !force) {
+                    if (!force) return;
+                }
+            } catch (e) {}
+        }
+
         const snappedPoint = RectUtil.snapPointToRect(
             mousePositionOnViewPortContent,
             viewPortContentImageRect
@@ -992,7 +1074,13 @@ export class PolygonRenderEngine extends BaseRenderEngine {
         const dy = normalizedPoint.y - this.lastLassoPoint.y;
         const distance = Math.hypot(dx, dy);
 
-        if (!force && distance < LASSO_MIN_SAMPLE_DISTANCE) {
+        // allow denser sampling for pen
+        let sampleDistance = LASSO_MIN_SAMPLE_DISTANCE;
+        if (evt && evt.pointerType === 'pen') {
+            sampleDistance = Math.max(1, Math.floor(LASSO_MIN_SAMPLE_DISTANCE / 2));
+        }
+
+        if (!force && distance < sampleDistance) {
             return;
         }
 

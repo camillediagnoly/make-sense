@@ -194,16 +194,17 @@ class Editor extends React.Component<IProps, IState> {
     };
 
     private update = (event: any) => {
-        const editorData: EditorData = EditorActions.getEditorData(event);
+        // update mouse position on model first so EditorData contains the correct coordinates
         EditorModel.mousePositionOnViewPortContent = CanvasUtil.getMousePositionOnCanvasFromEvent(event, EditorModel.canvas);
+        const editorData: EditorData = EditorActions.getEditorData(event);
         EditorModel.primaryRenderingEngine.update(editorData);
-
+ 
         if (this.props.imageDragMode) {
             EditorModel.viewPortHelper.update(editorData);
         } else {
             EditorModel.supportRenderingEngine && EditorModel.supportRenderingEngine.update(editorData);
         }
-
+ 
         !this.props.activePopupType && EditorActions.updateMousePositionIndicator(event);
         EditorActions.fullRender();
     };

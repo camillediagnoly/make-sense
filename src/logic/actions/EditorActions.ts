@@ -97,7 +97,11 @@ export class EditorActions {
             defaultRenderImageRect: EditorModel.defaultRenderImageRect,
             viewPortContentImageRect: ViewPortActions.calculateViewPortContentImageRect(),
             realImageSize: ImageUtil.getSize(EditorModel.image),
-            absoluteViewPortContentScrollPosition: ViewPortActions.getAbsoluteScrollPosition()
+            absoluteViewPortContentScrollPosition: ViewPortActions.getAbsoluteScrollPosition(),
+            // pointer metadata (if available)
+            pointerType: (event && (event as any).pointerType) ? (event as any).pointerType : ((event && (event as any).type && (event as any).type.indexOf('touch')===0) ? 'touch' : undefined),
+            pressure: (event && (event as any).pressure != null) ? (event as any).pressure : (event && (event as any).changedTouches && (event as any).changedTouches[0] ? (event as any).changedTouches[0].force : undefined),
+            pointerId: (event && (event as any).pointerId != null) ? (event as any).pointerId : undefined
         }
     }
 
