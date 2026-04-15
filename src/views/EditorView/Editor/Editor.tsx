@@ -96,9 +96,9 @@ class Editor extends React.Component<IProps, IState> {
     private mountEventListeners() {
         const supportsPointer = typeof window !== 'undefined' && 'onpointerdown' in window;
         if (supportsPointer) {
-            EditorModel.canvas.addEventListener(EventType.POINTER_DOWN, this.update);
+            EditorModel.canvas.addEventListener(EventType.POINTER_DOWN, this.handlePointerDown);
             window.addEventListener(EventType.POINTER_MOVE, this.update);
-            window.addEventListener(EventType.POINTER_UP, this.update);
+            window.addEventListener(EventType.POINTER_UP, this.handlePointerUp);
         } else {
             // touch fallback (iOS)
             EditorModel.canvas.addEventListener(EventType.TOUCH_START, this.update, { passive: false } as AddEventListenerOptions);
@@ -115,8 +115,8 @@ class Editor extends React.Component<IProps, IState> {
     private unmountEventListeners() {
         // remove pointer listeners
         window.removeEventListener(EventType.POINTER_MOVE, this.update);
-        window.removeEventListener(EventType.POINTER_UP, this.update);
-        EditorModel.canvas.removeEventListener(EventType.POINTER_DOWN, this.update);
+        window.removeEventListener(EventType.POINTER_UP, this.handlePointerUp);
+        EditorModel.canvas.removeEventListener(EventType.POINTER_DOWN, this.handlePointerDown);
 
         // remove touch listeners
         window.removeEventListener(EventType.TOUCH_MOVE, this.update);
@@ -172,6 +172,25 @@ class Editor extends React.Component<IProps, IState> {
         ViewPortActions.updateDefaultViewPortImageRect();
         ViewPortActions.resizeViewPortContent();
         EditorActions.fullRender();
+    };
+
+    private handlePointerDown = (event: any) => {
+        // ensure pointer capture so pen inputs (Apple Pencil) stay tracked even if they move outside the canvas
+        try {
+            if (event.pointerId && EditorModel.canvas && (EditorModel.canvas as any).setPointerCapture) {
+                (EditorModel.canvas as any).setPointerCapture(event.pointerId);
+            }
+        } catch (e) {}
+        this.update(event);
+    };
+
+    private handlePointerUp = (event: any) => {
+        try {
+            if (event.pointerId && EditorModel.canvas && (EditorModel.canvas as any).releasePointerCapture) {
+                (EditorModel.canvas as any).releasePointerCapture(event.pointerId);
+            }
+        } catch (e) {}
+        this.update(event);
     };
 
     private update = (event: any) => {

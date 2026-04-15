@@ -44,4 +44,15 @@ export class PlatformUtil {
         }
         return !!userAgent.toLowerCase().match("firefox");
     }
+
+    public static isIOS(userAgent?: string): boolean {
+        if (!userAgent) {
+            if (typeof window !== 'undefined' && window.navigator && window.navigator.userAgent) {
+                userAgent = window.navigator.userAgent;
+            } else {
+                return false;
+            }
+        }
+        return /iphone|ipad|ipod/i.test(userAgent);
+    }
 }
