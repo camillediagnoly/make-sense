@@ -55,28 +55,34 @@ export class VOCImporter extends AnnotationImporter {
         }
     }
 
-    private loadAndParseFiles(files: File[]): Promise<VOCImportResult> {
-        return Promise.all(files.map((file: File) => file.text())).then((fileTexts: string[]) => 
-            fileTexts.reduce((current: VOCImportResult, fileText: string, currentIndex: number) => 
-            {
-                const fileName = files[currentIndex].name;
-                try {
-                    return VOCImporter.parseDocumentIntoImageData(VOCImporter.tryParseVOCDocument(fileText), current);
-                } catch (e) {
-                    if (e instanceof DocumentParsingError) {
-                        throw new DocumentParsingError(`Failed trying to parse ${fileName} as VOC XML document.`)
-                    } else if (e instanceof AnnotationAssertionError) {
-                        throw new AnnotationAssertionError(`Failed trying to find required VOC annotations for ${fileName}.`)
-                    } else {
-                        throw e;
-                    }
+    private async loadAndParseFiles(files: File[]): Promise<VOCImportResult> {
+        // Process files sequentially to avoid high memory/CPU usage when many files are selected.
+        let current: VOCImportResult = {
+            labelNames: {},
+            fileParseResults: [],
+        } as VOCImportResult;
+
+        for (let currentIndex = 0; currentIndex < files.length; currentIndex++) {
+            const file = files[currentIndex];
+            const fileName = file.name;
+            try {
+                const fileText = await file.text();
+                current = VOCImporter.parseDocumentIntoImageData(
+                    VOCImporter.tryParseVOCDocument(fileText),
+                    current
+                );
+            } catch (e) {
+                if (e instanceof DocumentParsingError) {
+                    throw new DocumentParsingError(`Failed trying to parse ${fileName} as VOC XML document.`)
+                } else if (e instanceof AnnotationAssertionError) {
+                    throw new AnnotationAssertionError(`Failed trying to find required VOC annotations for ${fileName}.`)
+                } else {
+                    throw e;
                 }
-            }, 
-            {
-                labelNames: {},
-                fileParseResults: [],
-            } as VOCImportResult)
-            );
+            }
+        }
+
+        return current;
     }
 
     private static tryParseVOCDocument(fileText: string): Document {
