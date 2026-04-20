@@ -16,9 +16,10 @@ import { ILabelFormatData } from '../../../interfaces/ILabelFormatData';
 import { submitNewNotification } from '../../../store/notifications/actionCreators';
 import { NotificationUtil } from '../../../utils/NotificationUtil';
 import { NotificationsDataMap } from '../../../data/info/NotificationsData';
-import { DocumentParsingError } from '../../../logic/import/voc/VOCImporter';
+import { DocumentParsingError, PartialVOCImportError } from '../../../logic/import/voc/VOCImporter';
 import { Notification } from '../../../data/enums/Notification';
 import {LabelNamesNotUniqueError} from '../../../logic/import/yolo/YOLOErrors';
+import { ClipLoader } from 'react-spinners';
 
 interface IProps {
     activeLabelType: LabelType,
@@ -44,6 +45,8 @@ const ImportLabelPopup: React.FC<IProps> = (
     const [loadedLabelNames, setLoadedLabelNames] = useState([]);
     const [loadedImageData, setLoadedImageData] = useState([]);
     const [annotationsLoadedError, setAnnotationsLoadedError] = useState(null);
+    const [failedAnnotationFiles, setFailedAnnotationFiles] = useState<string[]>([]);
+    const [isImporting, setIsImporting] = useState(false);
 
     const resolveNotification = (error: Error): Notification => {
         if (error instanceof DocumentParsingError) {
@@ -61,18 +64,33 @@ const ImportLabelPopup: React.FC<IProps> = (
         setLoadedLabelNames([]);
         setLoadedImageData([]);
         setAnnotationsLoadedError(null);
+        setFailedAnnotationFiles([]);
+        setIsImporting(false);
     };
 
     const onAnnotationLoadSuccess = (imagesData: ImageData[], labelNames: LabelName[]) => {
         setLoadedLabelNames(labelNames);
         setLoadedImageData(imagesData);
         setAnnotationsLoadedError(null);
+        setFailedAnnotationFiles([]);
+        setIsImporting(false);
     };
 
     const onAnnotationsLoadFailure = (error?: Error) => {
+        if (error instanceof PartialVOCImportError) {
+            setLoadedLabelNames(error.labelNames);
+            setLoadedImageData(error.imagesData);
+            setAnnotationsLoadedError(null);
+            setFailedAnnotationFiles(error.fileNames);
+            setIsImporting(false);
+            return;
+        }
+
         setLoadedLabelNames([]);
         setLoadedImageData([]);
         setAnnotationsLoadedError(error);
+        setFailedAnnotationFiles([]);
+        setIsImporting(false);
         const notification = resolveNotification(error)
         submitNewNotification(NotificationUtil.createErrorNotification(NotificationsDataMap[notification]));
     };
@@ -83,8 +101,10 @@ const ImportLabelPopup: React.FC<IProps> = (
             "text/plain": [".txt"],
             "application/xml": [".xml"],
         },
+        disabled: isImporting,
         multiple: true,
         onDrop: (acceptedFiles) => {
+            setIsImporting(true);
             const importer = new (ImporterSpecData[formatType])([labelType]);
             importer.import(acceptedFiles, onAnnotationLoadSuccess, onAnnotationsLoadFailure);
         }
@@ -107,8 +127,31 @@ const ImportLabelPopup: React.FC<IProps> = (
         setFormatType(format);
     };
 
+    const hasImportedAnnotations = loadedImageData.length !== 0 && loadedLabelNames.length !== 0;
+
+    const getFailedFilesContent = () => {
+        if (failedAnnotationFiles.length === 0) {
+            return null;
+        }
+
+        return <>
+            <p className='extraBold'>These files could not be imported</p>
+            {failedAnnotationFiles.map((fileName: string) => <p key={fileName}>{fileName}</p>)}
+        </>;
+    };
+
     const getDropZoneContent = () => {
-        if (annotationsLoadedError) {
+        if (isImporting) {
+            return <>
+                <ClipLoader
+                    color={'white'}
+                    size={60}
+                    loading={true}
+                />
+                <p className='extraBold'>Importing annotations</p>
+                <p>This can take a while for large VOC batches</p>
+            </>;
+        } else if (annotationsLoadedError) {
             return <>
                 <input {...getInputProps()} />
                 <img
@@ -120,7 +163,7 @@ const ImportLabelPopup: React.FC<IProps> = (
                 {annotationsLoadedError.message}
                 <p className='extraBold'>Try again</p>
             </>;
-        } else if (loadedImageData.length !== 0 && loadedLabelNames.length !== 0) {
+        } else if (hasImportedAnnotations) {
             return <>
                 <img
                     draggable={false}
@@ -130,6 +173,18 @@ const ImportLabelPopup: React.FC<IProps> = (
                 <p className='extraBold'>Annotation ready for import</p>
                 After import you will lose
                 all your current annotations
+                {getFailedFilesContent()}
+            </>;
+        } else if (failedAnnotationFiles.length !== 0) {
+            return <>
+                <input {...getInputProps()} />
+                <img
+                    draggable={false}
+                    alt={'upload'}
+                    src={'ico/box-opened.png'}
+                />
+                {getFailedFilesContent()}
+                <p className='extraBold'>Try again</p>
             </>;
         } else {
             return <>
@@ -196,7 +251,7 @@ const ImportLabelPopup: React.FC<IProps> = (
             acceptLabel={'Import'}
             onAccept={onAccept}
             skipAcceptButton={ImportFormatData[labelType].length === 0}
-            disableAcceptButton={loadedImageData.length === 0 || loadedLabelNames.length === 0 || !!annotationsLoadedError}
+            disableAcceptButton={isImporting || loadedImageData.length === 0 || loadedLabelNames.length === 0 || !!annotationsLoadedError}
             rejectLabel={'Cancel'}
             onReject={onReject}
             renderInternalContent={renderInternalContent}

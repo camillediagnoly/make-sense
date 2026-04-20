@@ -2,8 +2,11 @@
 import { ImageData, LabelName, LabelRect} from '../../../../store/labels/types';
 import { AcceptedFileType } from '../../../../data/enums/AcceptedFileType';
 import { v4 as uuidv4 } from 'uuid';
-import { VOCImporter } from '../../../import/voc/VOCImporter';
+import { VOCImporter, PartialVOCImportError } from '../../../import/voc/VOCImporter';
 import { isEqual } from 'lodash';
+import { LabelsSelector } from '../../../../store/selectors/LabelsSelector';
+import { LabelType } from '../../../../data/enums/LabelType';
+import { FileUtil } from '../../../../utils/FileUtil';
 
 const getDummyImageData = (fileName: string): ImageData => {
     return {
@@ -134,5 +137,67 @@ describe('VOCImporter parseAnnotationsFromFileString method', () => {
                 labelId: 'foobar'
             })
         ]));
+    });
+});
+
+describe('VOCImporter import method', () => {
+    afterEach(() => {
+        jest.restoreAllMocks();
+    });
+
+    it('should keep imported annotations and report files that could not be loaded', async () => {
+        const importer = new VOCImporter([LabelType.RECT]);
+        const imageData = getDummyImageData('test1.jpeg');
+        const validFile = getDummyFileData('test1.xml');
+        const brokenFile = getDummyFileData('broken.xml');
+
+        jest.spyOn(LabelsSelector, 'getImagesData').mockReturnValue([imageData]);
+        jest.spyOn(FileUtil, 'readFile').mockImplementation((fileData: File) => {
+            if (fileData.name === validFile.name) {
+                return Promise.resolve(`
+                    <annotation>
+                        <filename>test1.jpeg</filename>
+                        <object>
+                            <name>annotation1</name>
+                            <bndbox>
+                                <xmin>10</xmin>
+                                <ymin>20</ymin>
+                                <xmax>30</xmax>
+                                <ymax>50</ymax>
+                            </bndbox>
+                        </object>
+                    </annotation>
+                `);
+            }
+
+            return Promise.reject(new Error('read failed'));
+        });
+
+        await new Promise<void>((resolve, reject) => {
+            importer.import([validFile, brokenFile],
+                () => reject(new Error('Expected a partial VOC import error.')),
+                (error?: Error) => {
+                    try {
+                        expect(error).toBeInstanceOf(PartialVOCImportError);
+                        expect((error as PartialVOCImportError).fileNames).toEqual(['broken.xml']);
+                        expect((error as PartialVOCImportError).labelNames).toEqual([
+                            expect.objectContaining({ name: 'annotation1' })
+                        ]);
+                        expect((error as PartialVOCImportError).imagesData[0].labelRects).toEqual([
+                            expect.objectContaining({
+                                rect: {
+                                    x: 10,
+                                    y: 20,
+                                    height: 30,
+                                    width: 20
+                                }
+                            })
+                        ]);
+                        resolve();
+                    } catch (assertionError) {
+                        reject(assertionError);
+                    }
+                });
+        });
     });
 });
