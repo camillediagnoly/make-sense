@@ -68,6 +68,7 @@ export type GeneralState = {
     zoom: number;
     keyboardShortcuts: ShortcutItem[];
     polygonLassoMode: boolean;
+    polygonLassoTargetVertexCount: number;
     lineKeypointMode: boolean;
     imageListFilterMode: ImageFilterMode;
     imageListSearchText: string;
@@ -185,6 +186,13 @@ interface UpdatePolygonDrawMode {
     };
 }
 
+interface UpdatePolygonLassoTargetVertexCount {
+    type: typeof Action.UPDATE_POLYGON_LASSO_TARGET_VERTEX_COUNT;
+    payload: {
+        polygonLassoTargetVertexCount: number;
+    };
+}
+
 interface UpdateLineKeypointMode {
     type: typeof Action.UPDATE_LINE_KEYPOINT_MODE;
     payload: {
@@ -255,6 +263,7 @@ export type GeneralActionTypes =
     | UpdateKeyboardShortcut
     | ResetKeyboardShortcutAction
     | UpdatePolygonDrawMode
+    | UpdatePolygonLassoTargetVertexCount
     | UpdateLineKeypointMode
     | UpdateImageListFilterMode
     | UpdateImageListSearchText

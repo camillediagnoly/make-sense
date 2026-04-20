@@ -25,6 +25,7 @@ const initialState: GeneralState = {
     },
     zoom: ViewPointSettings.MIN_ZOOM,
     polygonLassoMode: false,
+    polygonLassoTargetVertexCount: 20,
     lineKeypointMode: false,
     imageListFilterMode: ImageFilterMode.ALL,
     imageListSearchText: "",
@@ -282,6 +283,13 @@ export function generalReducer(
             return {
                 ...state,
                 polygonLassoMode: action.payload.polygonLassoMode,
+            };
+        }
+        case Action.UPDATE_POLYGON_LASSO_TARGET_VERTEX_COUNT: {
+            return {
+                ...state,
+                polygonLassoTargetVertexCount:
+                    action.payload.polygonLassoTargetVertexCount,
             };
         }
         case Action.UPDATE_LINE_KEYPOINT_MODE: {

@@ -177,6 +177,17 @@ export function updatePolygonDrawMode(
     };
 }
 
+export function updatePolygonLassoTargetVertexCount(
+    polygonLassoTargetVertexCount: number
+): GeneralActionTypes {
+    return {
+        type: Action.UPDATE_POLYGON_LASSO_TARGET_VERTEX_COUNT,
+        payload: {
+            polygonLassoTargetVertexCount,
+        },
+    };
+}
+
 export function updateLineKeypointMode(
     lineKeypointMode: boolean
 ): GeneralActionTypes {

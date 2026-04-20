@@ -53,4 +53,89 @@
       background-color: rgba(0, 0, 0, 0.4);
     }
   }
+
+  .PolygonModeControl {
+    position: relative;
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+
+    .ImageButton {
+      margin-right: 0;
+    }
+  }
+
+  .PolygonPrecisionCaret {
+    width: 14px;
+    height: 30px;
+    border: 0;
+    border-radius: 3px;
+    margin: 0 2px 0 0;
+    padding: 0;
+    background: transparent;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+
+    &:hover,
+    &.active {
+      background-color: rgba(0, 0, 0, 0.3);
+    }
+  }
+
+  .CaretIcon {
+    width: 0;
+    height: 0;
+    border-left: 4px solid transparent;
+    border-right: 4px solid transparent;
+    border-top: 5px solid #ffffff;
+  }
+
+  .PolygonPrecisionMenu {
+    position: absolute;
+    top: 30px;
+    left: 0;
+    min-width: 160px;
+    z-index: 20;
+    padding: 6px;
+    border: 1px solid rgba(255, 255, 255, 0.18);
+    border-radius: 6px;
+    background: #242424;
+    box-shadow: 0 8px 18px rgba(0, 0, 0, 0.35);
+  }
+
+  .PolygonPrecisionMenuTitle {
+    padding: 4px 6px 6px;
+    color: #c8c8c8;
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+  }
+
+  .PolygonPrecisionOption {
+    width: 100%;
+    min-height: 28px;
+    border: 0;
+    border-radius: 4px;
+    padding: 5px 6px;
+    background: transparent;
+    color: #eeeeee;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    font-size: 12px;
+    cursor: pointer;
+
+    &:hover {
+      background: rgba(255, 255, 255, 0.08);
+    }
+
+    &.active {
+      background: rgba(255, 255, 255, 0.14);
+      color: #ffffff;
+      font-weight: 700;
+    }
+  }
 }

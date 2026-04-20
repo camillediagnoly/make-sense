@@ -120,7 +120,7 @@ const allKeypointNames = [
 ];
 
 const LASSO_MIN_SAMPLE_DISTANCE = 5;
-const LASSO_PERIMETER_RATIO = 0.05; // 10%
+const DEFAULT_LASSO_TARGET_VERTEX_COUNT = 20;
 
 export class PolygonRenderEngine extends BaseRenderEngine {
     // =================================================================================================================
@@ -1196,7 +1196,11 @@ export class PolygonRenderEngine extends BaseRenderEngine {
             return 1;
         }
 
-        return pathLength * LASSO_PERIMETER_RATIO;
+        const targetVertexCount =
+            GeneralSelector.getPolygonLassoTargetVertexCount() ||
+            DEFAULT_LASSO_TARGET_VERTEX_COUNT;
+
+        return pathLength / Math.max(3, targetVertexCount);
     }
 
     private calculatePathLength(points: IPoint[]): number {

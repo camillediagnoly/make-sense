@@ -4,7 +4,7 @@ import React from 'react';
 import classNames from 'classnames';
 import { AppState } from '../../../store';
 import { connect } from 'react-redux';
-import { updateCrossHairVisibleStatus, updateImageDragModeStatus, updateFixedZoomStatus, updateEllipseDrawStatus, updateMovingAnnotationStatus, updateCopyPolygonsStatus, updatePasteAnnotationsStatus, updatePolygonDrawMode, updateActivePopupType, updateLineKeypointMode } from '../../../store/general/actionCreators';
+import { updateCrossHairVisibleStatus, updateImageDragModeStatus, updateFixedZoomStatus, updateEllipseDrawStatus, updateMovingAnnotationStatus, updateCopyPolygonsStatus, updatePasteAnnotationsStatus, updatePolygonDrawMode, updateActivePopupType, updateLineKeypointMode, updatePolygonLassoTargetVertexCount } from '../../../store/general/actionCreators';
 import { GeneralSelector } from '../../../store/selectors/GeneralSelector';
 import { ViewPointSettings } from '../../../settings/ViewPointSettings';
 import { ImageButton } from '../../Common/ImageButton/ImageButton';
@@ -18,6 +18,11 @@ import { Fade, styled, Tooltip, tooltipClasses, TooltipProps } from '@mui/materi
 import { PopupWindowType } from '../../../data/enums/PopupWindowType';
 const BUTTON_SIZE: ISize = { width: 30, height: 30 };
 const BUTTON_PADDING: number = 10;
+const POLYGON_LASSO_PRECISION_OPTIONS = [
+    { label: 'Large shape', targetVertexCount: 40 },
+    { label: 'Default', targetVertexCount: 20 },
+    { label: 'Small shape', targetVertexCount: 10 },
+];
 
 const StyledTooltip = styled(({ className, ...props }: TooltipProps) => (
     <Tooltip {...props} classes={{ popper: className }} />
@@ -73,6 +78,7 @@ interface IProps {
     updateCopyPolygonsAction: (copyPolygons: boolean) => any;
     updatePastePolygonsAction: (pastePolygons: boolean) => any;
     updatePolygonDrawModeAction: (polygonLassoMode: boolean) => any;
+    updatePolygonLassoTargetVertexCountAction: (polygonLassoTargetVertexCount: number) => any;
     updateLineKeypointModeAction: (lineKeypointMode: boolean) => any;
     updateActivePopupTypeAction: (activePopupType: PopupWindowType) => any;
     imageDragMode: boolean;
@@ -84,6 +90,7 @@ interface IProps {
     pastePolygons: boolean;
     activeLabelType: LabelType;
     polygonLassoMode: boolean;
+    polygonLassoTargetVertexCount: number;
     lineKeypointMode: boolean;
 }
 
@@ -98,6 +105,7 @@ const EditorTopNavigationBar: React.FC<IProps> = (
         updateCopyPolygonsAction,
         updatePastePolygonsAction,
         updatePolygonDrawModeAction,
+        updatePolygonLassoTargetVertexCountAction,
         updateLineKeypointModeAction,
         updateActivePopupTypeAction,
         imageDragMode,
@@ -109,8 +117,11 @@ const EditorTopNavigationBar: React.FC<IProps> = (
         pastePolygons,
         activeLabelType,
         polygonLassoMode,
+        polygonLassoTargetVertexCount,
         lineKeypointMode
     }) => {
+    const [isPolygonPrecisionMenuOpen, setIsPolygonPrecisionMenuOpen] = React.useState(false);
+
     const getClassName = () => {
         return classNames(
             'EditorTopNavigationBar',
@@ -157,6 +168,15 @@ const EditorTopNavigationBar: React.FC<IProps> = (
         updatePolygonDrawModeAction(!polygonLassoMode);
     };
 
+    const selectedPolygonPrecision = POLYGON_LASSO_PRECISION_OPTIONS.find(
+        (option) => option.targetVertexCount === polygonLassoTargetVertexCount
+    ) || POLYGON_LASSO_PRECISION_OPTIONS[1];
+
+    const selectPolygonPrecision = (targetVertexCount: number) => {
+        updatePolygonLassoTargetVertexCountAction(targetVertexCount);
+        setIsPolygonPrecisionMenuOpen(false);
+    };
+
     const lineKeypointModeOnClick = () => {
         const next = !lineKeypointMode;
         updateLineKeypointModeAction(next);
@@ -175,6 +195,68 @@ const EditorTopNavigationBar: React.FC<IProps> = (
         (activeLabelType === LabelType.RECT && AISelector.isRoboflowAPIModelLoaded()) ||
         (activeLabelType === LabelType.POINT && AISelector.isAIPoseDetectorModelLoaded())
     )
+
+    const renderPolygonModeControl = () => (
+        <div
+            className='PolygonModeControl'
+            onMouseLeave={() => setIsPolygonPrecisionMenuOpen(false)}
+        >
+            {getButtonWithTooltip(
+                'polygon-draw-mode',
+                polygonLassoMode ? 'switch to point-click polygon mode' : 'switch to freehand polygon mode',
+                polygonLassoMode ? 'ico/polyline.png' : 'ico/polygon.png',
+                'polygon-draw-mode',
+                polygonLassoMode,
+                undefined,
+                polygonModeOnClick
+            )}
+            <button
+                type='button'
+                aria-label='Open freehand polygon precision menu'
+                aria-haspopup='menu'
+                aria-expanded={isPolygonPrecisionMenuOpen}
+                className={classNames('PolygonPrecisionCaret', {
+                    active: isPolygonPrecisionMenuOpen,
+                })}
+                onClick={(event: React.MouseEvent<HTMLButtonElement>) => {
+                    event.stopPropagation();
+                    setIsPolygonPrecisionMenuOpen(!isPolygonPrecisionMenuOpen);
+                }}
+            >
+                <span className='CaretIcon' />
+            </button>
+            {isPolygonPrecisionMenuOpen && (
+                <div className='PolygonPrecisionMenu' role='menu'>
+                    <div className='PolygonPrecisionMenuTitle'>
+                        Freehand precision
+                    </div>
+                    {POLYGON_LASSO_PRECISION_OPTIONS.map((option) => (
+                        <button
+                            key={option.targetVertexCount}
+                            type='button'
+                            role='menuitemradio'
+                            aria-checked={
+                                option.targetVertexCount ===
+                                selectedPolygonPrecision.targetVertexCount
+                            }
+                            className={classNames('PolygonPrecisionOption', {
+                                active:
+                                    option.targetVertexCount ===
+                                    selectedPolygonPrecision.targetVertexCount,
+                            })}
+                            onClick={(event: React.MouseEvent<HTMLButtonElement>) => {
+                                event.stopPropagation();
+                                selectPolygonPrecision(option.targetVertexCount);
+                            }}
+                        >
+                            <span>{option.label}</span>
+                            <span>{`~${option.targetVertexCount} pts`}</span>
+                        </button>
+                    ))}
+                </div>
+            )}
+        </div>
+    );
 
     return (
         <div className={getClassName()}>
@@ -281,15 +363,7 @@ const EditorTopNavigationBar: React.FC<IProps> = (
                     )
                 }
                 {
-                    getButtonWithTooltip(
-                        'polygon-draw-mode',
-                        polygonLassoMode ? 'switch to point-click polygon mode' : 'switch to freehand polygon mode',
-                        polygonLassoMode ? 'ico/polyline.png' : 'ico/polygon.png',
-                        'polygon-draw-mode',
-                        polygonLassoMode,
-                        undefined,
-                        polygonModeOnClick
-                    )
+                    renderPolygonModeControl()
                 }
                 {
                     getButtonWithTooltip(
@@ -377,6 +451,7 @@ const mapDispatchToProps = {
     updateCopyPolygonsAction: updateCopyPolygonsStatus,
     updatePastePolygonsAction: updatePasteAnnotationsStatus,
     updatePolygonDrawModeAction: updatePolygonDrawMode,
+    updatePolygonLassoTargetVertexCountAction: updatePolygonLassoTargetVertexCount,
     updateLineKeypointModeAction: updateLineKeypointMode,
     updateActivePopupTypeAction: updateActivePopupType,
 };
@@ -392,6 +467,7 @@ const mapStateToProps = (state: AppState) => ({
     pastePolygons: state.general.pastePolygons,
     activeLabelType: state.labels.activeLabelType,
     polygonLassoMode: state.general.polygonLassoMode,
+    polygonLassoTargetVertexCount: state.general.polygonLassoTargetVertexCount,
     lineKeypointMode: state.general.lineKeypointMode,
 });
 

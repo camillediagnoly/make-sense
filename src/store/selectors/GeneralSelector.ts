@@ -79,6 +79,10 @@ export class GeneralSelector {
         return store.getState().general.polygonLassoMode;
     }
 
+    public static getPolygonLassoTargetVertexCount(): number {
+        return store.getState().general.polygonLassoTargetVertexCount;
+    }
+
     public static getLineKeypointModeStatus(): boolean {
         return store.getState().general.lineKeypointMode;
     }
