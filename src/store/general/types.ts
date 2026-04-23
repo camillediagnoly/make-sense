@@ -30,6 +30,10 @@ export type ImageClassExpressionCriteria =
     }
     | {
         id?: string;
+        type: 'otherLabels';
+    }
+    | {
+        id?: string;
         type: 'operator';
         operator: ImageClassBooleanOperator;
     }

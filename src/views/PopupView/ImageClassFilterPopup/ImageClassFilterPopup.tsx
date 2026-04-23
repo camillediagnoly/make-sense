@@ -25,6 +25,7 @@ const OPERATOR_LIBRARY: ImageClassExpressionCriteria[] = [
     { type: 'operator', operator: 'AND' },
     { type: 'operator', operator: 'OR' },
     { type: 'operator', operator: 'NOT' },
+    { type: 'otherLabels' },
     { type: 'parenthesis', value: '(' },
     { type: 'parenthesis', value: ')' },
 ];
@@ -208,6 +209,13 @@ const ImageClassFilterPopup: React.FC<IProps> = (
                 return previousTokens;
             }
 
+            if (
+                token.type === 'otherLabels' &&
+                previousTokens.some((existingToken: CanvasToken) => existingToken.type === 'otherLabels')
+            ) {
+                return previousTokens;
+            }
+
             return [...previousTokens, toCanvasToken(token)];
         });
     };
@@ -224,6 +232,13 @@ const ImageClassFilterPopup: React.FC<IProps> = (
                         existingToken.type === 'label' &&
                         existingToken.labelId === token.labelId
                 )
+            ) {
+                return previousTokens;
+            }
+
+            if (
+                token.type === 'otherLabels' &&
+                previousTokens.some((existingToken: CanvasToken) => existingToken.type === 'otherLabels')
             ) {
                 return previousTokens;
             }
@@ -343,6 +358,10 @@ const ImageClassFilterPopup: React.FC<IProps> = (
             return filterItemNameById.get(token.labelId) || '[Missing filter item]';
         }
 
+        if (token.type === 'otherLabels') {
+            return 'OTHERS';
+        }
+
         if (token.type === 'operator') {
             return token.operator;
         }
@@ -351,6 +370,10 @@ const ImageClassFilterPopup: React.FC<IProps> = (
     };
 
     const getCanvasTokenClassName = (token: CanvasToken): string => {
+        if (token.type === 'otherLabels') {
+            return 'CanvasToken otherLabels';
+        }
+
         if (token.type === 'label') {
             return ImageGroupUtil.isGroupFilterTokenId(token.labelId)
                 ? 'CanvasToken group'
@@ -420,31 +443,30 @@ const ImageClassFilterPopup: React.FC<IProps> = (
 
                         {availableLabels.length > 0 && (
                             <div className='TokenBank'>
-                                {availableLabels.map((label: LabelName) => (
-                                    <button
-                                        key={label.id}
-                                        type='button'
-                                        className='LibraryToken label'
-                                        onClick={() =>
-                                            appendToken({
-                                                type: 'label',
-                                                labelId: label.id,
-                                            })
-                                        }
-                                        draggable={true}
-                                        onDragStart={(event: React.DragEvent) =>
-                                            onDragStart(event, {
-                                                source: 'palette',
-                                                token: {
-                                                    type: 'label',
-                                                    labelId: label.id,
-                                                },
-                                            })
-                                        }
-                                    >
-                                        {label.name}
-                                    </button>
-                                ))}
+                                {availableLabels.map((label: LabelName) => {
+                                    const classToken = {
+                                        type: 'label' as const,
+                                        labelId: label.id,
+                                    };
+
+                                    return (
+                                        <button
+                                            key={label.id}
+                                            type='button'
+                                            className='LibraryToken label'
+                                            onClick={() => appendToken(classToken)}
+                                            draggable={true}
+                                            onDragStart={(event: React.DragEvent) =>
+                                                onDragStart(event, {
+                                                    source: 'palette',
+                                                    token: classToken,
+                                                })
+                                            }
+                                        >
+                                            {label.name}
+                                        </button>
+                                    );
+                                })}
                             </div>
                         )}
                     </div>
@@ -528,13 +550,13 @@ const ImageClassFilterPopup: React.FC<IProps> = (
                             {renderCanvasDropSlot(index)}
                             <div
                                 className='TokenDropWrapper'
-                                onDragOver={(event: React.DragEvent) => {
+                                onDragOver={(event: React.DragEvent<HTMLDivElement>) => {
                                     event.preventDefault();
                                     event.stopPropagation();
                                     setDragOverIndex(getDropIndexFromPointer(event, index));
                                     event.dataTransfer.dropEffect = 'move';
                                 }}
-                                onDrop={(event: React.DragEvent) =>
+                                onDrop={(event: React.DragEvent<HTMLDivElement>) =>
                                     onDropAtIndex(event, getDropIndexFromPointer(event, index))
                                 }
                             >
@@ -587,7 +609,7 @@ const ImageClassFilterPopup: React.FC<IProps> = (
                                     })
                                 }
                             >
-                                {token.type === 'operator' ? token.operator : token.value}
+                                {getTokenLabel(token as CanvasToken)}
                             </button>
                         ))}
                     </div>

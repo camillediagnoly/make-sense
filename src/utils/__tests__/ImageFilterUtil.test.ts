@@ -92,6 +92,24 @@ describe('ImageFilterUtil image class criteria expression support', () => {
         expect(getFilteredIndices(images, criteria)).toEqual([1, 2]);
     });
 
+    it('should support excluding other classes without counting image groups as classes', () => {
+        const images = [
+            createImageData('image-0', ['A']),
+            createImageData('image-1', ['A', 'B']),
+            createImageData('image-2', ['A'], 'review_batch'),
+            createImageData('image-3', ['B']),
+        ];
+
+        expect(getFilteredIndices(images, [{ type: 'label', labelId: 'A' }]))
+            .toEqual([0, 1, 2]);
+        expect(getFilteredIndices(images, [
+            { type: 'label', labelId: 'A' },
+            { type: 'operator', operator: 'AND' },
+            { type: 'operator', operator: 'NOT' },
+            { type: 'otherLabels' },
+        ])).toEqual([0, 2]);
+    });
+
     it('should keep all images when expression is invalid', () => {
         const images = [
             createImageData('image-0', ['A']),

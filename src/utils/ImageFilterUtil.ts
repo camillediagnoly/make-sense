@@ -22,6 +22,9 @@ type CriteriaAstNode =
         labelId: string;
     }
     | {
+        type: "otherLabels";
+    }
+    | {
         type: "not";
         child: CriteriaAstNode;
     }
@@ -102,6 +105,50 @@ export class ImageFilterUtil {
         return assignedLabelIds;
     }
 
+    private static getImageAssignedClassLabelIds(imageData: ImageData): Set<string> {
+        const assignedLabelIds = new Set<string>(imageData.labelNameIds || []);
+
+        imageData.labelRects
+            .filter(
+                (labelRect: LabelRect) =>
+                    labelRect.status === LabelStatus.ACCEPTED && !!labelRect.labelId
+            )
+            .forEach((labelRect: LabelRect) => {
+                if (labelRect.labelId) {
+                    assignedLabelIds.add(labelRect.labelId);
+                }
+            });
+
+        imageData.labelPoints
+            .filter(
+                (labelPoint: LabelPoint) =>
+                    labelPoint.status === LabelStatus.ACCEPTED && !!labelPoint.labelId
+            )
+            .forEach((labelPoint: LabelPoint) => {
+                if (labelPoint.labelId) {
+                    assignedLabelIds.add(labelPoint.labelId);
+                }
+            });
+
+        imageData.labelPolygons
+            .filter((labelPolygon: LabelPolygon) => !!labelPolygon.labelId)
+            .forEach((labelPolygon: LabelPolygon) => {
+                if (labelPolygon.labelId) {
+                    assignedLabelIds.add(labelPolygon.labelId);
+                }
+            });
+
+        imageData.labelLines
+            .filter((labelLine: LabelLine) => !!labelLine.labelId)
+            .forEach((labelLine: LabelLine) => {
+                if (labelLine.labelId) {
+                    assignedLabelIds.add(labelLine.labelId);
+                }
+            });
+
+        return assignedLabelIds;
+    }
+
     private static isLegacyCriteria(
         criteria: ImageClassCriteria
     ): criteria is LegacyImageClassCriteria {
@@ -123,6 +170,7 @@ export class ImageFilterUtil {
             !!candidate &&
             typeof candidate === "object" &&
             (candidate.type === "label" ||
+                candidate.type === "otherLabels" ||
                 candidate.type === "operator" ||
                 candidate.type === "parenthesis")
         );
@@ -191,14 +239,20 @@ export class ImageFilterUtil {
         }
 
         const expressionCriteria = classCriteria
-            .filter((criteria: ImageClassCriteria) =>
+            .filter((criteria: ImageClassCriteria): criteria is ImageClassExpressionCriteria =>
                 ImageFilterUtil.isExpressionCriteria(criteria)
             )
-            .map((criteria: ImageClassExpressionCriteria) => {
+            .map((criteria: ImageClassExpressionCriteria): ImageClassExpressionCriteria => {
                 if (criteria.type === "label") {
                     return {
                         type: "label",
                         labelId: criteria.labelId,
+                    };
+                }
+
+                if (criteria.type === "otherLabels") {
+                    return {
+                        type: "otherLabels",
                     };
                 }
 
@@ -326,6 +380,12 @@ export class ImageFilterUtil {
                 };
             }
 
+            if (token.type === "otherLabels") {
+                return {
+                    type: "otherLabels",
+                };
+            }
+
             if (token.type === "parenthesis" && token.value === "(") {
                 const node = parseExpression();
                 if (!node) {
@@ -355,6 +415,21 @@ export class ImageFilterUtil {
         return rootNode;
     }
 
+    private static getReferencedClassLabelIds(
+        criteriaTokens: ImageClassExpressionCriteria[]
+    ): Set<string> {
+        const labelIds = new Set<string>();
+        criteriaTokens.forEach((criteria: ImageClassExpressionCriteria) => {
+            if (
+                criteria.type === "label" &&
+                !ImageGroupUtil.isGroupFilterTokenId(criteria.labelId)
+            ) {
+                labelIds.add(criteria.labelId);
+            }
+        });
+        return labelIds;
+    }
+
     public static isImageClassCriteriaValid(
         classCriteria: ImageClassCriteria[] = []
     ): boolean {
@@ -368,22 +443,53 @@ export class ImageFilterUtil {
 
     private static evaluateImageClassCriteria(
         node: CriteriaAstNode,
-        assignedLabelIds: Set<string>
+        assignedLabelIds: Set<string>,
+        assignedClassLabelIds: Set<string>,
+        referencedClassLabelIds: Set<string>
     ): boolean {
         switch (node.type) {
             case "label":
                 return assignedLabelIds.has(node.labelId);
+            case "otherLabels":
+                return Array.from(assignedClassLabelIds).some(
+                    (labelId: string) => !referencedClassLabelIds.has(labelId)
+                );
             case "not":
-                return !ImageFilterUtil.evaluateImageClassCriteria(node.child, assignedLabelIds);
+                return !ImageFilterUtil.evaluateImageClassCriteria(
+                    node.child,
+                    assignedLabelIds,
+                    assignedClassLabelIds,
+                    referencedClassLabelIds
+                );
             case "and":
                 return (
-                    ImageFilterUtil.evaluateImageClassCriteria(node.left, assignedLabelIds) &&
-                    ImageFilterUtil.evaluateImageClassCriteria(node.right, assignedLabelIds)
+                    ImageFilterUtil.evaluateImageClassCriteria(
+                        node.left,
+                        assignedLabelIds,
+                        assignedClassLabelIds,
+                        referencedClassLabelIds
+                    ) &&
+                    ImageFilterUtil.evaluateImageClassCriteria(
+                        node.right,
+                        assignedLabelIds,
+                        assignedClassLabelIds,
+                        referencedClassLabelIds
+                    )
                 );
             case "or":
                 return (
-                    ImageFilterUtil.evaluateImageClassCriteria(node.left, assignedLabelIds) ||
-                    ImageFilterUtil.evaluateImageClassCriteria(node.right, assignedLabelIds)
+                    ImageFilterUtil.evaluateImageClassCriteria(
+                        node.left,
+                        assignedLabelIds,
+                        assignedClassLabelIds,
+                        referencedClassLabelIds
+                    ) ||
+                    ImageFilterUtil.evaluateImageClassCriteria(
+                        node.right,
+                        assignedLabelIds,
+                        assignedClassLabelIds,
+                        referencedClassLabelIds
+                    )
                 );
             default:
                 return true;
@@ -402,6 +508,7 @@ export class ImageFilterUtil {
         const criteriaAst = normalizedCriteria.length > 0
             ? ImageFilterUtil.parseImageClassCriteria(normalizedCriteria)
             : null;
+        const referencedClassLabelIds = ImageFilterUtil.getReferencedClassLabelIds(normalizedCriteria);
         const hasValidCriteria = normalizedCriteria.length === 0 || !!criteriaAst;
 
         return imagesData
@@ -420,12 +527,15 @@ export class ImageFilterUtil {
                 }
 
                 const assignedLabelIds = ImageFilterUtil.getImageAssignedLabelIds(image);
+                const assignedClassLabelIds = ImageFilterUtil.getImageAssignedClassLabelIds(image);
 
                 let criteriaResult = true;
                 if (criteriaAst && hasValidCriteria) {
                     criteriaResult = ImageFilterUtil.evaluateImageClassCriteria(
                         criteriaAst,
-                        assignedLabelIds
+                        assignedLabelIds,
+                        assignedClassLabelIds,
+                        referencedClassLabelIds
                     );
                 }
 

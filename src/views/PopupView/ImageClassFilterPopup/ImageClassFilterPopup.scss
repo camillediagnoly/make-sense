@@ -118,6 +118,12 @@
       background: rgba(53, 119, 178, 0.25);
     }
 
+    &.otherLabels {
+      border-color: #b36b43;
+      background: rgba(179, 107, 67, 0.28);
+      font-weight: 700;
+    }
+
     &.group {
       border-color: #3f8a6d;
       background: rgba(63, 138, 109, 0.25);
@@ -258,6 +264,13 @@
     &.label {
       border-color: #43617d;
       background: rgba(67, 97, 125, 0.25);
+    }
+
+    &.otherLabels {
+      border-color: #8d5b3d;
+      background: rgba(141, 91, 61, 0.28);
+      color: #ffd7c2;
+      font-weight: 700;
     }
 
     &.group {
