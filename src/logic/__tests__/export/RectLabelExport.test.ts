@@ -1,8 +1,11 @@
 
-import {LabelName, LabelRect} from '../../../store/labels/types';
+import {ImageData, LabelName, LabelRect} from '../../../store/labels/types';
 import {LabelStatus} from '../../../data/enums/LabelStatus';
 import {ISize} from '../../../interfaces/ISize';
 import {RectLabelsExporter} from '../../export/RectLabelsExporter';
+import {LabelsSelector} from '../../../store/selectors/LabelsSelector';
+import {GeneralSelector} from '../../../store/selectors/GeneralSelector';
+import {ImageRepository} from '../../imageRepository/ImageRepository';
 
 const imageSize: ISize = {
     width: 1920,
@@ -179,5 +182,56 @@ describe('RectLabelsExporter wrapRectLabelIntoCSV method', () => {
         expect(resultImageName).toBe(imageName)
         expect(parseFloat(resultImageWidth)).toBe(1920)
         expect(parseFloat(resultImageHeight)).toBe(1080)
+    })
+})
+
+describe('RectLabelsExporter wrapImageIntoVOC method', () => {
+    afterEach(() => {
+        jest.restoreAllMocks();
+    })
+
+    it('should export labeled image data when loadStatus is false and use stored dimensions', () => {
+        // given
+        const imageData: ImageData = {
+            id: 'image-000',
+            fileData: new File([''], imageName, {type: 'image/png'}),
+            loadStatus: false,
+            labelRects: [{
+                id: 'label-rect-000',
+                labelId: 'label-002',
+                rect: {
+                    x: 10,
+                    y: 20,
+                    width: 30,
+                    height: 40
+                },
+                isVisible: true,
+                isCreatedByAI: false,
+                status: LabelStatus.ACCEPTED,
+                suggestedLabel: 'label-000'
+            }],
+            labelPoints: [],
+            labelLines: [],
+            labelPolygons: [],
+            labelNameIds: [],
+            imgWidth: 640,
+            imgHeight: 480,
+            isVisitedByYOLOObjectDetector: false,
+            isVisitedBySSDObjectDetector: false,
+            isVisitedByPoseDetector: false,
+            isVisitedByRoboflowAPI: false
+        }
+        jest.spyOn(LabelsSelector, 'getLabelNames').mockReturnValue(labelNames);
+        jest.spyOn(GeneralSelector, 'getProjectName').mockReturnValue('project-name');
+        jest.spyOn(ImageRepository, 'getById').mockReturnValue(null);
+
+        // when
+        const result = (RectLabelsExporter as any).wrapImageIntoVOC(imageData);
+
+        // then
+        expect(result).toContain(`<filename>${imageName}</filename>`);
+        expect(result).toContain(`<width>640</width>`);
+        expect(result).toContain(`<height>480</height>`);
+        expect(result).toContain(`<name>label-name-002</name>`);
     })
 })

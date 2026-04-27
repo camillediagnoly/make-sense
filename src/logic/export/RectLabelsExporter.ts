@@ -160,7 +160,7 @@ export class RectLabelsExporter {
     }
 
     private static wrapRectLabelsIntoVOC(imageData: ImageData): string {
-        if (imageData.labelRects.length === 0 || !imageData.loadStatus)
+        if (imageData.labelRects.length === 0)
             return null;
 
         const labelNamesList: LabelName[] = LabelsSelector.getLabelNames();
@@ -191,6 +191,8 @@ export class RectLabelsExporter {
 
         if (labels) {
             const image: HTMLImageElement = ImageRepository.getById(imageData.id);
+            const imageWidth: number = image ? image.width : imageData.imgWidth ? imageData.imgWidth : -1;
+            const imageHeight: number = image ? image.height : imageData.imgHeight ? imageData.imgHeight : -1;
             return [
                 `<annotation>`,
                 `\t<folder>${projectName}</folder>`,
@@ -200,8 +202,8 @@ export class RectLabelsExporter {
                 `\t\t<database>Unspecified</database>`,
                 `\t</source>`,
                 `\t<size>`,
-                `\t\t<width>${image.width}</width>`,
-                `\t\t<height>${image.height}</height>`,
+                `\t\t<width>${imageWidth}</width>`,
+                `\t\t<height>${imageHeight}</height>`,
                 `\t\t<depth>3</depth>`,
                 `\t</size>`,
                 labels,
