@@ -95,6 +95,14 @@ export class GeneralSelector {
         return store.getState().general.imageListSearchText;
     }
 
+    public static getKeepLabeledInUnlabeled(): boolean {
+        return store.getState().general.keepLabeledInUnlabeled;
+    }
+
+    public static getKeptUnlabeledImageIds(): string[] {
+        return store.getState().general.keptUnlabeledImageIds;
+    }
+
     public static getImageClassCriteria(): ImageClassCriteria[] {
         return store.getState().general.imageClassCriteria;
     }

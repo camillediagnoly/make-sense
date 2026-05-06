@@ -1,5 +1,6 @@
 import { ImageFilterMode } from '../../data/enums/ImageFilterMode';
 import { LabelType } from '../../data/enums/LabelType';
+import { LabelStatus } from '../../data/enums/LabelStatus';
 import { ImageClassCriteria } from '../../store/general/types';
 import { ImageData } from '../../store/labels/types';
 import { ImageFilterUtil } from '../ImageFilterUtil';
@@ -34,6 +35,50 @@ const getFilteredIndices = (
         '',
         criteria
     );
+
+describe('ImageFilterUtil image list status filters', () => {
+    it('should optionally keep labeled images visible in Unlabeled', () => {
+        const images = [
+            createImageData('image-0', []),
+            {
+                ...createImageData('image-1', []),
+                labelRects: [{
+                    id: 'rect-0',
+                    labelId: 'A',
+                    isVisible: true,
+                    rect: {
+                        x: 0,
+                        y: 0,
+                        width: 10,
+                        height: 10,
+                    },
+                    isCreatedByAI: false,
+                    status: LabelStatus.ACCEPTED,
+                    suggestedLabel: null,
+                }],
+            },
+            createImageData('image-2', []),
+        ];
+
+        expect(ImageFilterUtil.getFilteredImageIndices(
+            images,
+            LabelType.RECT,
+            ImageFilterMode.UNLABELED,
+            '',
+            []
+        )).toEqual([0, 2]);
+
+        expect(ImageFilterUtil.getFilteredImageIndices(
+            images,
+            LabelType.RECT,
+            ImageFilterMode.UNLABELED,
+            '',
+            [],
+            true,
+            ['image-0', 'image-1']
+        )).toEqual([0, 1]);
+    });
+});
 
 describe('ImageFilterUtil image class criteria expression support', () => {
     it('should filter by imported image groups', () => {

@@ -13,7 +13,11 @@ import {ImageActions} from "../../../../logic/actions/ImageActions";
 import {EventType} from "../../../../data/enums/EventType";
 import {ImageFilterMode} from "../../../../data/enums/ImageFilterMode";
 import {ImageFilterUtil} from "../../../../utils/ImageFilterUtil";
-import {updateImageListFilterMode, updateImageListSearchText} from "../../../../store/general/actionCreators";
+import {
+    updateImageListFilterMode,
+    updateImageListSearchText,
+    updateKeepLabeledInUnlabeled
+} from "../../../../store/general/actionCreators";
 import {ImageClassCriteria} from "../../../../store/general/types";
 
 interface IProps {
@@ -22,9 +26,15 @@ interface IProps {
     activeLabelType: LabelType;
     filterMode: ImageFilterMode;
     searchText: string;
+    keepLabeledInUnlabeled: boolean;
+    keptUnlabeledImageIds: string[];
     imageClassCriteria: ImageClassCriteria[];
     updateImageListFilterModeAction: (filterMode: ImageFilterMode) => any;
     updateImageListSearchTextAction: (searchText: string) => any;
+    updateKeepLabeledInUnlabeledAction: (
+        keepLabeledInUnlabeled: boolean,
+        keptUnlabeledImageIds?: string[]
+    ) => any;
 }
 
 interface IState {
@@ -84,6 +94,8 @@ class ImagesList extends React.Component<IProps, IState> {
             activeLabelType,
             filterMode,
             searchText,
+            keepLabeledInUnlabeled,
+            keptUnlabeledImageIds,
             imageClassCriteria,
         } = props;
 
@@ -92,7 +104,9 @@ class ImagesList extends React.Component<IProps, IState> {
             activeLabelType,
             filterMode,
             searchText,
-            imageClassCriteria
+            imageClassCriteria,
+            keepLabeledInUnlabeled,
+            keptUnlabeledImageIds
         );
     };
 
@@ -109,6 +123,8 @@ class ImagesList extends React.Component<IProps, IState> {
             prevProps.activeLabelType !== this.props.activeLabelType ||
             prevProps.searchText !== this.props.searchText ||
             prevProps.filterMode !== this.props.filterMode ||
+            prevProps.keepLabeledInUnlabeled !== this.props.keepLabeledInUnlabeled ||
+            prevProps.keptUnlabeledImageIds !== this.props.keptUnlabeledImageIds ||
             prevProps.imageClassCriteria !== this.props.imageClassCriteria;
 
         const currentFilteredIndices = this.getFilteredImages();
@@ -149,8 +165,32 @@ class ImagesList extends React.Component<IProps, IState> {
         this.props.updateImageListFilterModeAction(filterMode);
     };
 
+    private toggleKeepLabeledInUnlabeled = () => {
+        if (this.props.keepLabeledInUnlabeled) {
+            this.props.updateKeepLabeledInUnlabeledAction(false);
+            return;
+        }
+
+        const {
+            imagesData,
+            activeLabelType,
+            searchText,
+            imageClassCriteria,
+        } = this.props;
+        const keptUnlabeledImageIds: string[] = ImageFilterUtil.getFilteredImageIndices(
+            imagesData,
+            activeLabelType,
+            ImageFilterMode.UNLABELED,
+            searchText,
+            imageClassCriteria
+        ).map((index: number) => imagesData[index].id);
+
+        this.props.updateKeepLabeledInUnlabeledAction(true, keptUnlabeledImageIds);
+    };
+
     private renderSearchAndFilter = () => {
-        const { filterMode, searchText } = this.props;
+        const { filterMode, searchText, keepLabeledInUnlabeled } = this.props;
+        const isUnlabeledFilterActive = filterMode === ImageFilterMode.UNLABELED;
         return (
             <div className="ImagesListControls" ref={(ref) => this.controlsRef = ref}>
                 <div className="SearchContainer">
@@ -175,12 +215,31 @@ class ImagesList extends React.Component<IProps, IState> {
                     >
                         Labeled
                     </button>
-                    <button
-                        className={`FilterButton ${filterMode === ImageFilterMode.UNLABELED ? 'active' : ''}`}
-                        onClick={() => this.setFilterMode(ImageFilterMode.UNLABELED)}
-                    >
-                        Unlabeled
-                    </button>
+                    <div className={`UnlabeledFilterControls ${isUnlabeledFilterActive ? 'with-lock' : ''}`}>
+                        <button
+                            className={`FilterButton ${isUnlabeledFilterActive ? 'active' : ''}`}
+                            onClick={() => this.setFilterMode(ImageFilterMode.UNLABELED)}
+                        >
+                            Unlabeled
+                        </button>
+                        {isUnlabeledFilterActive && (
+                            <button
+                                type="button"
+                                className={`FreezeUnlabeledButton ${keepLabeledInUnlabeled ? 'locked' : 'unlocked'}`}
+                                title={keepLabeledInUnlabeled ? 'Unfreeze Unlabeled list' : 'Freeze Unlabeled list'}
+                                aria-label={keepLabeledInUnlabeled ? 'Unfreeze Unlabeled list' : 'Freeze Unlabeled list'}
+                                aria-pressed={keepLabeledInUnlabeled}
+                                onClick={this.toggleKeepLabeledInUnlabeled}
+                            >
+                                <img
+                                    className="FreezeUnlabeledIcon"
+                                    src={keepLabeledInUnlabeled ? 'ico/lock-closed.svg' : 'ico/lock-open.svg'}
+                                    alt=""
+                                    aria-hidden="true"
+                                />
+                            </button>
+                        )}
+                    </div>
                 </div>
             </div>
         );
@@ -224,6 +283,8 @@ const mapStateToProps = (state: AppState) => ({
     activeLabelType: state.labels.activeLabelType,
     filterMode: state.general.imageListFilterMode,
     searchText: state.general.imageListSearchText,
+    keepLabeledInUnlabeled: state.general.keepLabeledInUnlabeled,
+    keptUnlabeledImageIds: state.general.keptUnlabeledImageIds,
     imageClassCriteria: state.general.imageClassCriteria,
 });
 
@@ -232,5 +293,6 @@ export default connect(
     {
         updateImageListFilterModeAction: updateImageListFilterMode,
         updateImageListSearchTextAction: updateImageListSearchText,
+        updateKeepLabeledInUnlabeledAction: updateKeepLabeledInUnlabeled,
     }
 )(ImagesList);

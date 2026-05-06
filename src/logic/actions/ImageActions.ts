@@ -30,12 +30,16 @@ export class ImageActions {
     const filterMode: ImageFilterMode = GeneralSelector.getImageListFilterMode();
     const searchText: string = GeneralSelector.getImageListSearchText();
     const imageClassCriteria: ImageClassCriteria[] = GeneralSelector.getImageClassCriteria();
+    const keepLabeledInUnlabeled: boolean = GeneralSelector.getKeepLabeledInUnlabeled();
+    const keptUnlabeledImageIds: string[] = GeneralSelector.getKeptUnlabeledImageIds();
     return ImageFilterUtil.getFilteredImageIndices(
       imagesData,
       activeLabelType,
       filterMode,
       searchText,
-      imageClassCriteria
+      imageClassCriteria,
+      keepLabeledInUnlabeled,
+      keptUnlabeledImageIds
     );
   }
 

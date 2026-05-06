@@ -76,6 +76,8 @@ export type GeneralState = {
     lineKeypointMode: boolean;
     imageListFilterMode: ImageFilterMode;
     imageListSearchText: string;
+    keepLabeledInUnlabeled: boolean;
+    keptUnlabeledImageIds: string[];
     imageClassCriteria: ImageClassCriteria[];
 };
 
@@ -218,6 +220,14 @@ interface UpdateImageListSearchText {
     };
 }
 
+interface UpdateKeepLabeledInUnlabeled {
+    type: typeof Action.UPDATE_KEEP_LABELED_IN_UNLABELED;
+    payload: {
+        keepLabeledInUnlabeled: boolean;
+        keptUnlabeledImageIds: string[];
+    };
+}
+
 interface UpdateImageClassCriteria {
     type: typeof Action.UPDATE_IMAGE_CLASS_CRITERIA;
     payload: {
@@ -271,4 +281,5 @@ export type GeneralActionTypes =
     | UpdateLineKeypointMode
     | UpdateImageListFilterMode
     | UpdateImageListSearchText
+    | UpdateKeepLabeledInUnlabeled
     | UpdateImageClassCriteria;

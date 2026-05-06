@@ -221,6 +221,19 @@ export function updateImageListSearchText(
     };
 }
 
+export function updateKeepLabeledInUnlabeled(
+    keepLabeledInUnlabeled: boolean,
+    keptUnlabeledImageIds: string[] = []
+): GeneralActionTypes {
+    return {
+        type: Action.UPDATE_KEEP_LABELED_IN_UNLABELED,
+        payload: {
+            keepLabeledInUnlabeled,
+            keptUnlabeledImageIds,
+        },
+    };
+}
+
 export function updateImageClassCriteria(
     imageClassCriteria: ImageClassCriteria[]
 ): GeneralActionTypes {

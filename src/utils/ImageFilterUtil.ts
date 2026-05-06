@@ -501,7 +501,9 @@ export class ImageFilterUtil {
         labelType: LabelType,
         filterMode: ImageFilterMode,
         searchText: string,
-        classCriteria: ImageClassCriteria[] = []
+        classCriteria: ImageClassCriteria[] = [],
+        keepLabeledInUnlabeled: boolean = false,
+        keptUnlabeledImageIds: string[] = []
     ): number[] {
         const normalizedSearchText = (searchText || "").toLowerCase();
         const normalizedCriteria = ImageFilterUtil.normalizeImageClassCriteria(classCriteria);
@@ -510,6 +512,7 @@ export class ImageFilterUtil {
             : null;
         const referencedClassLabelIds = ImageFilterUtil.getReferencedClassLabelIds(normalizedCriteria);
         const hasValidCriteria = normalizedCriteria.length === 0 || !!criteriaAst;
+        const keptUnlabeledImageIdSet = new Set<string>(keptUnlabeledImageIds);
 
         return imagesData
             .map((image, index) => ({ image, index }))
@@ -523,7 +526,9 @@ export class ImageFilterUtil {
                 if (filterMode === ImageFilterMode.LABELED) {
                     matchesFilter = ImageFilterUtil.isImageLabeled(image, labelType);
                 } else if (filterMode === ImageFilterMode.UNLABELED) {
-                    matchesFilter = !ImageFilterUtil.isImageLabeled(image, labelType);
+                    matchesFilter = keepLabeledInUnlabeled
+                        ? keptUnlabeledImageIdSet.has(image.id)
+                        : !ImageFilterUtil.isImageLabeled(image, labelType);
                 }
 
                 const assignedLabelIds = ImageFilterUtil.getImageAssignedLabelIds(image);

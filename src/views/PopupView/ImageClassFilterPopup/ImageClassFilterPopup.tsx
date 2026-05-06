@@ -50,6 +50,8 @@ interface IProps {
     activeLabelType: LabelType;
     filterMode: ImageFilterMode;
     searchText: string;
+    keepLabeledInUnlabeled: boolean;
+    keptUnlabeledImageIds: string[];
     imageClassCriteria: ImageClassCriteria[];
     updateActivePopupTypeAction: (activePopupType: PopupWindowType) => any;
     updateImageClassCriteriaAction: (criteria: ImageClassCriteria[]) => any;
@@ -108,6 +110,8 @@ const ImageClassFilterPopup: React.FC<IProps> = (
         activeLabelType,
         filterMode,
         searchText,
+        keepLabeledInUnlabeled,
+        keptUnlabeledImageIds,
         imageClassCriteria,
         updateActivePopupTypeAction,
         updateImageClassCriteriaAction,
@@ -191,9 +195,19 @@ const ImageClassFilterPopup: React.FC<IProps> = (
                 activeLabelType,
                 filterMode,
                 searchText,
-                draftCriteria
+                draftCriteria,
+                keepLabeledInUnlabeled,
+                keptUnlabeledImageIds
             ).length,
-        [imagesData, activeLabelType, filterMode, searchText, draftCriteria]
+        [
+            imagesData,
+            activeLabelType,
+            filterMode,
+            searchText,
+            draftCriteria,
+            keepLabeledInUnlabeled,
+            keptUnlabeledImageIds,
+        ]
     );
 
     const appendToken = (token: ImageClassExpressionCriteria) => {
@@ -639,6 +653,8 @@ const mapStateToProps = (state: AppState) => ({
     activeLabelType: state.labels.activeLabelType,
     filterMode: state.general.imageListFilterMode,
     searchText: state.general.imageListSearchText,
+    keepLabeledInUnlabeled: state.general.keepLabeledInUnlabeled,
+    keptUnlabeledImageIds: state.general.keptUnlabeledImageIds,
     imageClassCriteria: state.general.imageClassCriteria,
 });
 

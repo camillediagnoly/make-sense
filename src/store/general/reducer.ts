@@ -29,6 +29,8 @@ const initialState: GeneralState = {
     lineKeypointMode: false,
     imageListFilterMode: ImageFilterMode.ALL,
     imageListSearchText: "",
+    keepLabeledInUnlabeled: false,
+    keptUnlabeledImageIds: [],
     imageClassCriteria: [],
     keyboardShortcuts: [
         {
@@ -308,6 +310,13 @@ export function generalReducer(
             return {
                 ...state,
                 imageListSearchText: action.payload.imageListSearchText,
+            };
+        }
+        case Action.UPDATE_KEEP_LABELED_IN_UNLABELED: {
+            return {
+                ...state,
+                keepLabeledInUnlabeled: action.payload.keepLabeledInUnlabeled,
+                keptUnlabeledImageIds: action.payload.keptUnlabeledImageIds,
             };
         }
         case Action.UPDATE_IMAGE_CLASS_CRITERIA: {

@@ -23,6 +23,8 @@ interface IProps {
     activeLabelType: LabelType;
     filterMode: ImageFilterMode;
     searchText: string;
+    keepLabeledInUnlabeled: boolean;
+    keptUnlabeledImageIds: string[];
     imageClassCriteria: ImageClassCriteria[];
 }
 
@@ -35,6 +37,8 @@ const EditorBottomNavigationBar: React.FC<IProps> = ({
     activeLabelType,
     filterMode,
     searchText,
+    keepLabeledInUnlabeled,
+    keptUnlabeledImageIds,
     imageClassCriteria
 }) => {
     const minWidth: number = 400;
@@ -44,7 +48,9 @@ const EditorBottomNavigationBar: React.FC<IProps> = ({
         activeLabelType,
         filterMode,
         searchText,
-        imageClassCriteria
+        imageClassCriteria,
+        keepLabeledInUnlabeled,
+        keptUnlabeledImageIds
     );
     const activeFilteredIndex = filteredIndices.indexOf(activeImageIndex);
     const totalImageCount = filteredIndices.length;
@@ -160,6 +166,8 @@ const mapStateToProps = (state: AppState) => ({
     activeLabelType: state.labels.activeLabelType,
     filterMode: state.general.imageListFilterMode,
     searchText: state.general.imageListSearchText,
+    keepLabeledInUnlabeled: state.general.keepLabeledInUnlabeled,
+    keptUnlabeledImageIds: state.general.keptUnlabeledImageIds,
     imageClassCriteria: state.general.imageClassCriteria
 });
 
