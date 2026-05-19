@@ -5,6 +5,20 @@
   position: relative;
   overflow: hidden;
   cursor: pointer;
+  box-sizing: border-box;
+  transition: background-color 0.15s ease, box-shadow 0.15s ease;
+
+  &::before {
+    content: "";
+    position: absolute;
+    top: 6px;
+    bottom: 6px;
+    left: 0;
+    width: 3px;
+    border-radius: 0 3px 3px 0;
+    background-color: transparent;
+    transition: background-color 0.15s ease, width 0.15s ease;
+  }
 
   .LabelInputFieldWrapper {
     position: absolute;
@@ -22,6 +36,8 @@
       margin-left: 10px;
       width: 24px;
       height: 24px;
+      border-radius: 2px;
+      transition: box-shadow 0.15s ease, transform 0.15s ease;
     }
 
     .Content {
@@ -64,6 +80,7 @@
         align-items: center;
 
         overflow: hidden;
+        transition: color 0.15s ease, font-weight 0.15s ease;
 
         &:hover {
           &::after {
@@ -138,7 +155,25 @@
   }
 
   &.active {
-    background-color: rgba(0, 0, 0, 0.20);
+    background: linear-gradient(90deg, rgba(0, 154, 242, 0.22), rgba(0, 0, 0, 0.18));
+    box-shadow: inset 0 0 0 1px rgba(0, 154, 242, 0.9);
+
+    &::before {
+      width: 5px;
+      background-color: var(--label-color);
+    }
+
+    .Marker {
+      transform: scale(1.08);
+      box-shadow:
+        0 0 0 2px $darkThemeSecondColor,
+        0 0 0 4px var(--label-color);
+    }
+
+    .DropdownLabel {
+      font-weight: 700;
+      color: #ffffff;
+    }
   }
 
   &.loaded {
@@ -147,7 +182,11 @@
     }
   }
 
-  &.highlighted {
-    background-color: rgba(0, 0, 0, 0.20);
+  &.highlighted:not(.active) {
+    background-color: rgba(255, 255, 255, 0.08);
+
+    &::before {
+      background-color: var(--label-color);
+    }
   }
 }
