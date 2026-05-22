@@ -633,8 +633,12 @@ export class PolygonRenderEngine extends BaseRenderEngine {
         }
     }
 
+    public canUndoLastAddedPoint(): boolean {
+        return this.isCreationInProgress();
+    }
+
     public undoLastAddedPoint(): void {
-        if (this.isCreationInProgress()) {
+        if (this.canUndoLastAddedPoint()) {
             this.removeLastPoint();
             EditorActions.fullRender();
         }

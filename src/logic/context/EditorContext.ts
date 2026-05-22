@@ -14,6 +14,7 @@ import { LineRenderEngine } from "../render/LineRenderEngine";
 import { LabelsSelector } from "../../store/selectors/LabelsSelector"; 
 import { store } from '../../index';
 import { ShortcutItem } from '../../store/general/types';
+import { ImageHistoryActions } from '../actions/ImageHistoryActions';
 
 export class EditorContext extends BaseContext {
     private static getShortcutByName(name: string): ShortcutItem | undefined {
@@ -52,12 +53,21 @@ export class EditorContext extends BaseContext {
                 }
                 EditorActions.fullRender();
             },
-            'Undo Last Point': (event: KeyboardEvent) => {
+            'Undo Current Image Action': (event: KeyboardEvent) => {
+                event.preventDefault();
                 if (EditorModel.supportRenderingEngine &&
                     EditorModel.supportRenderingEngine.labelType === LabelType.POLYGON) {
-                    (EditorModel.supportRenderingEngine as PolygonRenderEngine).undoLastAddedPoint();
+                    const polygonRenderEngine = EditorModel.supportRenderingEngine as PolygonRenderEngine;
+                    if (polygonRenderEngine.canUndoLastAddedPoint()) {
+                        polygonRenderEngine.undoLastAddedPoint();
+                        return;
+                    }
                 }
-                EditorActions.fullRender();
+                ImageHistoryActions.undoActiveImageAction();
+            },
+            'Redo Current Image Action': (event: KeyboardEvent) => {
+                event.preventDefault();
+                ImageHistoryActions.redoActiveImageAction();
             },
             'Previous Image': (event: KeyboardEvent) => {
                 ImageActions.getPreviousImage();

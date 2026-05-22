@@ -26,6 +26,14 @@
   cursor: pointer;
 }
 
+.ImageButton.disabled {
+  opacity: 0.35;
+}
+
 .ImageButton:hover {
   background-color: rgba(255, 255, 255, 0.3);
+}
+
+.ImageButton.disabled:hover {
+  background-color: transparent;
 }

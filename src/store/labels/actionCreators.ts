@@ -102,3 +102,16 @@ export function updateFirstLabelCreatedFlag(firstLabelCreatedFlag: boolean): Lab
         }
     }
 }
+
+
+export function undoActiveImageAction(): LabelsActionTypes {
+    return {
+        type: Action.UNDO_ACTIVE_IMAGE_ACTION,
+    };
+}
+
+export function redoActiveImageAction(): LabelsActionTypes {
+    return {
+        type: Action.REDO_ACTIVE_IMAGE_ACTION,
+    };
+}

@@ -82,8 +82,8 @@ const App: React.FC<IProps> = (
 const mapStateToProps = (state: AppState) => ({
     projectType: state.general.projectData.type,
     windowSize: state.general.windowSize,
-    isSSDObjectDetectorLoaded: state.ai.isSSDObjectDetectorLoaded,
-    isPoseDetectorLoaded: state.ai.isPoseDetectorLoaded,
+    isObjectDetectorLoaded: state.ai.isSSDObjectDetectorLoaded,
+    isPoseDetectionLoaded: state.ai.isPoseDetectorLoaded,
     isYOLOV5ObjectDetectorLoaded: state.ai.isYOLOV5ObjectDetectorLoaded,
     roboflowAPIDetails: state.ai.roboflowAPIDetails,
     keyboardShortcuts: state.general.keyboardShortcuts 

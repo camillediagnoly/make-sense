@@ -22,13 +22,6 @@ const defaultKeyboardShortcuts = [
     description: "Cancels current label creation",
   },
   {
-    id: "undo-last-point",
-    name: "Undo Last Point",
-    keyCombo: ["Control", "z"],
-    defaultKeyCombo: ["Control", "z"],
-    description: "Removes the last added point in polygon creation",
-  },
-  {
     id: "toggle-labels-visibility",
     name: "Toggle Labels Visibility",
     keyCombo: PlatformUtil.isMac() ? ["Option", "z"] : ["e"],
@@ -111,6 +104,20 @@ const defaultKeyboardShortcuts = [
     keyCombo: ["l"],
     defaultKeyCombo: ["l"],
     description: "Enables or disables ellipse drawing mode",
+  },
+  {
+    id: "undo-last-point",
+    name: "Undo Current Image Action",
+    keyCombo: ["Control", "z"],
+    defaultKeyCombo: ["Control", "z"],
+    description: "Restores the previous action made on the current image",
+  },
+  {
+    id: "redo-current-image-action",
+    name: "Redo Current Image Action",
+    keyCombo: ["Control", "y"],
+    defaultKeyCombo: ["Control", "y"],
+    description: "Reapplies the last undone action on the current image",
   },
   // {
   //     id: 'toggle-moving-annotation',

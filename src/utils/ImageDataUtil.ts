@@ -23,6 +23,40 @@ export class ImageDataUtil {
         }
     }
 
+    public static cloneImageData(imageData: ImageData): ImageData {
+        if (!imageData) {
+            return imageData;
+        }
+
+        return {
+            ...imageData,
+            labelRects: imageData.labelRects.map((labelRect) => ({
+                ...labelRect,
+                rect: { ...labelRect.rect },
+            })),
+            labelPoints: imageData.labelPoints.map((labelPoint) => ({
+                ...labelPoint,
+                point: { ...labelPoint.point },
+            })),
+            labelLines: imageData.labelLines.map((labelLine) => ({
+                ...labelLine,
+                line: {
+                    start: { ...labelLine.line.start },
+                    end: { ...labelLine.line.end },
+                },
+            })),
+            labelPolygons: imageData.labelPolygons.map((labelPolygon) => ({
+                ...labelPolygon,
+                vertices: labelPolygon.vertices.map((vertex) => ({ ...vertex })),
+            })),
+            labelNameIds: [...imageData.labelNameIds],
+        };
+    }
+
+    public static cloneImagesData(imagesData: ImageData[]): ImageData[] {
+        return imagesData.map((imageData: ImageData) => ImageDataUtil.cloneImageData(imageData));
+    }
+
     public static cleanAnnotations(item: ImageData): ImageData {
         return {
             ...item,

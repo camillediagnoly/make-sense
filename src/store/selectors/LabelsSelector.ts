@@ -2,6 +2,7 @@ import {store} from '../..';
 import {ImageData, LabelLine, LabelName, LabelPoint, LabelPolygon, LabelRect} from '../labels/types';
 import {find} from 'lodash';
 import {LabelType} from '../../data/enums/LabelType';
+import {ImageDataUtil} from '../../utils/ImageDataUtil';
 
 export class LabelsSelector {
     public static getLabelNames(): LabelName[] {
@@ -22,7 +23,7 @@ export class LabelsSelector {
     }
 
     public static getImagesData(): ImageData[] {
-        return store.getState().labels.imagesData;
+        return ImageDataUtil.cloneImagesData(store.getState().labels.imagesData);
     }
 
     public static getActiveImageIndex(): number {
@@ -39,13 +40,13 @@ export class LabelsSelector {
     }
 
     public static getImageDataByIndex(index: number): ImageData {
-        const imagesData: ImageData[] = LabelsSelector.getImagesData();
-        return imagesData[index];
+        const imageData: ImageData = store.getState().labels.imagesData[index];
+        return imageData ? ImageDataUtil.cloneImageData(imageData) : null;
     }
 
     public static getImageDataById(id: string): ImageData {
-        const imagesData: ImageData[] = LabelsSelector.getImagesData();
-        return find(imagesData, {id});
+        const imageData: ImageData = find(store.getState().labels.imagesData, {id});
+        return imageData ? ImageDataUtil.cloneImageData(imageData) : null;
     }
 
     public static getActiveLabelId(): string | null {

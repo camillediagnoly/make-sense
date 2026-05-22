@@ -5,7 +5,6 @@ import Scrollbars from "react-custom-scrollbars-2";
 import {updateImageDataById} from "../../../../store/labels/actionCreators";
 import {AppState} from "../../../../store";
 import {connect} from "react-redux";
-import {remove} from "lodash";
 import './TagLabelsList.scss';
 import classNames from "classnames";
 import {ImageButton} from "../../../Common/ImageButton/ImageButton";
@@ -41,7 +40,7 @@ const TagLabelsList: React.FC<IProps> = (
         if (imageData.labelNameIds.includes(labelId)) {
             updateImageDataById(imageData.id, {
                 ...imageData,
-                labelNameIds: remove(imageData.labelNameIds, (element: string) => element !== labelId)
+                labelNameIds: imageData.labelNameIds.filter((element: string) => element !== labelId)
             })
         } else {
             updateImageDataById(imageData.id, {

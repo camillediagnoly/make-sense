@@ -50,8 +50,8 @@ export type ImageData = {
     labelLines: LabelLine[];
     labelPolygons: LabelPolygon[];
     labelNameIds: string[];
-    imgWidth: number;
-    imgHeight: number;
+    imgWidth?: number;
+    imgHeight?: number;
 
     // YOLO
     isVisitedByYOLOObjectDetector: boolean;
@@ -66,6 +66,12 @@ export type ImageData = {
     isVisitedByRoboflowAPI: boolean;
 }
 
+export type ImageDataHistory = {
+    imageId: string | null;
+    past: ImageData[];
+    future: ImageData[];
+}
+
 export type LabelsState = {
     activeImageIndex: number;
     activeLabelNameId: string;
@@ -73,6 +79,7 @@ export type LabelsState = {
     activeLabelId: string | null;
     highlightedLabelId: string;
     imagesData: ImageData[];
+    imageDataHistory: ImageDataHistory;
     firstLabelCreatedFlag: boolean;
     labels: LabelName[];
 }
@@ -156,6 +163,14 @@ interface UpdateLabelVisibility {
     }
 }
 
+interface UndoActiveImageAction {
+    type: typeof Action.UNDO_ACTIVE_IMAGE_ACTION;
+}
+
+interface RedoActiveImageAction {
+    type: typeof Action.REDO_ACTIVE_IMAGE_ACTION;
+}
+
 export type LabelsActionTypes = UpdateActiveImageIndex
     | UpdateActiveLabelNameId
     | UpdateActiveLabelType
@@ -167,3 +182,5 @@ export type LabelsActionTypes = UpdateActiveImageIndex
     | UpdateHighlightedLabelId
     | UpdateFirstLabelCreatedFlag
     | UpdateLabelVisibility
+    | UndoActiveImageAction
+    | RedoActiveImageAction

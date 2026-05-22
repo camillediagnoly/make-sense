@@ -85,10 +85,13 @@ class ImagePreview extends React.Component<IProps, IState> {
     };
 
     private saveLoadedImage = (image: HTMLImageElement, imageData: ImageData) => {
-        imageData.loadStatus = true;
-        this.props.updateImageDataById(imageData.id, imageData);
-        ImageRepository.storeImage(imageData.id, image);
-        if (imageData.id === this.props.imageData.id) {
+        const loadedImageData = {
+            ...imageData,
+            loadStatus: true,
+        };
+        this.props.updateImageDataById(loadedImageData.id, loadedImageData);
+        ImageRepository.storeImage(loadedImageData.id, image);
+        if (loadedImageData.id === this.props.imageData.id) {
             this.setState({ image });
             this.isLoading = false;
         }

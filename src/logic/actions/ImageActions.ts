@@ -17,7 +17,6 @@ import {
   LabelRect,
 } from "../../store/labels/types";
 import { LabelStatus } from "../../data/enums/LabelStatus";
-import { remove } from "lodash";
 import { GeneralSelector } from "../../store/selectors/GeneralSelector";
 import { ImageFilterUtil } from "../../utils/ImageFilterUtil";
 import { ImageFilterMode } from "../../data/enums/ImageFilterMode";
@@ -218,8 +217,7 @@ export class ImageActions {
       case LabelType.IMAGE_RECOGNITION:
         const labelId: string = labelNames[labelIndex].id;
         if (imageData.labelNameIds.includes(labelId)) {
-          newImageData.labelNameIds = remove(
-            imageData.labelNameIds,
+          newImageData.labelNameIds = imageData.labelNameIds.filter(
             (element: string) => element !== labelId
           );
         } else {

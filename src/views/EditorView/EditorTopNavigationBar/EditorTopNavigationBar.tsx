@@ -16,6 +16,7 @@ import { ISize } from '../../../interfaces/ISize';
 import { AIActions } from '../../../logic/actions/AIActions';
 import { Fade, styled, Tooltip, tooltipClasses, TooltipProps } from '@mui/material';
 import { PopupWindowType } from '../../../data/enums/PopupWindowType';
+import { ImageHistoryActions } from '../../../logic/actions/ImageHistoryActions';
 const BUTTON_SIZE: ISize = { width: 30, height: 30 };
 const BUTTON_PADDING: number = 10;
 const POLYGON_LASSO_PRECISION_OPTIONS = [
@@ -44,7 +45,8 @@ const getButtonWithTooltip = (
     imageAlt: string,
     isActive: boolean,
     href?: string,
-    onClick?: () => any
+    onClick?: () => any,
+    isDisabled: boolean = false
 ): React.ReactElement => {
     return <StyledTooltip
         key={key}
@@ -63,6 +65,7 @@ const getButtonWithTooltip = (
                 href={href}
                 onClick={onClick}
                 isActive={isActive}
+                isDisabled={isDisabled}
             />
         </div>
     </StyledTooltip>;
@@ -92,6 +95,8 @@ interface IProps {
     polygonLassoMode: boolean;
     polygonLassoTargetVertexCount: number;
     lineKeypointMode: boolean;
+    canUndoActiveImageAction: boolean;
+    canRedoActiveImageAction: boolean;
 }
 
 const EditorTopNavigationBar: React.FC<IProps> = (
@@ -118,7 +123,9 @@ const EditorTopNavigationBar: React.FC<IProps> = (
         activeLabelType,
         polygonLassoMode,
         polygonLassoTargetVertexCount,
-        lineKeypointMode
+        lineKeypointMode,
+        canUndoActiveImageAction,
+        canRedoActiveImageAction
     }) => {
     const [isPolygonPrecisionMenuOpen, setIsPolygonPrecisionMenuOpen] = React.useState(false);
 
@@ -438,6 +445,32 @@ const EditorTopNavigationBar: React.FC<IProps> = (
                     )
                 }
             </div>}
+            <div className='ButtonWrapper'>
+                {
+                    getButtonWithTooltip(
+                        'undo-active-image-action',
+                        'undo current image action (ctrl+z)',
+                        'ico/undo.svg',
+                        'undo',
+                        false,
+                        undefined,
+                        () => ImageHistoryActions.undoActiveImageAction(),
+                        !canUndoActiveImageAction
+                    )
+                }
+                {
+                    getButtonWithTooltip(
+                        'redo-active-image-action',
+                        'redo current image action (ctrl+y)',
+                        'ico/redo.svg',
+                        'redo',
+                        false,
+                        undefined,
+                        () => ImageHistoryActions.redoActiveImageAction(),
+                        !canRedoActiveImageAction
+                    )
+                }
+            </div>
         </div>
     );
 };
@@ -456,20 +489,28 @@ const mapDispatchToProps = {
     updateActivePopupTypeAction: updateActivePopupType,
 };
 
-const mapStateToProps = (state: AppState) => ({
-    activeContext: state.general.activeContext,
-    imageDragMode: state.general.imageDragMode,
-    crossHairVisible: state.general.crossHairVisible,
-    fixedZoom: state.general.fixedZoom,
-    ellipseDraw: state.general.ellipseDraw,
-    movingAnnotation: state.general.movingAnnotation,
-    copyPolygons: state.general.copyPolygons,
-    pastePolygons: state.general.pastePolygons,
-    activeLabelType: state.labels.activeLabelType,
-    polygonLassoMode: state.general.polygonLassoMode,
-    polygonLassoTargetVertexCount: state.general.polygonLassoTargetVertexCount,
-    lineKeypointMode: state.general.lineKeypointMode,
-});
+const mapStateToProps = (state: AppState) => {
+    const activeImageData = state.labels.imagesData[state.labels.activeImageIndex];
+    const imageDataHistory = state.labels.imageDataHistory;
+    const hasActiveImageHistory = !!activeImageData && imageDataHistory.imageId === activeImageData.id;
+
+    return {
+        activeContext: state.general.activeContext,
+        imageDragMode: state.general.imageDragMode,
+        crossHairVisible: state.general.crossHairVisible,
+        fixedZoom: state.general.fixedZoom,
+        ellipseDraw: state.general.ellipseDraw,
+        movingAnnotation: state.general.movingAnnotation,
+        copyPolygons: state.general.copyPolygons,
+        pastePolygons: state.general.pastePolygons,
+        activeLabelType: state.labels.activeLabelType,
+        polygonLassoMode: state.general.polygonLassoMode,
+        polygonLassoTargetVertexCount: state.general.polygonLassoTargetVertexCount,
+        lineKeypointMode: state.general.lineKeypointMode,
+        canUndoActiveImageAction: hasActiveImageHistory && imageDataHistory.past.length > 0,
+        canRedoActiveImageAction: hasActiveImageHistory && imageDataHistory.future.length > 0,
+    };
+};
 
 export default connect(
     mapStateToProps,
