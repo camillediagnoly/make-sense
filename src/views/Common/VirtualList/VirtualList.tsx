@@ -44,7 +44,7 @@ export class VirtualList extends React.Component<IProps, IState> {
                 width: this.props.size.width,
                 height: this.props.size.height
             }
-        });
+        }, this.scrollToRequestedIndex);
     }
 
     public componentWillUpdate(nextProps: Readonly<IProps>, nextState: Readonly<IState>, nextContext: any): void {
@@ -67,6 +67,17 @@ export class VirtualList extends React.Component<IProps, IState> {
         this.gridSize = VirtualListUtil.calculateGridSize(size, childSize, childCount);
         this.contentSize = VirtualListUtil.calculateContentSize(size, childSize, this.gridSize);
         this.childAnchors = VirtualListUtil.calculateAnchorPoints(size, childSize, childCount);
+    };
+
+    private scrollToRequestedIndex = () => {
+        const {scrollToIndex} = this.props;
+        const anchor = this.childAnchors && this.childAnchors[scrollToIndex];
+
+        if (!this.scrollbars || !anchor) {
+            return;
+        }
+
+        this.scrollbars.scrollTop(anchor.y);
     };
 
     private getVirtualListStyle = ():React.CSSProperties => {

@@ -114,6 +114,25 @@ class ImagesList extends React.Component<IProps, IState> {
         return this.getFilteredImagesFromProps(this.props);
     };
 
+    private getScrollToIndex = (filteredIndices: number[]): number => {
+        const {activeImageIndex} = this.props;
+        if (activeImageIndex === null || filteredIndices.length === 0) {
+            return 0;
+        }
+
+        const activeFilteredIndex = filteredIndices.indexOf(activeImageIndex);
+        if (activeFilteredIndex !== -1) {
+            return activeFilteredIndex;
+        }
+
+        const nextFilteredIndex = filteredIndices.findIndex((index: number) =>
+            index > activeImageIndex
+        );
+        return nextFilteredIndex !== -1
+            ? nextFilteredIndex
+            : filteredIndices.length - 1;
+    };
+
     private onClickHandler = (index: number) => {
         ImageActions.getImageByIndex(index)
     };
@@ -264,7 +283,7 @@ class ImagesList extends React.Component<IProps, IState> {
                         childCount={filteredIndices.length}
                         childRender={this.renderImagePreview}
                         overScanHeight={200}
-                        scrollToIndex={0}
+                        scrollToIndex={this.getScrollToIndex(filteredIndices)}
                     />
                 )}
                 {filteredIndices.length === 0 && (

@@ -208,7 +208,11 @@ const EditorTopNavigationBar: React.FC<IProps> = (
 
     const deleteActiveImageOnClick = () => {
         if (activeImageData) {
-            ImageActions.deleteImage(activeImageData);
+            if (FileSystemAccessUtil.requiresDeleteConfirmation(activeImageData)) {
+                updateActivePopupTypeAction(PopupWindowType.DELETE_IMAGE);
+            } else {
+                ImageActions.deleteImage(activeImageData);
+            }
         }
     };
 
@@ -486,8 +490,8 @@ const EditorTopNavigationBar: React.FC<IProps> = (
                     getButtonWithTooltip(
                         'refresh-local-image-folders',
                         isRefreshingLocalImageFolders
-                            ? 'refreshing image folder'
-                            : 'refresh image folder',
+                            ? 'refreshing local images'
+                            : 'refresh local images',
                         'ico/refresh.png',
                         'refresh-local-image-folders',
                         isRefreshingLocalImageFolders,

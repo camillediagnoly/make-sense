@@ -1,0 +1,43 @@
+@import '../../../settings/Settings';
+
+.GenericYesNoPopup.DeleteImagePopupDialog {
+  .DeleteImagePopupContent {
+    box-sizing: border-box;
+    width: 100%;
+    padding: 32px 40px;
+    color: white;
+    text-align: center;
+
+    .Warning {
+      margin-bottom: 18px;
+      color: white;
+      font-weight: 600;
+      line-height: 1.5;
+    }
+
+    .FileName {
+      padding: 12px;
+      border-radius: 4px;
+      background-color: $darkThemeFirstColor;
+      color: white;
+      font-weight: 600;
+      text-align: center;
+      overflow-wrap: anywhere;
+    }
+  }
+
+  .Footer {
+    justify-content: center;
+
+    .accept-button-wrapper .TextButton.accept {
+      box-shadow: #ff3838 0 0 0 2px inset;
+      background-color: #ff3838;
+      color: white;
+
+      &:hover {
+        background-color: transparent;
+        color: #ff3838;
+      }
+    }
+  }
+}

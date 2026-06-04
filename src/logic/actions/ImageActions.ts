@@ -26,11 +26,12 @@ import { ImageClassCriteria } from "../../store/general/types";
 import { FileSystemAccessUtil } from "../../utils/FileSystemAccessUtil";
 import { ImageDataUtil } from "../../utils/ImageDataUtil";
 import { FileUtil } from "../../utils/FileUtil";
-import {
-  LocalFileSelection,
-  LocalFileSystemDirectoryHandle,
-} from "../../interfaces/IFileSystemAccess";
+import { LocalFileSelection } from "../../interfaces/IFileSystemAccess";
 import { ImageRepository } from "../imageRepository/ImageRepository";
+import {
+  LocalImageDirectoryData,
+  LocalImageDirectoryRegistry,
+} from "../imageRepository/LocalImageDirectoryRegistry";
 
 type ImageDimensions = {
   width: number;
@@ -212,13 +213,12 @@ export class ImageActions {
   public static canRefreshLocalImageFolders(
     imagesData: ImageData[] = LabelsSelector.getImagesData()
   ): boolean {
-    return FileSystemAccessUtil.supportsLocalFileDeletion()
-      && ImageActions.getRefreshDirectoryHandles(imagesData).length > 0;
+    return ImageActions.getRefreshDirectories(imagesData).length > 0
+      || ImageActions.getRefreshableStandaloneImages(imagesData).length > 0;
   }
 
   public static async refreshLocalImageFolders(): Promise<void> {
-    if (ImageActions.isRefreshingLocalImageFolders
-      || !FileSystemAccessUtil.supportsLocalFileDeletion()) {
+    if (ImageActions.isRefreshingLocalImageFolders) {
       return;
     }
 
@@ -226,38 +226,71 @@ export class ImageActions {
 
     try {
       const imagesData = LabelsSelector.getImagesData();
-      const directoryHandles = ImageActions.getRefreshDirectoryHandles(imagesData);
+      const directories = ImageActions.getRefreshDirectories(imagesData);
+      const standaloneImagesData = ImageActions.getRefreshableStandaloneImages(imagesData);
 
       await ImageActions.mapWithConcurrency(
-        directoryHandles,
-        Math.min(LOCAL_FOLDER_REFRESH_CONCURRENCY, directoryHandles.length || 1),
-        async (directoryHandle: LocalFileSystemDirectoryHandle) => {
+        directories,
+        Math.min(LOCAL_FOLDER_REFRESH_CONCURRENCY, directories.length || 1),
+        async (directory: LocalImageDirectoryData) => {
           try {
-            const selections = await FileSystemAccessUtil.getImageFilesFromDirectoryHandle(directoryHandle);
-            await ImageActions.refreshLocalImageFolder(directoryHandle, imagesData, selections);
+            const selections = await FileSystemAccessUtil.scanImageFilesFromDirectoryHandle(
+              directory.directoryHandle
+            );
+            await ImageActions.refreshLocalImageFolder(directory, imagesData, selections);
           } catch (error) {
             console.warn('Could not refresh local image folder:', error);
           }
         }
+      );
+
+      await ImageActions.mapWithConcurrency(
+        standaloneImagesData,
+        LOCAL_FOLDER_REFRESH_CONCURRENCY,
+        ImageActions.refreshStandaloneLocalImage
       );
     } finally {
       ImageActions.isRefreshingLocalImageFolders = false;
     }
   }
 
+  private static async refreshStandaloneLocalImage(imageData: ImageData): Promise<void> {
+    try {
+      const file = await imageData.fileHandle.getFile();
+      if (ImageActions.hasLocalFileChanged(imageData.fileData, file)) {
+        await ImageActions.refreshModifiedLocalImage(imageData, {
+          file,
+          fileHandle: imageData.fileHandle,
+        });
+      }
+    } catch (error) {
+      const fileExists = await FileSystemAccessUtil.localImageFileExists(imageData);
+      if (fileExists === false) {
+        ImageActions.removeImageFromProject(imageData);
+        return;
+      }
+
+      console.warn('Could not refresh selected local image:', error);
+    }
+  }
+
   private static async refreshLocalImageFolder(
-    directoryHandle: LocalFileSystemDirectoryHandle,
+    directory: LocalImageDirectoryData,
     imagesData: ImageData[],
     selections: LocalFileSelection[]
   ): Promise<void> {
     const directoryImagesData = imagesData.filter((imageData: ImageData) =>
-      imageData.directoryHandle === directoryHandle
+      imageData.directoryId === directory.id
     );
-    const directoryImageFileNames = FileSystemAccessUtil
-      .getDirectoryImageFileNamesFromSelections(selections);
-    const selectionIndexByName = ImageActions.getSelectionIndexByName(selections);
+    const directorySelections = selections.filter((selection: LocalFileSelection) =>
+      selection.directoryHandle === directory.directoryHandle
+    );
+    const currentDirectoryImageFileNames = FileSystemAccessUtil
+      .getDirectoryImageFileNamesFromSelections(directorySelections);
+    const knownDirectoryImageFileNames = new Set(directory.knownImageFileNames);
+    const selectionIndexByName = ImageActions.getSelectionIndexByName(directorySelections);
     const refreshPlans = directoryImagesData.map((imageData: ImageData) =>
-      ImageActions.getLocalImageFolderRefreshPlan(imageData, selections, selectionIndexByName)
+      ImageActions.getLocalImageFolderRefreshPlan(imageData, directorySelections, selectionIndexByName)
     );
 
     refreshPlans.forEach((refreshPlan: LocalImageFolderRefreshPlan) => {
@@ -278,8 +311,7 @@ export class ImageActions {
       async (refreshPlan: LocalImageFolderRefreshPlan) => {
         await ImageActions.refreshModifiedLocalImage(
           refreshPlan.imageData,
-          refreshPlan.matchingSelection,
-          directoryImageFileNames
+          refreshPlan.matchingSelection
         );
       }
     );
@@ -289,10 +321,9 @@ export class ImageActions {
         .map((refreshPlan: LocalImageFolderRefreshPlan) => refreshPlan.matchingSelectionIndex)
         .filter((matchingSelectionIndex: number) => matchingSelectionIndex !== -1)
     );
-    const knownDirectoryFileNames = ImageActions.getKnownDirectoryFileNames(directoryImagesData);
-    const newSelections = selections.filter((selection: LocalFileSelection, index: number) =>
+    const newSelections = directorySelections.filter((selection: LocalFileSelection, index: number) =>
       !matchedSelectionIndexes.has(index)
-      && !knownDirectoryFileNames.has(selection.file.name)
+      && !knownDirectoryImageFileNames.has(selection.file.name)
     );
 
     if (newSelections.length > 0) {
@@ -302,24 +333,41 @@ export class ImageActions {
           selection.file,
           groupName,
           selection.fileHandle,
-          selection.directoryHandle || directoryHandle,
-          directoryImageFileNames
+          selection.directoryHandle || directory.directoryHandle,
+          directory.id
         )
       )));
     }
+
+    LocalImageDirectoryRegistry.replaceKnownImageFileNames(
+      directory.id,
+      currentDirectoryImageFileNames
+    );
   }
 
-  private static getRefreshDirectoryHandles(imagesData: ImageData[]): LocalFileSystemDirectoryHandle[] {
-    const directoryHandles: LocalFileSystemDirectoryHandle[] = [];
+  private static getRefreshDirectories(imagesData: ImageData[]): LocalImageDirectoryData[] {
+    const directoryIds = new Set<string>();
+    const directories: LocalImageDirectoryData[] = [];
 
     imagesData.forEach((imageData: ImageData) => {
-      const directoryHandle = imageData.directoryHandle;
-      if (directoryHandle?.values && !directoryHandles.includes(directoryHandle)) {
-        directoryHandles.push(directoryHandle);
+      if (!imageData.directoryId || directoryIds.has(imageData.directoryId)) {
+        return;
+      }
+
+      const directory = LocalImageDirectoryRegistry.getById(imageData.directoryId);
+      if (directory) {
+        directoryIds.add(imageData.directoryId);
+        directories.push(directory);
       }
     });
 
-    return directoryHandles;
+    return directories;
+  }
+
+  private static getRefreshableStandaloneImages(imagesData: ImageData[]): ImageData[] {
+    return imagesData.filter((imageData: ImageData) =>
+      !imageData.directoryId && !!imageData.fileHandle?.getFile
+    );
   }
 
   private static getLocalImageFolderRefreshPlan(
@@ -357,8 +405,7 @@ export class ImageActions {
 
   private static async refreshModifiedLocalImage(
     imageData: ImageData,
-    selection: LocalFileSelection,
-    directoryImageFileNames: string[]
+    selection: LocalFileSelection
   ): Promise<void> {
     const previousDimensions = await ImageActions.getImageDataDimensions(imageData);
     const nextImage = await ImageActions.loadImage(selection.file);
@@ -382,7 +429,7 @@ export class ImageActions {
       fileData: selection.file,
       fileHandle: selection.fileHandle || imageData.fileHandle,
       directoryHandle: selection.directoryHandle || imageData.directoryHandle,
-      directoryImageFileNames: imageData.directoryImageFileNames || directoryImageFileNames,
+      directoryId: imageData.directoryId,
       loadStatus: true,
       imgWidth: nextImage.width,
       imgHeight: nextImage.height,
@@ -412,21 +459,6 @@ export class ImageActions {
       console.warn('Could not load local image file:', error);
       return null;
     }
-  }
-
-  private static getKnownDirectoryFileNames(imagesData: ImageData[]): Set<string> {
-    const fileNames = new Set<string>();
-
-    imagesData.forEach((imageData: ImageData) => {
-      const directoryImageFileNames = imageData.directoryImageFileNames;
-      if (directoryImageFileNames?.length) {
-        directoryImageFileNames.forEach((fileName: string) => fileNames.add(fileName));
-      } else {
-        fileNames.add(imageData.fileData.name);
-      }
-    });
-
-    return fileNames;
   }
 
   private static getCommonGroupName(imagesData: ImageData[]): string | undefined {
@@ -460,6 +492,7 @@ export class ImageActions {
   }
 
   private static removeImageFromProject(imageData: ImageData): void {
+    LocalImageDirectoryRegistry.removeKnownImageFileName(imageData.directoryId, imageData.fileData.name);
     ImageRepository.deleteById(imageData.id);
     store.dispatch(deleteImageDataById(imageData.id));
   }

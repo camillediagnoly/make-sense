@@ -14,14 +14,14 @@ export class ImageDataUtil {
         groupName?: string,
         fileHandle?: LocalFileSystemFileHandle,
         directoryHandle?: LocalFileSystemDirectoryHandle,
-        directoryImageFileNames?: string[]
+        directoryId?: string
     ): ImageData {
         return {
             id: uuidv4(),
             fileData,
             fileHandle,
             directoryHandle,
-            directoryImageFileNames: directoryImageFileNames ? [...directoryImageFileNames] : undefined,
+            directoryId,
             groupName: ImageGroupUtil.normalizeGroupName(groupName),
             loadStatus: false,
             labelRects: [],
@@ -63,9 +63,6 @@ export class ImageDataUtil {
                 vertices: labelPolygon.vertices.map((vertex) => ({ ...vertex })),
             })),
             labelNameIds: [...imageData.labelNameIds],
-            directoryImageFileNames: imageData.directoryImageFileNames
-                ? [...imageData.directoryImageFileNames]
-                : undefined,
         };
     }
 

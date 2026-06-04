@@ -37,6 +37,7 @@ export class Settings {
         PopupWindowType.EXPORT_ANNOTATIONS,
         PopupWindowType.IMPORT_ANNOTATIONS,
         PopupWindowType.EXIT_PROJECT,
+        PopupWindowType.DELETE_IMAGE,
         PopupWindowType.UPDATE_LABEL,
         PopupWindowType.LOAD_AI_MODEL,
         PopupWindowType.LOAD_YOLO_V5_MODEL

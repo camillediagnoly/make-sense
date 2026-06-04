@@ -14,6 +14,7 @@ import { ImageData, LabelName } from "../../../store/labels/types";
 import { PopupActions } from "../../../logic/actions/PopupActions";
 import { ProjectData } from "../../../store/general/types";
 import { updateProjectData as storeUpdateProjectData } from "../../../store/general/actionCreators";
+import { LocalImageDirectoryRegistry } from "../../../logic/imageRepository/LocalImageDirectoryRegistry";
 
 interface IProps {
     updateActiveImageIndex: (activeImageIndex: number | null) => any;
@@ -50,6 +51,7 @@ const ExitProjectPopup: React.FC<IProps> = ({
         updateProjectData({ type: null, name: "my-project-name" });
         updateActiveImageIndex(null);
         updateImageData([]);
+        LocalImageDirectoryRegistry.clear();
         updateFirstLabelCreatedFlag(false);
         PopupActions.close();
     };

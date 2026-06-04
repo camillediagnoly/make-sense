@@ -6,6 +6,7 @@ import {
     LocalFileSystemFileHandle,
 } from "../interfaces/IFileSystemAccess";
 import { ImageData } from "../store/labels/types";
+import { LocalImageDirectoryRegistry } from "../logic/imageRepository/LocalImageDirectoryRegistry";
 
 export class FileSystemAccessUtil {
     private static readonly DIRECTORY_HANDLES_DB_NAME = 'make-sense-file-system-access';
@@ -32,6 +33,10 @@ export class FileSystemAccessUtil {
     public static canDeleteLocalFile(imageData: ImageData): boolean {
         return FileSystemAccessUtil.supportsLocalFileDeletion()
             && (!!imageData?.fileHandle || !!imageData?.directoryHandle?.removeEntry);
+    }
+
+    public static requiresDeleteConfirmation(imageData: ImageData): boolean {
+        return !!imageData?.directoryId;
     }
 
     public static async localImageFileExists(imageData: ImageData): Promise<boolean | null> {
@@ -95,7 +100,8 @@ export class FileSystemAccessUtil {
     }
 
     public static async attachStoredDirectoryAccessToSelections(
-        selections: LocalFileSelection[]
+        selections: LocalFileSelection[],
+        trackDirectoryChanges: boolean = true
     ): Promise<LocalFileSelection[]> {
         if (!FileSystemAccessUtil.needsDirectoryAccess(selections)) {
             return selections;
@@ -114,17 +120,23 @@ export class FileSystemAccessUtil {
                 continue;
             }
 
-            nextSelections = await FileSystemAccessUtil.attachDirectoryHandleToSelections(
-                nextSelections,
-                directoryHandle
-            );
+            try {
+                nextSelections = await FileSystemAccessUtil.attachDirectoryHandleToSelections(
+                    nextSelections,
+                    directoryHandle,
+                    trackDirectoryChanges
+                );
+            } catch (error) {
+                console.warn('Could not inspect a remembered image folder:', error);
+            }
         }
 
         return nextSelections;
     }
 
     public static async attachDirectoryAccessToSelections(
-        selections: LocalFileSelection[]
+        selections: LocalFileSelection[],
+        trackDirectoryChanges: boolean = true
     ): Promise<LocalFileSelection[]> {
         if (!FileSystemAccessUtil.needsDirectoryAccess(selections)) {
             return selections;
@@ -140,7 +152,8 @@ export class FileSystemAccessUtil {
 
             return FileSystemAccessUtil.attachDirectoryHandleToSelections(
                 selections,
-                directoryHandle
+                directoryHandle,
+                trackDirectoryChanges
             );
         } catch (error) {
             if (error instanceof Error && error.name !== 'AbortError') {
@@ -167,7 +180,14 @@ export class FileSystemAccessUtil {
     ): Promise<LocalFileSelection[]> {
         await FileSystemAccessUtil.ensureReadWritePermission(directoryHandle);
         await FileSystemAccessUtil.rememberDirectoryHandle(directoryHandle);
-        return FileSystemAccessUtil.getImageFilesFromDirectoryWithSnapshot(directoryHandle);
+        return FileSystemAccessUtil.getImageFilesFromDirectoryWithFolderReferences(directoryHandle);
+    }
+
+    public static async scanImageFilesFromDirectoryHandle(
+        directoryHandle: LocalFileSystemDirectoryHandle
+    ): Promise<LocalFileSelection[]> {
+        await FileSystemAccessUtil.ensureReadWritePermission(directoryHandle);
+        return FileSystemAccessUtil.getImageFilesFromDirectory(directoryHandle);
     }
 
     public static getDirectoryImageFileNamesFromSelections(
@@ -179,30 +199,30 @@ export class FileSystemAccessUtil {
     public static async getImageFilesFromDataTransferItems(
         items: DataTransferItemList
     ): Promise<LocalFileSelection[]> {
-        const selections: LocalFileSelection[] = [];
         const fileItems = (Array.from(items) as FileSystemAccessDataTransferItem[])
             .filter((item: FileSystemAccessDataTransferItem) => item.kind === 'file');
-
-        const handlePromises = fileItems.map((item: FileSystemAccessDataTransferItem) =>
-            item.getAsFileSystemHandle
-                ? item.getAsFileSystemHandle()
-                : Promise.resolve(null)
+        const selectionGroups = await Promise.all(
+            fileItems.map((item: FileSystemAccessDataTransferItem) =>
+                FileSystemAccessUtil.getImageFilesFromDataTransferItem(item)
+            )
         );
-        const handles = await Promise.all(handlePromises);
 
-        for (let index = 0; index < fileItems.length; index++) {
-            const item = fileItems[index];
-            const handle = handles[index];
+        return selectionGroups.flat();
+    }
+
+    private static async getImageFilesFromDataTransferItem(
+        item: FileSystemAccessDataTransferItem
+    ): Promise<LocalFileSelection[]> {
+        try {
+            const handle = item.getAsFileSystemHandle
+                ? await item.getAsFileSystemHandle()
+                : null;
 
             if (handle?.kind === 'file') {
                 const file = await handle.getFile();
-                if (FileSystemAccessUtil.isSupportedImageFile(file)) {
-                    selections.push({
-                        file,
-                        fileHandle: handle,
-                    });
-                }
-                continue;
+                return FileSystemAccessUtil.isSupportedImageFile(file)
+                    ? [{ file, fileHandle: handle }]
+                    : [];
             }
 
             if (handle?.kind === 'directory') {
@@ -211,19 +231,17 @@ export class FileSystemAccessUtil {
                     await FileSystemAccessUtil.rememberDirectoryHandle(handle);
                 }
 
-                selections.push(
-                    ...await FileSystemAccessUtil.getImageFilesFromDirectoryWithSnapshot(handle)
-                );
-                continue;
+                return FileSystemAccessUtil.getImageFilesFromDirectoryWithFolderReferences(handle);
             }
-
-            const file = item.getAsFile();
-            if (file && FileSystemAccessUtil.isSupportedImageFile(file)) {
-                selections.push({ file });
-            }
+        } catch (error) {
+            // React Dropzone still supplies recursively extracted files when Chrome
+            // no longer allows access to the original dragged file-system item.
         }
 
-        return selections;
+        const file = item.getAsFile();
+        return file && FileSystemAccessUtil.isSupportedImageFile(file)
+            ? [{ file }]
+            : [];
     }
 
     public static async deleteLocalImageFile(imageData: ImageData): Promise<void> {
@@ -272,22 +290,28 @@ export class FileSystemAccessUtil {
 
     private static async attachDirectoryHandleToSelections(
         selections: LocalFileSelection[],
-        directoryHandle: LocalFileSystemDirectoryHandle
+        directoryHandle: LocalFileSystemDirectoryHandle,
+        trackDirectoryChanges: boolean
     ): Promise<LocalFileSelection[]> {
         const directorySelections = await FileSystemAccessUtil.getImageFilesFromDirectory(directoryHandle);
-        const directoryImageFileNames = FileSystemAccessUtil.getDirectoryImageFileNames(directorySelections);
+        const directDirectorySelections = directorySelections.filter((selection: LocalFileSelection) =>
+            selection.directoryHandle === directoryHandle
+        );
+        const directoryId = trackDirectoryChanges
+            ? await LocalImageDirectoryRegistry.register(
+                directoryHandle,
+                FileSystemAccessUtil.getDirectoryImageFileNames(directDirectorySelections)
+            )
+            : undefined;
 
         return Promise.all(
             selections.map((selection: LocalFileSelection) =>
-                selection.directoryHandle
-                    ? {
-                        ...selection,
-                        directoryImageFileNames: selection.directoryImageFileNames || directoryImageFileNames,
-                    }
+                selection.directoryId
+                    ? selection
                     : FileSystemAccessUtil.attachDirectoryHandleIfFileMatches(
                         selection,
                         directoryHandle,
-                        directoryImageFileNames
+                        directoryId
                     )
             )
         );
@@ -296,7 +320,7 @@ export class FileSystemAccessUtil {
     private static async attachDirectoryHandleIfFileMatches(
         selection: LocalFileSelection,
         directoryHandle: LocalFileSystemDirectoryHandle,
-        directoryImageFileNames?: string[]
+        directoryId?: string
     ): Promise<LocalFileSelection> {
         if (!directoryHandle.getFileHandle) {
             return selection;
@@ -310,7 +334,7 @@ export class FileSystemAccessUtil {
                     ? {
                         ...selection,
                         directoryHandle,
-                        directoryImageFileNames,
+                        directoryId,
                     }
                     : selection;
             }
@@ -325,7 +349,7 @@ export class FileSystemAccessUtil {
                     ...selection,
                     fileHandle: selection.fileHandle || candidateFileHandle,
                     directoryHandle,
-                    directoryImageFileNames,
+                    directoryId,
                 }
                 : selection;
         } catch (error) {
@@ -390,16 +414,36 @@ export class FileSystemAccessUtil {
         return selections;
     }
 
-    private static async getImageFilesFromDirectoryWithSnapshot(
+    private static async getImageFilesFromDirectoryWithFolderReferences(
         directoryHandle: LocalFileSystemDirectoryHandle
     ): Promise<LocalFileSelection[]> {
         const selections = await FileSystemAccessUtil.getImageFilesFromDirectory(directoryHandle);
-        const directoryImageFileNames = FileSystemAccessUtil.getDirectoryImageFileNames(selections);
+        const selectionsByDirectory = new Map<LocalFileSystemDirectoryHandle, LocalFileSelection[]>();
 
-        return selections.map((selection: LocalFileSelection) => ({
-            ...selection,
-            directoryImageFileNames,
-        }));
+        selections.forEach((selection: LocalFileSelection) => {
+            if (!selection.directoryHandle) {
+                return;
+            }
+
+            const directorySelections = selectionsByDirectory.get(selection.directoryHandle) || [];
+            directorySelections.push(selection);
+            selectionsByDirectory.set(selection.directoryHandle, directorySelections);
+        });
+
+        const selectionGroups = await Promise.all(
+            Array.from(selectionsByDirectory.entries()).map(async ([handle, directorySelections]) => {
+                const directoryId = await LocalImageDirectoryRegistry.register(
+                    handle,
+                    FileSystemAccessUtil.getDirectoryImageFileNames(directorySelections)
+                );
+                return directorySelections.map((selection: LocalFileSelection) => ({
+                    ...selection,
+                    directoryId,
+                }));
+            })
+        );
+
+        return selectionGroups.flat();
     }
 
     private static getDirectoryImageFileNames(selections: LocalFileSelection[]): string[] {
@@ -421,12 +465,9 @@ export class FileSystemAccessUtil {
                 continue;
             }
 
-            const directorySelections = await FileSystemAccessUtil.getImageFilesFromDirectory(directoryHandle);
-            const directoryImageFileNames = FileSystemAccessUtil.getDirectoryImageFileNames(directorySelections);
             const selectionWithDirectoryHandle = await FileSystemAccessUtil.attachDirectoryHandleIfFileMatches(
                 selection,
-                directoryHandle,
-                directoryImageFileNames
+                directoryHandle
             );
 
             if (selectionWithDirectoryHandle.directoryHandle) {

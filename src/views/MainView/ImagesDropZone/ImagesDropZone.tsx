@@ -1,4 +1,4 @@
-import React, {PropsWithChildren, useState} from 'react';
+import React, {PropsWithChildren, useRef, useState} from 'react';
 import './ImagesDropZone.scss';
 import {useDropzone, DropzoneOptions} from 'react-dropzone';
 import {TextButton} from '../../Common/TextButton/TextButton';
@@ -35,41 +35,37 @@ const sortImageSelections = (items: LocalFileSelection[]): LocalFileSelection[] 
     return [...items].sort(naturalSort);
 };
 
-const requestFolderAccessAfterMessage = async (
-    selections: LocalFileSelection[]
-): Promise<LocalFileSelection[]> => {
-    const selectionsWithStoredFolderAccess = await FileSystemAccessUtil
-        .attachStoredDirectoryAccessToSelections(selections);
-
-    if (!FileSystemAccessUtil.needsDirectoryAccess(selectionsWithStoredFolderAccess)) {
-        return selectionsWithStoredFolderAccess;
-    }
-
-    window.alert(
-        'To enable local deletion, select the folder that contains the selected images in the next window.'
-    );
-    return FileSystemAccessUtil.attachDirectoryAccessToSelections(selectionsWithStoredFolderAccess);
-};
-
 const ImagesDropZone: React.FC<IProps> = (props: PropsWithChildren<IProps>) => {
     const [selectedFiles, setSelectedFiles] = useState<LocalFileSelection[]>([]);
+    const droppedFileSystemSelections = useRef<Promise<LocalFileSelection[]> | null>(null);
     const supportsFilePicker = FileSystemAccessUtil.supportsFilePicker();
 
-    const handleDrop = async (acceptedFiles: File[], _fileRejections: any[], event: any) => {
+    const captureDroppedFileSystemSelections = (event: any) => {
         const droppedItems = event?.dataTransfer?.items;
+        droppedFileSystemSelections.current = droppedItems
+            ? FileSystemAccessUtil.getImageFilesFromDataTransferItems(droppedItems)
+            : null;
+    };
 
-        if (droppedItems) {
-            const filesFromHandles = await FileSystemAccessUtil.getImageFilesFromDataTransferItems(droppedItems);
-            if (filesFromHandles.length > 0) {
-                const filesWithFolderAccess = await requestFolderAccessAfterMessage(filesFromHandles);
-                setSelectedFiles(sortImageSelections(filesWithFolderAccess));
-                return;
+    const handleDrop = async (acceptedFiles: File[]) => {
+        const fileSystemSelections = droppedFileSystemSelections.current;
+        droppedFileSystemSelections.current = null;
+
+        if (fileSystemSelections) {
+            try {
+                const filesFromHandles = await fileSystemSelections;
+                if (filesFromHandles.length > 0
+                    && (acceptedFiles.length === 0 || filesFromHandles.length >= acceptedFiles.length)) {
+                    setSelectedFiles(sortImageSelections(filesFromHandles));
+                    return;
+                }
+            } catch (error) {
+                console.warn('Could not read the dropped folder handle. Loading extracted files instead.', error);
             }
         }
 
         const selectedFilesFromDrop = acceptedFiles.map((file: File) => ({ file }));
-        const filesWithFolderAccess = await requestFolderAccessAfterMessage(selectedFilesFromDrop);
-        setSelectedFiles(sortImageSelections(filesWithFolderAccess));
+        setSelectedFiles(sortImageSelections(selectedFilesFromDrop));
     };
 
     const {getRootProps, getInputProps} = useDropzone({
@@ -86,8 +82,7 @@ const ImagesDropZone: React.FC<IProps> = (props: PropsWithChildren<IProps>) => {
         try {
             const files = await FileSystemAccessUtil.showOpenImageFilePicker();
             if (files.length > 0) {
-                const filesWithFolderAccess = await requestFolderAccessAfterMessage(files);
-                setSelectedFiles(sortImageSelections(filesWithFolderAccess));
+                setSelectedFiles(sortImageSelections(files));
             }
         } catch (error) {
             if (error instanceof Error && error.name !== 'AbortError') {
@@ -110,7 +105,7 @@ const ImagesDropZone: React.FC<IProps> = (props: PropsWithChildren<IProps>) => {
                     undefined,
                     selection.fileHandle,
                     selection.directoryHandle,
-                    selection.directoryImageFileNames
+                    selection.directoryId
                 )));
             props.updateActivePopupTypeAction(PopupWindowType.INSERT_LABEL_NAMES);
         }
@@ -125,9 +120,11 @@ const ImagesDropZone: React.FC<IProps> = (props: PropsWithChildren<IProps>) => {
                     alt={'upload'}
                     src={'ico/box-opened.png'}
                 />
-                <p className='extraBold'>Drop images</p>
+                <p className='extraBold'>Drop your folder</p>
                 <p>or</p>
-                <p className='extraBold'>Click here to select them</p>
+                <p className='extraBold'>Drop your images</p>
+                <p>or</p>
+                <p className='extraBold'>Click here to select your images</p>
             </>;
         else if (selectedFiles.length === 1)
             return <>
@@ -156,7 +153,11 @@ const ImagesDropZone: React.FC<IProps> = (props: PropsWithChildren<IProps>) => {
 
     return(
         <div className='ImagesDropZone'>
-            <div {...getRootProps({className: 'DropZone', onClick: supportsFilePicker ? handleBrowseClick : undefined})}>
+            <div {...getRootProps({
+                className: 'DropZone',
+                onClick: supportsFilePicker ? handleBrowseClick : undefined,
+                onDrop: captureDroppedFileSystemSelections,
+            })}>
                 {getDropZoneContent()}
             </div>
             <div className='DropZoneButtons'>

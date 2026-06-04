@@ -30,7 +30,7 @@ export type LocalFileSelection = {
     file: File;
     fileHandle?: LocalFileSystemFileHandle;
     directoryHandle?: LocalFileSystemDirectoryHandle;
-    directoryImageFileNames?: string[];
+    directoryId?: string;
 };
 
 export type FileSystemAccessWindow = Window & {

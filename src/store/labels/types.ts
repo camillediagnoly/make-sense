@@ -49,7 +49,7 @@ export type ImageData = {
     fileData: File;
     fileHandle?: LocalFileSystemFileHandle;
     directoryHandle?: LocalFileSystemDirectoryHandle;
-    directoryImageFileNames?: string[];
+    directoryId?: string;
     groupName?: string;
     loadStatus: boolean;
     labelRects: LabelRect[];
