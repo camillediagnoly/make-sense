@@ -19,7 +19,7 @@ import {ProjectType} from '../../../data/enums/ProjectType';
 
 interface IProps {
     windowSize: ISize;
-    activeImageIndex: number;
+    activeImageIndex: number | null;
     imagesData: ImageData[];
     activeContext: ContextType;
     projectType: ProjectType;
@@ -35,6 +35,8 @@ const EditorContainer: React.FC<IProps> = (
     }) => {
     const [leftTabStatus, setLeftTabStatus] = useState(true);
     const [rightTabStatus, setRightTabStatus] = useState(true);
+    const activeImageData = activeImageIndex === null ? null : imagesData[activeImageIndex];
+
 
     const calculateEditorSize = (): ISize => {
         if (windowSize) {
@@ -114,19 +116,21 @@ const EditorContainer: React.FC<IProps> = (
                 onMouseDown={() => ContextManager.switchCtx(ContextType.EDITOR)}
                  key='editor-wrapper'
             >
-                {projectType === ProjectType.OBJECT_DETECTION && <EditorTopNavigationBar
+                {projectType === ProjectType.OBJECT_DETECTION && activeImageData && <EditorTopNavigationBar
                     key='editor-top-navigation-bar'
                 />}
-                <Editor
+                {activeImageData ? <Editor
                     size={calculateEditorSize()}
-                    imageData={imagesData[activeImageIndex]}
+                    imageData={activeImageData}
                     key='editor'
-                />
-                <EditorBottomNavigationBar
-                    imageData={imagesData[activeImageIndex]}
+                /> : <div className='EmptyEditorState'>
+                    No image selected
+                </div>}
+                {activeImageData && <EditorBottomNavigationBar
+                    imageData={activeImageData}
                     size={calculateEditorSize()}
                     key='editor-bottom-navigation-bar'
-                />
+                />}
             </div>
             <SideNavigationBar
                 direction={Direction.RIGHT}

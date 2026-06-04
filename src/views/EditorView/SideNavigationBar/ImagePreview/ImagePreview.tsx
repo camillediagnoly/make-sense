@@ -45,7 +45,11 @@ class ImagePreview extends React.Component<IProps, IState> {
     }
 
     public componentWillUpdate(nextProps: Readonly<IProps>, nextState: Readonly<IState>, nextContext: any): void {
-        if (this.props.imageData.id !== nextProps.imageData.id) {
+        const shouldReloadImage = this.props.imageData.id !== nextProps.imageData.id
+            || this.props.imageData.fileData !== nextProps.imageData.fileData
+            || this.props.imageData.loadStatus !== nextProps.imageData.loadStatus;
+
+        if (shouldReloadImage) {
             if (nextProps.imageData.loadStatus) {
                 ImageLoadManager.addAndRun(this.loadImage(nextProps.imageData, nextProps.isScrolling));
             }
@@ -62,6 +66,8 @@ class ImagePreview extends React.Component<IProps, IState> {
     shouldComponentUpdate(nextProps: Readonly<IProps>, nextState: Readonly<IState>, nextContext: any): boolean {
         return (
             this.props.imageData.id !== nextProps.imageData.id ||
+            this.props.imageData.fileData !== nextProps.imageData.fileData ||
+            this.props.imageData.loadStatus !== nextProps.imageData.loadStatus ||
             this.state.image !== nextState.image ||
             this.props.isSelected !== nextProps.isSelected ||
             this.props.isChecked !== nextProps.isChecked

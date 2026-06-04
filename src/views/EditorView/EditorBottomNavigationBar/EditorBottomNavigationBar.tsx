@@ -18,7 +18,7 @@ interface IProps {
     size: ISize;
     imageData: ImageData;
     imagesData: ImageData[];
-    activeImageIndex: number;
+    activeImageIndex: number | null;
     activeContext: ContextType;
     activeLabelType: LabelType;
     filterMode: ImageFilterMode;
@@ -52,7 +52,9 @@ const EditorBottomNavigationBar: React.FC<IProps> = ({
         keepLabeledInUnlabeled,
         keptUnlabeledImageIds
     );
-    const activeFilteredIndex = filteredIndices.indexOf(activeImageIndex);
+    const activeFilteredIndex = activeImageIndex === null
+        ? -1
+        : filteredIndices.indexOf(activeImageIndex);
     const totalImageCount = filteredIndices.length;
     const currentImagePosition = activeFilteredIndex >= 0 ? activeFilteredIndex + 1 : 0;
 

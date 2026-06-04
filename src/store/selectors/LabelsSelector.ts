@@ -26,7 +26,7 @@ export class LabelsSelector {
         return ImageDataUtil.cloneImagesData(store.getState().labels.imagesData);
     }
 
-    public static getActiveImageIndex(): number {
+    public static getActiveImageIndex(): number | null {
         return store.getState().labels.activeImageIndex;
     }
 

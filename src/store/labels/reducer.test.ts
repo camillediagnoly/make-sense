@@ -2,6 +2,7 @@ import { Action } from '../Actions';
 import { LabelUtil } from '../../utils/LabelUtil';
 import {
     addImageData,
+    deleteImageDataById,
     redoActiveImageAction,
     undoActiveImageAction,
     updateActiveImageIndex,
@@ -82,5 +83,32 @@ describe('labelsReducer image history', () => {
 
         expect(loadedState.imageDataHistory.past).toHaveLength(0);
         expect(loadedState.imagesData[0].loadStatus).toBe(true);
+    });
+});
+
+
+describe('labelsReducer image deletion', () => {
+    it('removes an active image and selects the next available image', () => {
+        const firstImage = createImageData('image-1');
+        const secondImage = createImageData('image-2');
+        const state = initializeState([firstImage, secondImage]);
+
+        const nextState = labelsReducer(state, deleteImageDataById(firstImage.id));
+
+        expect(nextState.imagesData).toHaveLength(1);
+        expect(nextState.imagesData[0].id).toBe(secondImage.id);
+        expect(nextState.activeImageIndex).toBe(0);
+        expect(nextState.activeLabelId).toBeNull();
+        expect(nextState.imageDataHistory.imageId).toBeNull();
+    });
+
+    it('clears the active image when the last image is removed', () => {
+        const imageData = createImageData('image-1');
+        const state = initializeState([imageData]);
+
+        const nextState = labelsReducer(state, deleteImageDataById(imageData.id));
+
+        expect(nextState.imagesData).toHaveLength(0);
+        expect(nextState.activeImageIndex).toBeNull();
     });
 });

@@ -21,7 +21,7 @@ import LineLabelsList from "../LineLabelsList/LineLabelsList";
 import TagLabelsList from "../TagLabelsList/TagLabelsList";
 
 interface IProps {
-    activeImageIndex:number,
+    activeImageIndex: number | null,
     activeLabelType: LabelType;
     imagesData: ImageData[];
     projectType: ProjectType;
@@ -90,6 +90,12 @@ class LabelsToolkit extends React.Component<IProps, IState> {
     private renderChildren = () => {
         const {size} = this.state;
         const {activeImageIndex, imagesData, activeLabelType} = this.props;
+        const activeImageData = activeImageIndex === null ? null : imagesData[activeImageIndex];
+
+        if (!activeImageData) {
+            return [];
+        }
+
         return this.tabs.reduce((children, labelType: LabelType, index: number) => {
             const isActive: boolean = labelType === activeLabelType;
             const tabData: ILabelToolkit = find(LabelToolkitData, {labelType});
@@ -139,35 +145,35 @@ class LabelsToolkit extends React.Component<IProps, IState> {
                             width: size.width - 20,
                             height: activeTabContentHeight - 20
                         }}
-                        imageData={imagesData[activeImageIndex]}
+                        imageData={activeImageData}
                     />}
                     {labelType === LabelType.POINT && <PointLabelsList
                         size={{
                             width: size.width - 20,
                             height: activeTabContentHeight - 20
                         }}
-                        imageData={imagesData[activeImageIndex]}
+                        imageData={activeImageData}
                     />}
                     {labelType === LabelType.LINE && <LineLabelsList
                         size={{
                             width: size.width - 20,
                             height: activeTabContentHeight - 20
                         }}
-                        imageData={imagesData[activeImageIndex]}
+                        imageData={activeImageData}
                     />}
                     {labelType === LabelType.POLYGON && <PolygonLabelsList
                         size={{
                             width: size.width - 20,
                             height: activeTabContentHeight - 20
                         }}
-                        imageData={imagesData[activeImageIndex]}
+                        imageData={activeImageData}
                     />}
                     {labelType === LabelType.IMAGE_RECOGNITION && <TagLabelsList
                         size={{
                             width: size.width - 20,
                             height: activeTabContentHeight - 20
                         }}
-                        imageData={imagesData[activeImageIndex]}
+                        imageData={activeImageData}
                     />}
                 </div>;
 

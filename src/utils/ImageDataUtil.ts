@@ -3,12 +3,25 @@ import { v4 as uuidv4 } from 'uuid';
 import {FileUtil} from './FileUtil';
 import {ImageRepository} from '../logic/imageRepository/ImageRepository';
 import { ImageGroupUtil } from './ImageGroupUtil';
+import {
+    LocalFileSystemDirectoryHandle,
+    LocalFileSystemFileHandle,
+} from '../interfaces/IFileSystemAccess';
 
 export class ImageDataUtil {
-    public static createImageDataFromFileData(fileData: File, groupName?: string): ImageData {
+    public static createImageDataFromFileData(
+        fileData: File,
+        groupName?: string,
+        fileHandle?: LocalFileSystemFileHandle,
+        directoryHandle?: LocalFileSystemDirectoryHandle,
+        directoryImageFileNames?: string[]
+    ): ImageData {
         return {
             id: uuidv4(),
             fileData,
+            fileHandle,
+            directoryHandle,
+            directoryImageFileNames: directoryImageFileNames ? [...directoryImageFileNames] : undefined,
             groupName: ImageGroupUtil.normalizeGroupName(groupName),
             loadStatus: false,
             labelRects: [],
@@ -50,6 +63,9 @@ export class ImageDataUtil {
                 vertices: labelPolygon.vertices.map((vertex) => ({ ...vertex })),
             })),
             labelNameIds: [...imageData.labelNameIds],
+            directoryImageFileNames: imageData.directoryImageFileNames
+                ? [...imageData.directoryImageFileNames]
+                : undefined,
         };
     }
 

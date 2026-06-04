@@ -4,29 +4,104 @@ import { AppState } from '../../../store';
 import { connect } from 'react-redux';
 import { addImageData } from '../../../store/labels/actionCreators';
 import { GenericYesNoPopup } from '../GenericYesNoPopup/GenericYesNoPopup';
-import { useDropzone } from 'react-dropzone';
+import { DropzoneOptions, useDropzone } from 'react-dropzone';
 import { ImageData } from '../../../store/labels/types';
 import { PopupActions } from '../../../logic/actions/PopupActions';
 import { ImageDataUtil } from '../../../utils/ImageDataUtil';
 import { StyledTextField } from '../../Common/StyledTextField/StyledTextField';
 import { DEFAULT_IMAGE_GROUP_NAME } from '../../../utils/ImageGroupUtil';
+import { LocalFileSelection } from '../../../interfaces/IFileSystemAccess';
+import { FileSystemAccessUtil } from '../../../utils/FileSystemAccessUtil';
 
 interface IProps {
     addImageData: (imageData: ImageData[]) => any;
 }
 
+const acceptedImageTypes = {
+    'image/*': ['.jpg', '.jpeg', '.png']
+};
+
+function naturalSort(a: LocalFileSelection, b: LocalFileSelection) {
+    const collator = new Intl.Collator(undefined, { numeric: true, sensitivity: 'base' });
+    return collator.compare(a.file.name, b.file.name);
+}
+
+const sortImageSelections = (items: LocalFileSelection[]): LocalFileSelection[] => {
+    return [...items].sort(naturalSort);
+};
+
+const requestFolderAccessAfterMessage = async (
+    selections: LocalFileSelection[]
+): Promise<LocalFileSelection[]> => {
+    const selectionsWithStoredFolderAccess = await FileSystemAccessUtil
+        .attachStoredDirectoryAccessToSelections(selections);
+
+    if (!FileSystemAccessUtil.needsDirectoryAccess(selectionsWithStoredFolderAccess)) {
+        return selectionsWithStoredFolderAccess;
+    }
+
+    window.alert(
+        'To enable local deletion, select the folder that contains the selected images in the next window.'
+    );
+    return FileSystemAccessUtil.attachDirectoryAccessToSelections(selectionsWithStoredFolderAccess);
+};
+
 const LoadMoreImagesPopup: React.FC<IProps> = ({ addImageData }) => {
     const [groupName, setGroupName] = useState('');
-    const { acceptedFiles, getRootProps, getInputProps } = useDropzone({
-        accept: {
-            'image/*': ['.jpeg', '.png']
+    const [selectedFiles, setSelectedFiles] = useState<LocalFileSelection[]>([]);
+    const supportsFilePicker = FileSystemAccessUtil.supportsFilePicker();
+
+    const handleDrop = async (acceptedFiles: File[], _fileRejections: any[], event: any) => {
+        const droppedItems = event?.dataTransfer?.items;
+
+        if (droppedItems) {
+            const filesFromHandles = await FileSystemAccessUtil.getImageFilesFromDataTransferItems(droppedItems);
+            if (filesFromHandles.length > 0) {
+                const filesWithFolderAccess = await requestFolderAccessAfterMessage(filesFromHandles);
+                setSelectedFiles(sortImageSelections(filesWithFolderAccess));
+                return;
+            }
         }
-    });
+
+        const selectedFilesFromDrop = acceptedFiles.map((file: File) => ({ file }));
+        const filesWithFolderAccess = await requestFolderAccessAfterMessage(selectedFilesFromDrop);
+        setSelectedFiles(sortImageSelections(filesWithFolderAccess));
+    };
+
+    const { getRootProps, getInputProps } = useDropzone({
+        accept: acceptedImageTypes,
+        noClick: supportsFilePicker,
+        onDrop: handleDrop,
+    } as DropzoneOptions);
+
+    const handleBrowseClick = async () => {
+        if (!supportsFilePicker) {
+            return;
+        }
+
+        try {
+            const files = await FileSystemAccessUtil.showOpenImageFilePicker();
+            if (files.length > 0) {
+                const filesWithFolderAccess = await requestFolderAccessAfterMessage(files);
+                setSelectedFiles(sortImageSelections(filesWithFolderAccess));
+            }
+        } catch (error) {
+            if (error instanceof Error && error.name !== 'AbortError') {
+                console.error('Error selecting image files:', error);
+            }
+        }
+    };
 
     const onAccept = () => {
-        if (acceptedFiles.length > 0) {
-            addImageData(acceptedFiles.map((fileData: File) =>
-                ImageDataUtil.createImageDataFromFileData(fileData, groupName)
+        if (selectedFiles.length > 0) {
+            addImageData(sortImageSelections(selectedFiles).map((selection: LocalFileSelection) =>
+                ImageDataUtil.createImageDataFromFileData(
+                    selection.file,
+                    groupName,
+                    selection.fileHandle,
+                    selection.directoryHandle,
+                    selection.directoryImageFileNames
+                )
             ));
             PopupActions.close();
         }
@@ -37,7 +112,7 @@ const LoadMoreImagesPopup: React.FC<IProps> = ({ addImageData }) => {
     };
 
     const getDropZoneContent = () => {
-        if (acceptedFiles.length === 0)
+        if (selectedFiles.length === 0)
             return <>
                 <input {...getInputProps()} />
                 <img
@@ -49,7 +124,7 @@ const LoadMoreImagesPopup: React.FC<IProps> = ({ addImageData }) => {
                 <p>or</p>
                 <p className='extraBold'>Click here to select them</p>
             </>;
-        else if (acceptedFiles.length === 1)
+        else if (selectedFiles.length === 1)
             return <>
                 <img
                     draggable={false}
@@ -66,13 +141,13 @@ const LoadMoreImagesPopup: React.FC<IProps> = ({ addImageData }) => {
                     alt={'uploaded'}
                     src={'ico/box-closed.png'}
                 />
-                <p key={2} className='extraBold'>{acceptedFiles.length} new images loaded</p>
+                <p key={2} className='extraBold'>{selectedFiles.length} new images loaded</p>
             </>;
     };
 
     const renderContent = () => {
         return (<div className='LoadMoreImagesPopupContent'>
-            <div {...getRootProps({ className: 'DropZone' })}>
+            <div {...getRootProps({ className: 'DropZone', onClick: supportsFilePicker ? handleBrowseClick : undefined })}>
                 {getDropZoneContent()}
             </div>
             <div className='GroupInput'>
@@ -100,7 +175,7 @@ const LoadMoreImagesPopup: React.FC<IProps> = ({ addImageData }) => {
             title={'Load more images'}
             renderContent={renderContent}
             acceptLabel={'Load'}
-            disableAcceptButton={acceptedFiles.length < 1}
+            disableAcceptButton={selectedFiles.length < 1}
             onAccept={onAccept}
             rejectLabel={'Cancel'}
             onReject={onReject}

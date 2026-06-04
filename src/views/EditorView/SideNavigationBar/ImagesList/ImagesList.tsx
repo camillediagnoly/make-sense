@@ -21,7 +21,7 @@ import {
 import {ImageClassCriteria} from "../../../../store/general/types";
 
 interface IProps {
-    activeImageIndex: number;
+    activeImageIndex: number | null;
     imagesData: ImageData[];
     activeLabelType: LabelType;
     filterMode: ImageFilterMode;

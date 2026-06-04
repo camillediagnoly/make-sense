@@ -79,7 +79,11 @@ class Editor extends React.Component<IProps, IState> {
     public componentDidUpdate(prevProps: Readonly<IProps>, prevState: Readonly<{}>, snapshot?: any): void {
         const {imageData, activeLabelType} = this.props;
 
-        prevProps.imageData.id !== imageData.id && ImageLoadManager.addAndRun(this.loadImage(imageData));
+        const shouldReloadImage = prevProps.imageData.id !== imageData.id
+            || prevProps.imageData.fileData !== imageData.fileData
+            || prevProps.imageData.loadStatus !== imageData.loadStatus;
+
+        shouldReloadImage && ImageLoadManager.addAndRun(this.loadImage(imageData));
 
         if (prevProps.activeLabelType !== activeLabelType) {
             EditorActions.swapSupportRenderingEngine(activeLabelType);

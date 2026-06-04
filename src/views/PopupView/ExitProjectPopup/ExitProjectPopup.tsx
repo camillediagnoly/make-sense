@@ -16,7 +16,7 @@ import { ProjectData } from "../../../store/general/types";
 import { updateProjectData as storeUpdateProjectData } from "../../../store/general/actionCreators";
 
 interface IProps {
-    updateActiveImageIndex: (activeImageIndex: number) => any;
+    updateActiveImageIndex: (activeImageIndex: number | null) => any;
     updateActiveLabelNameId: (activeLabelId: string) => any;
     updateLabelNames: (labelNames: LabelName[]) => any;
     updateImageData: (imageData: ImageData[]) => any;

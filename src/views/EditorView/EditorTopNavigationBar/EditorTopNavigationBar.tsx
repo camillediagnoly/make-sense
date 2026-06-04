@@ -17,6 +17,9 @@ import { AIActions } from '../../../logic/actions/AIActions';
 import { Fade, styled, Tooltip, tooltipClasses, TooltipProps } from '@mui/material';
 import { PopupWindowType } from '../../../data/enums/PopupWindowType';
 import { ImageHistoryActions } from '../../../logic/actions/ImageHistoryActions';
+import { ImageActions } from '../../../logic/actions/ImageActions';
+import { ImageData } from '../../../store/labels/types';
+import { FileSystemAccessUtil } from '../../../utils/FileSystemAccessUtil';
 const BUTTON_SIZE: ISize = { width: 30, height: 30 };
 const BUTTON_PADDING: number = 10;
 const POLYGON_LASSO_PRECISION_OPTIONS = [
@@ -46,7 +49,8 @@ const getButtonWithTooltip = (
     isActive: boolean,
     href?: string,
     onClick?: () => any,
-    isDisabled: boolean = false
+    isDisabled: boolean = false,
+    externalClassName?: string
 ): React.ReactElement => {
     return <StyledTooltip
         key={key}
@@ -66,6 +70,7 @@ const getButtonWithTooltip = (
                 onClick={onClick}
                 isActive={isActive}
                 isDisabled={isDisabled}
+                externalClassName={externalClassName}
             />
         </div>
     </StyledTooltip>;
@@ -97,6 +102,8 @@ interface IProps {
     lineKeypointMode: boolean;
     canUndoActiveImageAction: boolean;
     canRedoActiveImageAction: boolean;
+    activeImageData: ImageData | null;
+    imagesData: ImageData[];
 }
 
 const EditorTopNavigationBar: React.FC<IProps> = (
@@ -125,9 +132,12 @@ const EditorTopNavigationBar: React.FC<IProps> = (
         polygonLassoTargetVertexCount,
         lineKeypointMode,
         canUndoActiveImageAction,
-        canRedoActiveImageAction
+        canRedoActiveImageAction,
+        activeImageData,
+        imagesData
     }) => {
     const [isPolygonPrecisionMenuOpen, setIsPolygonPrecisionMenuOpen] = React.useState(false);
+    const [isRefreshingLocalImageFolders, setIsRefreshingLocalImageFolders] = React.useState(false);
 
     const getClassName = () => {
         return classNames(
@@ -195,6 +205,32 @@ const EditorTopNavigationBar: React.FC<IProps> = (
     const openImageClassFilter = () => {
         updateActivePopupTypeAction(PopupWindowType.IMAGE_CLASS_FILTER);
     };
+
+    const deleteActiveImageOnClick = () => {
+        if (activeImageData) {
+            ImageActions.deleteImage(activeImageData);
+        }
+    };
+
+    const refreshLocalImageFoldersOnClick = async () => {
+        setIsRefreshingLocalImageFolders(true);
+        try {
+            await ImageActions.refreshLocalImageFolders();
+        } finally {
+            setIsRefreshingLocalImageFolders(false);
+        }
+    };
+
+    const getDeleteImageTooltip = (): string => {
+        if (activeImageData && FileSystemAccessUtil.canDeleteLocalFile(activeImageData)) {
+            return 'delete current image from disk';
+        }
+
+        return 'local deletion unavailable - reopen images with Chrome file access';
+    };
+
+    const showLocalDeleteButton = FileSystemAccessUtil.supportsLocalFileDeletion();
+    const canRefreshLocalImageFolders = ImageActions.canRefreshLocalImageFolders(imagesData);
 
     const withAI = (
         (activeLabelType === LabelType.RECT && AISelector.isAISSDObjectDetectorModelLoaded()) ||
@@ -446,6 +482,35 @@ const EditorTopNavigationBar: React.FC<IProps> = (
                 }
             </div>}
             <div className='ButtonWrapper'>
+                {showLocalDeleteButton &&
+                    getButtonWithTooltip(
+                        'refresh-local-image-folders',
+                        isRefreshingLocalImageFolders
+                            ? 'refreshing image folder'
+                            : 'refresh image folder',
+                        'ico/refresh.png',
+                        'refresh-local-image-folders',
+                        isRefreshingLocalImageFolders,
+                        undefined,
+                        refreshLocalImageFoldersOnClick,
+                        !canRefreshLocalImageFolders || isRefreshingLocalImageFolders,
+                        classNames('RefreshLocalImageFoldersButton', {
+                            refreshing: isRefreshingLocalImageFolders,
+                        })
+                    )
+                }
+                {showLocalDeleteButton &&
+                    getButtonWithTooltip(
+                        'delete-active-image',
+                        getDeleteImageTooltip(),
+                        'ico/trash.png',
+                        'delete-active-image',
+                        false,
+                        undefined,
+                        deleteActiveImageOnClick,
+                        !activeImageData || !FileSystemAccessUtil.canDeleteLocalFile(activeImageData)
+                    )
+                }
                 {
                     getButtonWithTooltip(
                         'undo-active-image-action',
@@ -490,7 +555,9 @@ const mapDispatchToProps = {
 };
 
 const mapStateToProps = (state: AppState) => {
-    const activeImageData = state.labels.imagesData[state.labels.activeImageIndex];
+    const activeImageData = state.labels.activeImageIndex === null
+        ? null
+        : state.labels.imagesData[state.labels.activeImageIndex];
     const imageDataHistory = state.labels.imageDataHistory;
     const hasActiveImageHistory = !!activeImageData && imageDataHistory.imageId === activeImageData.id;
 
@@ -507,6 +574,8 @@ const mapStateToProps = (state: AppState) => {
         polygonLassoMode: state.general.polygonLassoMode,
         polygonLassoTargetVertexCount: state.general.polygonLassoTargetVertexCount,
         lineKeypointMode: state.general.lineKeypointMode,
+        activeImageData,
+        imagesData: state.labels.imagesData,
         canUndoActiveImageAction: hasActiveImageHistory && imageDataHistory.past.length > 0,
         canRedoActiveImageAction: hasActiveImageHistory && imageDataHistory.future.length > 0,
     };

@@ -2,7 +2,7 @@ import {LabelsActionTypes, ImageData, LabelName} from './types';
 import {Action} from '../Actions';
 import {LabelType} from '../../data/enums/LabelType';
 
-export function updateActiveImageIndex(activeImageIndex: number): LabelsActionTypes {
+export function updateActiveImageIndex(activeImageIndex: number | null): LabelsActionTypes {
     return {
         type: Action.UPDATE_ACTIVE_IMAGE_INDEX,
         payload: {
@@ -71,6 +71,15 @@ export function updateImageData(imageData: ImageData[]): LabelsActionTypes {
         type: Action.UPDATE_IMAGES_DATA,
         payload: {
             imageData,
+        },
+    };
+}
+
+export function deleteImageDataById(id: string): LabelsActionTypes {
+    return {
+        type: Action.DELETE_IMAGE_DATA_BY_ID,
+        payload: {
+            id,
         },
     };
 }

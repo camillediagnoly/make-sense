@@ -49,6 +49,30 @@ const replaceImageDataById = (
     );
 };
 
+const getNextActiveImageIndexAfterDelete = (
+    activeImageIndex: number | null,
+    deletedImageIndex: number,
+    nextImageCount: number
+): number | null => {
+    if (nextImageCount === 0) {
+        return null;
+    }
+
+    if (activeImageIndex === null || activeImageIndex === undefined) {
+        return Math.min(deletedImageIndex, nextImageCount - 1);
+    }
+
+    if (deletedImageIndex < activeImageIndex) {
+        return activeImageIndex - 1;
+    }
+
+    if (deletedImageIndex === activeImageIndex) {
+        return Math.min(activeImageIndex, nextImageCount - 1);
+    }
+
+    return activeImageIndex;
+};
+
 const getUndoableImageData = (imageData: ImageData): UndoableImageData => ({
     labelRects: imageData.labelRects,
     labelPoints: imageData.labelPoints,
@@ -178,6 +202,32 @@ export function labelsReducer(
                         nextActiveImageData
                     )
                     : createEmptyImageDataHistory(),
+            }
+        }
+        case Action.DELETE_IMAGE_DATA_BY_ID: {
+            const deletedImageIndex = state.imagesData.findIndex((imageData: ImageData) =>
+                imageData.id === action.payload.id
+            );
+
+            if (deletedImageIndex === -1) {
+                return state;
+            }
+
+            const nextImagesData = ImageDataUtil.cloneImagesData(
+                state.imagesData.filter((imageData: ImageData) => imageData.id !== action.payload.id)
+            );
+
+            return {
+                ...state,
+                activeImageIndex: getNextActiveImageIndexAfterDelete(
+                    state.activeImageIndex,
+                    deletedImageIndex,
+                    nextImagesData.length
+                ),
+                activeLabelId: null,
+                highlightedLabelId: null,
+                imagesData: nextImagesData,
+                imageDataHistory: createEmptyImageDataHistory(),
             }
         }
         case Action.UPDATE_LABEL_NAMES: {

@@ -4,6 +4,10 @@ import {LabelType} from '../../data/enums/LabelType';
 import {IPoint} from '../../interfaces/IPoint';
 import {LabelStatus} from '../../data/enums/LabelStatus';
 import {ILine} from '../../interfaces/ILine';
+import {
+    LocalFileSystemDirectoryHandle,
+    LocalFileSystemFileHandle,
+} from '../../interfaces/IFileSystemAccess';
 
 export type Annotation = {
     id: string;
@@ -43,6 +47,9 @@ export type LabelName = {
 export type ImageData = {
     id: string;
     fileData: File;
+    fileHandle?: LocalFileSystemFileHandle;
+    directoryHandle?: LocalFileSystemDirectoryHandle;
+    directoryImageFileNames?: string[];
     groupName?: string;
     loadStatus: boolean;
     labelRects: LabelRect[];
@@ -73,7 +80,7 @@ export type ImageDataHistory = {
 }
 
 export type LabelsState = {
-    activeImageIndex: number;
+    activeImageIndex: number | null;
     activeLabelNameId: string;
     activeLabelType: LabelType;
     activeLabelId: string | null;
@@ -87,7 +94,7 @@ export type LabelsState = {
 interface UpdateActiveImageIndex {
     type: typeof Action.UPDATE_ACTIVE_IMAGE_INDEX;
     payload: {
-        activeImageIndex: number;
+        activeImageIndex: number | null;
     }
 }
 
@@ -141,6 +148,13 @@ interface UpdateImageData {
     }
 }
 
+interface DeleteImageDataById {
+    type: typeof Action.DELETE_IMAGE_DATA_BY_ID;
+    payload: {
+        id: string;
+    }
+}
+
 interface UpdateLabelNames {
     type: typeof Action.UPDATE_LABEL_NAMES;
     payload: {
@@ -177,6 +191,7 @@ export type LabelsActionTypes = UpdateActiveImageIndex
     | UpdateImageDataById
     | AddImageData
     | UpdateImageData
+    | DeleteImageDataById
     | UpdateLabelNames
     | UpdateActiveLabelId
     | UpdateHighlightedLabelId
