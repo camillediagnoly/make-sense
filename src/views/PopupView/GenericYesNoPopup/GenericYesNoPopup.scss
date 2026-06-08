@@ -60,6 +60,10 @@
     align-items: center;
     align-content: flex-end;
 
+    .TextButton.extra-action {
+      margin-left: 20px;
+    }
+
     .accept-button-wrapper {
       position: relative;
       margin-left: 20px;
@@ -100,6 +104,17 @@
         background-color: transparent;
         color: $secondaryColor; // fallback if new css variables are not supported by browser
         color: var(--leading-color);
+      }
+
+      &.danger {
+        box-shadow: #d94a4a 0 0 0 2px inset;
+        background-color: #d94a4a;
+        color: white;
+
+        &:hover {
+          background-color: transparent;
+          color: #ff8b8b;
+        }
       }
 
       &.disabled {

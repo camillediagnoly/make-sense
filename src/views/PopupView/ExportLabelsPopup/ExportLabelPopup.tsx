@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import './ExportLabelPopup.scss';
 import { AnnotationFormatType } from '../../../data/enums/AnnotationFormatType';
 import { RectLabelsExporter } from '../../../logic/export/RectLabelsExporter';
@@ -7,21 +7,26 @@ import { ILabelFormatData } from '../../../interfaces/ILabelFormatData';
 import { PointLabelsExporter } from '../../../logic/export/PointLabelsExport';
 import { PolygonLabelsExporter } from '../../../logic/export/polygon/PolygonLabelsExporter';
 import { PopupActions } from '../../../logic/actions/PopupActions';
+import { ImageActions } from '../../../logic/actions/ImageActions';
 import { LineLabelsExporter } from '../../../logic/export/LineLabelExport';
 import { TagLabelsExporter } from '../../../logic/export/TagLabelsExport';
 import GenericLabelTypePopup from '../GenericLabelTypePopup/GenericLabelTypePopup';
 import { ExportFormatData } from '../../../data/ExportFormatData';
 import { LabelToolkitData } from '../../../data/info/LabelToolkitData';
 import { AppState } from '../../../store';
+import { ClassSanityCheckSettings } from '../../../store/general/types';
+import { ImageData, LabelName } from '../../../store/labels/types';
 import { connect } from 'react-redux';
 import { BackupManager } from '../../../logic/backup/BackupManager';
 import { BackupTimerService } from '../../../logic/backup/BackupTimerService';
 import { BrowserDetection } from '../../../utils/BrowserDetection';
+import { ClassSanityCheckUtil } from '../../../utils/ClassSanityCheckUtil';
 import { IndexedDBStorage } from '../../../logic/backup/IndexedDBStorage';
 import {
     updateBackupEnabled,
     updateBackupFrequency,
 } from '../../../store/backup/actionCreators';
+import { updateClassSanityCheckReviewMode, updateClassSanityCheckViolationImageIds } from '../../../store/general/actionCreators';
 
 interface IProps {
     activeLabelType: LabelType;
@@ -31,6 +36,12 @@ interface IProps {
     lastBackupTime: Date | null;
     errorMessage: string | null;
     projectName: string;
+    imagesData: ImageData[];
+    labels: LabelName[];
+    classSanityCheckSettings: ClassSanityCheckSettings;
+    classSanityCheckReviewMode: boolean;
+    updateClassSanityCheckViolationImageIds: (imageIds: string[]) => void;
+    updateClassSanityCheckReviewMode: (reviewMode: boolean) => void;
     updateBackupEnabled: (enabled: boolean) => void;
     updateBackupFrequency: (frequency: number) => void;
 }
@@ -43,6 +54,12 @@ const ExportLabelPopup: React.FC<IProps> = ({
     lastBackupTime,
     errorMessage,
     projectName,
+    imagesData,
+    labels,
+    classSanityCheckSettings,
+    classSanityCheckReviewMode,
+    updateClassSanityCheckViolationImageIds,
+    updateClassSanityCheckReviewMode,
     updateBackupEnabled,
     updateBackupFrequency,
 }) => {
@@ -64,6 +81,37 @@ const ExportLabelPopup: React.FC<IProps> = ({
     const [localLocation, setLocalLocation] = useState(existingDirectoryHandle ? existingDirectoryHandle.name : '~/makesense-backups/');
     const [selectedExportType, setSelectedExportType] = useState(existingExportType);
     const [directoryHandle, setDirectoryHandle] = useState<any>(existingDirectoryHandle);
+
+    const violations = useMemo(
+        () => ClassSanityCheckUtil.getImageViolations(
+            imagesData,
+            labels,
+            classSanityCheckSettings
+        ),
+        [imagesData, labels, classSanityCheckSettings]
+    );
+    const shouldShowSanityCheckViolations = classSanityCheckSettings.enabled && violations.length > 0;
+
+    const exportLabels = (type: LabelType) => {
+        switch (type) {
+            case LabelType.RECT:
+                RectLabelsExporter.export(exportFormatType);
+                break;
+            case LabelType.POINT:
+                PointLabelsExporter.export(exportFormatType);
+                break;
+            case LabelType.LINE:
+                LineLabelsExporter.export(exportFormatType);
+                break;
+            case LabelType.POLYGON:
+                PolygonLabelsExporter.export(exportFormatType);
+                break;
+            case LabelType.IMAGE_RECOGNITION:
+                TagLabelsExporter.export(exportFormatType);
+                break;
+        }
+        PopupActions.close();
+    };
 
     const onAccept = (type: LabelType) => {
         if (showBackupSettings) {
@@ -90,25 +138,7 @@ const ExportLabelPopup: React.FC<IProps> = ({
 
             PopupActions.close();
         } else {
-            // Export labels
-            switch (type) {
-                case LabelType.RECT:
-                    RectLabelsExporter.export(exportFormatType);
-                    break;
-                case LabelType.POINT:
-                    PointLabelsExporter.export(exportFormatType);
-                    break;
-                case LabelType.LINE:
-                    LineLabelsExporter.export(exportFormatType);
-                    break;
-                case LabelType.POLYGON:
-                    PolygonLabelsExporter.export(exportFormatType);
-                    break;
-                case LabelType.IMAGE_RECOGNITION:
-                    TagLabelsExporter.export(exportFormatType);
-                    break;
-            }
-            PopupActions.close();
+            exportLabels(type);
         }
     };
 
@@ -363,6 +393,11 @@ const ExportLabelPopup: React.FC<IProps> = ({
             </div>,
             <div className='Options'>
                 {getOptions(ExportFormatData[type])}
+                {shouldShowSanityCheckViolations && (
+                    <div className='SanityCheckExportCount hasViolations'>
+                        ({violations.length}) images violate the class presence rules.
+                    </div>
+                )}
             </div>
         </>;
     };
@@ -370,11 +405,32 @@ const ExportLabelPopup: React.FC<IProps> = ({
     const onLabelTypeChange = (type: LabelType) => {
         setLabelType(type);
         setExportFormatType(getLastFormat(type));
-        setShowBackupSettings(false); // Reset backup settings view
+        setShowBackupSettings(false);
     };
 
     const onSettingsIconClick = () => {
         setShowBackupSettings(!showBackupSettings);
+    };
+
+    const onReview = () => {
+        updateClassSanityCheckViolationImageIds(
+            violations.map((violation) => violation.imageId)
+        );
+        updateClassSanityCheckReviewMode(true);
+
+        const firstViolationImageIndex = imagesData.findIndex(
+            (imageData) => imageData.id === violations[0].imageId
+        );
+        if (firstViolationImageIndex !== -1) {
+            ImageActions.getImageByIndex(firstViolationImageIndex);
+        }
+
+        PopupActions.close();
+    };
+
+    const onCancelReview = () => {
+        updateClassSanityCheckReviewMode(false);
+        PopupActions.close();
     };
 
     return (
@@ -392,6 +448,9 @@ const ExportLabelPopup: React.FC<IProps> = ({
             showSettingsIcon={true}
             onSettingsIconClick={onSettingsIconClick}
             settingsIconActive={showBackupSettings}
+            extraActionLabel={!showBackupSettings && shouldShowSanityCheckViolations ? (classSanityCheckReviewMode ? 'Cancel Review' : 'Review') : undefined}
+            onExtraAction={!showBackupSettings && shouldShowSanityCheckViolations ? (classSanityCheckReviewMode ? onCancelReview : onReview) : undefined}
+            extraActionButtonClassName={'danger'}
         />
     );
 };
@@ -399,6 +458,8 @@ const ExportLabelPopup: React.FC<IProps> = ({
 const mapDispatchToProps = {
     updateBackupEnabled,
     updateBackupFrequency,
+    updateClassSanityCheckViolationImageIds,
+    updateClassSanityCheckReviewMode,
 };
 
 const mapStateToProps = (state: AppState) => ({
@@ -409,6 +470,10 @@ const mapStateToProps = (state: AppState) => ({
     lastBackupTime: state.backup.lastBackupTime,
     errorMessage: state.backup.errorMessage,
     projectName: state.general.projectData.name,
+    imagesData: state.labels.imagesData,
+    labels: state.labels.labels,
+    classSanityCheckSettings: state.general.classSanityCheckSettings,
+    classSanityCheckReviewMode: state.general.classSanityCheckReviewMode,
 });
 
 export default connect(

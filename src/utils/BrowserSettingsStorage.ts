@@ -1,7 +1,15 @@
-import type { ShortcutItem } from "../store/general/types";
+import type { ClassSanityCheckSettings, ShortcutItem } from "../store/general/types";
+import { CLASS_SANITY_CHECK_COUNT_OPTIONS } from "./ClassSanityCheckUtil";
 
 type MakeSenseSettings = {
   shortcut_settings?: Record<string, string[]>;
+  class_sanity_check_settings?: ClassSanityCheckSettings;
+};
+
+const DEFAULT_CLASS_SANITY_CHECK_SETTINGS: ClassSanityCheckSettings = {
+  enabled: true,
+  simultaneous: false,
+  rules: [],
 };
 
 export class BrowserSettingsStorage {
@@ -21,6 +29,38 @@ export class BrowserSettingsStorage {
       return BrowserSettingsStorage.isKeyCombo(keyCombo)
         ? { ...shortcut, keyCombo }
         : shortcut;
+    });
+  }
+
+  public static loadClassSanityCheckSettings(): ClassSanityCheckSettings {
+    const settings = BrowserSettingsStorage.readSettings();
+    const savedSettings = settings?.class_sanity_check_settings;
+
+    if (!BrowserSettingsStorage.isClassSanityCheckSettings(savedSettings)) {
+      return DEFAULT_CLASS_SANITY_CHECK_SETTINGS;
+    }
+
+    return {
+      enabled: savedSettings.enabled,
+      simultaneous: false,
+      rules: BrowserSettingsStorage.normalizeClassSanityCheckRules(
+        savedSettings.rules
+      ),
+    };
+  }
+
+  public static saveClassSanityCheckSettings(
+    classSanityCheckSettings: ClassSanityCheckSettings
+  ): void {
+    BrowserSettingsStorage.writeSettings({
+      ...BrowserSettingsStorage.readSettings(),
+      class_sanity_check_settings: {
+        enabled: classSanityCheckSettings.enabled,
+        simultaneous: false,
+        rules: BrowserSettingsStorage.normalizeClassSanityCheckRules(
+          classSanityCheckSettings.rules
+        ),
+      },
     });
   }
 
@@ -91,6 +131,49 @@ export class BrowserSettingsStorage {
     return (
       Array.isArray(value) && value.every((key) => typeof key === "string")
     );
+  }
+
+  private static isClassSanityCheckSettings(
+    value: any
+  ): value is ClassSanityCheckSettings {
+    return (
+      !!value &&
+      typeof value === "object" &&
+      typeof value.enabled === "boolean" &&
+      typeof value.simultaneous === "boolean" &&
+      Array.isArray(value.rules)
+    );
+  }
+
+  private static normalizeClassSanityCheckRules(
+    value: any
+  ): ClassSanityCheckSettings["rules"] {
+    if (!Array.isArray(value)) {
+      return [];
+    }
+
+    return value
+      .filter(
+        (rule) =>
+          !!rule &&
+          typeof rule === "object" &&
+          typeof rule.labelName === "string" &&
+          Array.isArray(rule.allowedCounts)
+      )
+      .map((rule) => {
+        const allowedCounts = rule.allowedCounts.filter(
+          (count: any): count is number =>
+            CLASS_SANITY_CHECK_COUNT_OPTIONS.includes(count)
+        );
+
+        return {
+          labelName: rule.labelName,
+          allowedCounts: Array.from(new Set<number>(allowedCounts)).sort(
+            (first, second) => first - second
+          ),
+        };
+      })
+      .filter((rule) => rule.allowedCounts.length > 0);
   }
 
   private static areKeyCombosEqual(first: string[], second: string[]): boolean {

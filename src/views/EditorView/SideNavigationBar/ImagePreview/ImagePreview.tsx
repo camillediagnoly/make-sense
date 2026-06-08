@@ -20,6 +20,7 @@ interface IProps {
     size: ISize;
     isScrolling?: boolean;
     isChecked?: boolean;
+    isInvalid?: boolean;
     onClick?: () => any;
     isSelected?: boolean;
     updateImageDataById: (id: string, newImageData: ImageData) => any;
@@ -70,7 +71,8 @@ class ImagePreview extends React.Component<IProps, IState> {
             this.props.imageData.loadStatus !== nextProps.imageData.loadStatus ||
             this.state.image !== nextState.image ||
             this.props.isSelected !== nextProps.isSelected ||
-            this.props.isChecked !== nextProps.isChecked
+            this.props.isChecked !== nextProps.isChecked ||
+            this.props.isInvalid !== nextProps.isInvalid
         )
     }
 
@@ -138,6 +140,7 @@ class ImagePreview extends React.Component<IProps, IState> {
             "ImagePreview",
             {
                 "selected": this.props.isSelected,
+                "invalid": this.props.isInvalid,
             }
         );
     };

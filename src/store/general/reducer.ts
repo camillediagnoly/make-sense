@@ -182,6 +182,9 @@ const initialState: GeneralState = {
   keepLabeledInUnlabeled: false,
   keptUnlabeledImageIds: [],
   imageClassCriteria: [],
+  classSanityCheckSettings: BrowserSettingsStorage.loadClassSanityCheckSettings(),
+  classSanityCheckViolationImageIds: [],
+  classSanityCheckReviewMode: false,
   keyboardShortcuts: BrowserSettingsStorage.loadKeyboardShortcuts(
     defaultKeyboardShortcuts
   ),
@@ -325,6 +328,28 @@ export function generalReducer(
       return {
         ...state,
         imageClassCriteria: action.payload.imageClassCriteria,
+      };
+    }
+
+    case Action.UPDATE_CLASS_SANITY_CHECK_SETTINGS: {
+      return {
+        ...state,
+        classSanityCheckSettings: action.payload.classSanityCheckSettings,
+      };
+    }
+
+    case Action.UPDATE_CLASS_SANITY_CHECK_VIOLATION_IMAGE_IDS: {
+      return {
+        ...state,
+        classSanityCheckViolationImageIds:
+          action.payload.classSanityCheckViolationImageIds,
+      };
+    }
+
+    case Action.UPDATE_CLASS_SANITY_CHECK_REVIEW_MODE: {
+      return {
+        ...state,
+        classSanityCheckReviewMode: action.payload.classSanityCheckReviewMode,
       };
     }
 

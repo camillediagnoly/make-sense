@@ -59,6 +59,17 @@
     }
   }
 
+  &.invalid {
+    .Foreground {
+      transform: translate(-2px, 2px);
+    }
+
+    .Background {
+      transform: translate(2px, -2px);
+      background-color: #ff2f5f;
+    }
+  }
+
   &:hover {
     .Foreground {
       transform: translate(-2px, 2px);

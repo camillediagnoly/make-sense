@@ -4,7 +4,7 @@ import { ContextType } from "../../data/enums/ContextType";
 import { CustomCursorStyle } from "../../data/enums/CustomCursorStyle";
 import { ProjectType } from "../../data/enums/ProjectType";
 import { ImageFilterMode } from "../../data/enums/ImageFilterMode";
-import { ImageClassCriteria } from "../general/types";
+import { ClassSanityCheckSettings, ImageClassCriteria } from "../general/types";
 
 export class GeneralSelector {
     public static getActivePopupType(): PopupWindowType {
@@ -105,5 +105,17 @@ export class GeneralSelector {
 
     public static getImageClassCriteria(): ImageClassCriteria[] {
         return store.getState().general.imageClassCriteria;
+    }
+
+    public static getClassSanityCheckSettings(): ClassSanityCheckSettings {
+        return store.getState().general.classSanityCheckSettings;
+    }
+
+    public static getClassSanityCheckViolationImageIds(): string[] {
+        return store.getState().general.classSanityCheckViolationImageIds;
+    }
+
+    public static getClassSanityCheckReviewMode(): boolean {
+        return store.getState().general.classSanityCheckReviewMode;
     }
 }

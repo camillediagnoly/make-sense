@@ -18,6 +18,7 @@ import ConnectInferenceServerPopup from './ConnectInferenceServerPopup/ConnectIn
 import EditShortcutsPopup from './EditShortcutsPopup/EditShortcutsPopup';
 import BackupSettingsPopup from './BackupSettingsPopup/BackupSettingsPopup';
 import ImageClassFilterPopup from './ImageClassFilterPopup/ImageClassFilterPopup';
+import ClassSanityCheckPopup from './ClassSanityCheckPopup/ClassSanityCheckPopup';
 import DeleteImagePopup from './DeleteImagePopup/DeleteImagePopup';
 
 interface IProps {
@@ -60,6 +61,8 @@ const PopupView: React.FC<IProps> = ({ activePopupType }) => {
                 return <BackupSettingsPopup />;
             case PopupWindowType.IMAGE_CLASS_FILTER:
                 return <ImageClassFilterPopup />;
+            case PopupWindowType.CLASS_SANITY_CHECK:
+                return <ClassSanityCheckPopup />;
             case PopupWindowType.DELETE_IMAGE:
                 return <DeleteImagePopup />;
             case PopupWindowType.LOADER:

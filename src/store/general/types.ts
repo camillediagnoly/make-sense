@@ -19,6 +19,17 @@ export type ShortcutItem = {
 	description?: string;
 }
 
+export type ClassSanityCheckRule = {
+    labelName: string;
+    allowedCounts: number[];
+};
+
+export type ClassSanityCheckSettings = {
+    enabled: boolean;
+    simultaneous: boolean;
+    rules: ClassSanityCheckRule[];
+};
+
 export type ImageClassBooleanOperator = 'AND' | 'OR' | 'NOT';
 export type ImageClassParenthesis = '(' | ')';
 
@@ -79,6 +90,9 @@ export type GeneralState = {
     keepLabeledInUnlabeled: boolean;
     keptUnlabeledImageIds: string[];
     imageClassCriteria: ImageClassCriteria[];
+    classSanityCheckSettings: ClassSanityCheckSettings;
+    classSanityCheckViolationImageIds: string[];
+    classSanityCheckReviewMode: boolean;
 };
 
 interface UpdateProjectData {
@@ -235,6 +249,27 @@ interface UpdateImageClassCriteria {
     };
 }
 
+interface UpdateClassSanityCheckSettings {
+    type: typeof Action.UPDATE_CLASS_SANITY_CHECK_SETTINGS;
+    payload: {
+        classSanityCheckSettings: ClassSanityCheckSettings;
+    };
+}
+
+interface UpdateClassSanityCheckViolationImageIds {
+    type: typeof Action.UPDATE_CLASS_SANITY_CHECK_VIOLATION_IMAGE_IDS;
+    payload: {
+        classSanityCheckViolationImageIds: string[];
+    };
+}
+
+interface UpdateClassSanityCheckReviewMode {
+    type: typeof Action.UPDATE_CLASS_SANITY_CHECK_REVIEW_MODE;
+    payload: {
+        classSanityCheckReviewMode: boolean;
+    };
+}
+
 interface UpdateKeyboardShortcuts {
     type: typeof Action.UPDATE_KEYBOARD_SHORTCUTS;
     payload: {
@@ -282,4 +317,7 @@ export type GeneralActionTypes =
     | UpdateImageListFilterMode
     | UpdateImageListSearchText
     | UpdateKeepLabeledInUnlabeled
-    | UpdateImageClassCriteria;
+    | UpdateImageClassCriteria
+    | UpdateClassSanityCheckSettings
+    | UpdateClassSanityCheckViolationImageIds
+    | UpdateClassSanityCheckReviewMode;

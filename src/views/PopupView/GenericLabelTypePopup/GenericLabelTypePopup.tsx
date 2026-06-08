@@ -24,6 +24,11 @@ interface IProps {
     showSettingsIcon?: boolean;
     onSettingsIconClick?: () => void;
     settingsIconActive?: boolean;
+    acceptButtonClassName?: string;
+    popupClassName?: string;
+    extraActionLabel?: string;
+    onExtraAction?: (labelType: LabelType) => any;
+    extraActionButtonClassName?: string;
 }
 
 const GenericLabelTypePopup: React.FC<IProps> = (
@@ -43,6 +48,11 @@ const GenericLabelTypePopup: React.FC<IProps> = (
         showSettingsIcon,
         onSettingsIconClick,
         settingsIconActive,
+        acceptButtonClassName,
+        popupClassName,
+        extraActionLabel,
+        onExtraAction,
+        extraActionButtonClassName,
     }) => {
 
     const [labelType, setLabelType] = useState(activeLabelType);
@@ -105,6 +115,11 @@ const GenericLabelTypePopup: React.FC<IProps> = (
             disabledTooltip={disabledTooltip}
             rejectLabel={rejectLabel}
             onReject={() => onReject(labelType)}
+            acceptButtonClassName={acceptButtonClassName}
+            popupClassName={popupClassName}
+            extraActionLabel={extraActionLabel}
+            onExtraAction={onExtraAction ? () => onExtraAction(labelType) : undefined}
+            extraActionButtonClassName={extraActionButtonClassName}
         />
     );
 };

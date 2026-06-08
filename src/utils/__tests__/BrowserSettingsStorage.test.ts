@@ -76,4 +76,47 @@ describe("BrowserSettingsStorage", () => {
       BrowserSettingsStorage.loadKeyboardShortcuts(defaultShortcuts)
     ).toEqual(defaultShortcuts);
   });
+
+  it("should load default class sanity settings when none are saved", () => {
+    expect(BrowserSettingsStorage.loadClassSanityCheckSettings()).toEqual({
+      enabled: true,
+      simultaneous: false,
+      rules: [],
+    });
+  });
+
+  it("should save class sanity settings beside shortcut settings", () => {
+    window.localStorage.setItem(
+      BrowserSettingsStorage.STORAGE_KEY,
+      JSON.stringify({
+        shortcut_settings: {
+          "next-image": ["ArrowRight"],
+        },
+      })
+    );
+
+    BrowserSettingsStorage.saveClassSanityCheckSettings({
+      enabled: false,
+      simultaneous: true,
+      rules: [
+        { labelName: "car", allowedCounts: [2, 0, 2] },
+        { labelName: "person", allowedCounts: [] },
+      ],
+    });
+
+    expect(
+      JSON.parse(
+        window.localStorage.getItem(BrowserSettingsStorage.STORAGE_KEY)
+      )
+    ).toEqual({
+      shortcut_settings: {
+        "next-image": ["ArrowRight"],
+      },
+      class_sanity_check_settings: {
+        enabled: false,
+        simultaneous: false,
+        rules: [{ labelName: "car", allowedCounts: [0, 2] }],
+      },
+    });
+  });
 });

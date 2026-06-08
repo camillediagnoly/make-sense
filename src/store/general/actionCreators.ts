@@ -1,5 +1,5 @@
 import { ISize } from "../../interfaces/ISize";
-import { GeneralActionTypes, ImageClassCriteria, ProjectData, ShortcutItem } from "./types";
+import { ClassSanityCheckSettings, GeneralActionTypes, ImageClassCriteria, ProjectData, ShortcutItem } from "./types";
 import { Action } from "../Actions";
 import { PopupWindowType } from "../../data/enums/PopupWindowType";
 import { CustomCursorStyle } from "../../data/enums/CustomCursorStyle";
@@ -241,6 +241,39 @@ export function updateImageClassCriteria(
         type: Action.UPDATE_IMAGE_CLASS_CRITERIA,
         payload: {
             imageClassCriteria,
+        },
+    };
+}
+
+export function updateClassSanityCheckSettings(
+    classSanityCheckSettings: ClassSanityCheckSettings
+): GeneralActionTypes {
+    return {
+        type: Action.UPDATE_CLASS_SANITY_CHECK_SETTINGS,
+        payload: {
+            classSanityCheckSettings,
+        },
+    };
+}
+
+export function updateClassSanityCheckViolationImageIds(
+    classSanityCheckViolationImageIds: string[]
+): GeneralActionTypes {
+    return {
+        type: Action.UPDATE_CLASS_SANITY_CHECK_VIOLATION_IMAGE_IDS,
+        payload: {
+            classSanityCheckViolationImageIds,
+        },
+    };
+}
+
+export function updateClassSanityCheckReviewMode(
+    classSanityCheckReviewMode: boolean
+): GeneralActionTypes {
+    return {
+        type: Action.UPDATE_CLASS_SANITY_CHECK_REVIEW_MODE,
+        payload: {
+            classSanityCheckReviewMode,
         },
     };
 }

@@ -8,6 +8,7 @@ import {
   deleteImageDataById,
   addImageData,
 } from "../../store/labels/actionCreators";
+import { updateClassSanityCheckViolationImageIds } from "../../store/general/actionCreators";
 import { ViewPortActions } from "./ViewPortActions";
 import { EditorModel } from "../../staticModels/EditorModel";
 import { LabelType } from "../../data/enums/LabelType";
@@ -25,6 +26,7 @@ import { ImageFilterMode } from "../../data/enums/ImageFilterMode";
 import { ImageClassCriteria } from "../../store/general/types";
 import { FileSystemAccessUtil } from "../../utils/FileSystemAccessUtil";
 import { ImageDataUtil } from "../../utils/ImageDataUtil";
+import { ClassSanityCheckUtil } from "../../utils/ClassSanityCheckUtil";
 import { FileUtil } from "../../utils/FileUtil";
 import { LocalFileSelection } from "../../interfaces/IFileSystemAccess";
 import { ImageRepository } from "../imageRepository/ImageRepository";
@@ -136,6 +138,11 @@ export class ImageActions {
       return;
     }
 
+    if (GeneralSelector.getClassSanityCheckReviewMode()) {
+      ImageActions.getNextClassSanityCheckReviewImage(filteredIndices, currentImageIndex);
+      return;
+    }
+
     const currentFilteredIndex = filteredIndices.indexOf(currentImageIndex);
     if (currentFilteredIndex === -1) {
       ImageActions.getImageByIndex(filteredIndices[0]);
@@ -147,6 +154,100 @@ export class ImageActions {
     ImageActions.getImageByIndex(filteredIndices[currentFilteredIndex + 1]);
   }
 
+  private static getViolationImageIndices(
+    filteredIndices: number[],
+    violationImageIds: string[]
+  ): number[] {
+    const imagesData = LabelsSelector.getImagesData();
+    const filteredIndexByImageId = new Map<string, number>();
+    filteredIndices.forEach((index: number) => {
+      const imageId = imagesData[index]?.id;
+      if (imageId) {
+        filteredIndexByImageId.set(imageId, index);
+      }
+    });
+
+    return violationImageIds
+      .map((imageId: string) => filteredIndexByImageId.get(imageId))
+      .filter((index): index is number => index !== undefined);
+  }
+
+  private static getNextClassSanityCheckReviewImage(
+    filteredIndices: number[],
+    currentImageIndex: number
+  ): void {
+    const previousViolationIndices = ImageActions.getViolationImageIndices(
+      filteredIndices,
+      GeneralSelector.getClassSanityCheckViolationImageIds()
+    );
+    const previousViolationPosition = previousViolationIndices.indexOf(currentImageIndex);
+    const nextViolationImageIds = ImageActions.updateClassSanityCheckForImageIndex(currentImageIndex);
+    const nextViolationIndices = ImageActions.getViolationImageIndices(
+      filteredIndices,
+      nextViolationImageIds
+    );
+
+    if (nextViolationIndices.length === 0) {
+      ImageActions.activateImageByIndex(0);
+      return;
+    }
+
+    if (previousViolationPosition === -1) {
+      ImageActions.activateImageByIndex(nextViolationIndices[0]);
+      return;
+    }
+
+    const currentStillViolates = nextViolationIndices.includes(currentImageIndex);
+    const nextPosition = currentStillViolates
+      ? previousViolationPosition + 1
+      : previousViolationPosition;
+    const targetPosition = nextPosition >= nextViolationIndices.length ? 0 : nextPosition;
+    ImageActions.activateImageByIndex(nextViolationIndices[targetPosition]);
+  }
+
+  private static updateClassSanityCheckForImageIndex(index: number | null): string[] {
+    const settings = GeneralSelector.getClassSanityCheckSettings();
+    const currentViolationImageIds = GeneralSelector.getClassSanityCheckViolationImageIds();
+    const shouldValidate = settings.enabled;
+
+    if (!shouldValidate || index === null || index === undefined) {
+      return currentViolationImageIds;
+    }
+
+    const imageData = LabelsSelector.getImageDataByIndex(index);
+    if (!imageData) {
+      return currentViolationImageIds;
+    }
+
+    const violation = ClassSanityCheckUtil.getImageViolation(
+      imageData,
+      LabelsSelector.getLabelNames(),
+      settings
+    );
+    const nextViolationImageIds = ClassSanityCheckUtil.upsertViolationImageId(
+      currentViolationImageIds,
+      imageData.id,
+      !!violation
+    );
+
+    if (
+      nextViolationImageIds.length !== currentViolationImageIds.length ||
+      nextViolationImageIds.some((id, idIndex) => id !== currentViolationImageIds[idIndex])
+    ) {
+      store.dispatch(updateClassSanityCheckViolationImageIds(nextViolationImageIds));
+    }
+
+    return nextViolationImageIds;
+  }
+
+  private static activateImageByIndex(index: number): void {
+    if (GeneralSelector.getFixedZoom()) {
+      ViewPortActions.setZoom(1);
+    }
+    store.dispatch(updateActiveImageIndex(index));
+    store.dispatch(updateActiveLabelId(null));
+  }
+
   public static getImageByIndex(index: number): void {
     if (EditorModel.viewPortActionsDisabled) return;
 
@@ -155,11 +256,12 @@ export class ImageActions {
     if (index < 0 || index > imageCount - 1) {
       return;
     } else {
-      if (GeneralSelector.getFixedZoom()) {
-        ViewPortActions.setZoom(1);
+      const activeImageIndex = LabelsSelector.getActiveImageIndex();
+      if (activeImageIndex !== index) {
+        ImageActions.updateClassSanityCheckForImageIndex(activeImageIndex);
       }
-      store.dispatch(updateActiveImageIndex(index));
-      store.dispatch(updateActiveLabelId(null));
+
+      ImageActions.activateImageByIndex(index);
     }
   }
 

@@ -18,6 +18,10 @@ interface IProps {
     skipRejectButton?: boolean;
     disableRejectButton?: boolean;
     popupClassName?: string;
+    acceptButtonClassName?: string;
+    extraActionLabel?: string;
+    onExtraAction?: () => any;
+    extraActionButtonClassName?: string;
 }
 
 export const GenericYesNoPopup: React.FC<IProps> = (
@@ -33,7 +37,11 @@ export const GenericYesNoPopup: React.FC<IProps> = (
         onReject,
         skipRejectButton,
         disableRejectButton,
-        popupClassName
+        popupClassName,
+        acceptButtonClassName,
+        extraActionLabel,
+        onExtraAction,
+        extraActionButtonClassName
     }) => {
 
     const [status, setMountStatus] = useState(false);
@@ -68,12 +76,17 @@ export const GenericYesNoPopup: React.FC<IProps> = (
                     externalClassName={'reject'}
                     isDisabled={disableRejectButton}
                 />}
+                {extraActionLabel && onExtraAction && <TextButton
+                    label={extraActionLabel}
+                    onClick={onExtraAction}
+                    externalClassName={classNames('extra-action', extraActionButtonClassName)}
+                />}
                 {!skipAcceptButton && (
                     <div className='accept-button-wrapper'>
                         <TextButton
                             label={acceptLabel ? acceptLabel : 'YES'}
                             onClick={disableAcceptButton ? handleDisabledAcceptClick : onAccept}
-                            externalClassName={'accept'}
+                            externalClassName={classNames('accept', acceptButtonClassName)}
                             isDisabled={disableAcceptButton}
                         />
                         {showTooltip && disabledTooltip && (

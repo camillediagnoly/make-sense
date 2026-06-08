@@ -29,6 +29,8 @@ interface IProps {
     keepLabeledInUnlabeled: boolean;
     keptUnlabeledImageIds: string[];
     imageClassCriteria: ImageClassCriteria[];
+    classSanityCheckViolationImageIds: string[];
+    classSanityCheckReviewMode: boolean;
     updateImageListFilterModeAction: (filterMode: ImageFilterMode) => any;
     updateImageListSearchTextAction: (searchText: string) => any;
     updateKeepLabeledInUnlabeledAction: (
@@ -97,9 +99,11 @@ class ImagesList extends React.Component<IProps, IState> {
             keepLabeledInUnlabeled,
             keptUnlabeledImageIds,
             imageClassCriteria,
+            classSanityCheckViolationImageIds,
+            classSanityCheckReviewMode,
         } = props;
 
-        return ImageFilterUtil.getFilteredImageIndices(
+        const filteredIndices = ImageFilterUtil.getFilteredImageIndices(
             imagesData,
             activeLabelType,
             filterMode,
@@ -108,6 +112,27 @@ class ImagesList extends React.Component<IProps, IState> {
             keepLabeledInUnlabeled,
             keptUnlabeledImageIds
         );
+
+        if (!classSanityCheckReviewMode || classSanityCheckViolationImageIds.length === 0) {
+            return filteredIndices;
+        }
+
+        const filteredIndexByImageId = new Map<string, number>();
+        filteredIndices.forEach((index: number) => {
+            filteredIndexByImageId.set(imagesData[index].id, index);
+        });
+
+        const orderedViolationIndices = classSanityCheckViolationImageIds
+            .map((imageId: string) => filteredIndexByImageId.get(imageId))
+            .filter((index): index is number => index !== undefined);
+        const violationImageIds = new Set(classSanityCheckViolationImageIds);
+
+        return [
+            ...orderedViolationIndices,
+            ...filteredIndices.filter((index: number) =>
+                !violationImageIds.has(imagesData[index].id)
+            ),
+        ];
     };
 
     private getFilteredImages = (): number[] => {
@@ -170,6 +195,7 @@ class ImagesList extends React.Component<IProps, IState> {
             size={{width: 150, height: 150}}
             isScrolling={isScrolling}
             isChecked={this.isImageChecked(actualIndex)}
+            isInvalid={this.props.classSanityCheckViolationImageIds.includes(this.props.imagesData[actualIndex].id)}
             imageData={this.props.imagesData[actualIndex]}
             onClick={() => this.onClickHandler(actualIndex)}
             isSelected={this.props.activeImageIndex === actualIndex}
@@ -305,6 +331,8 @@ const mapStateToProps = (state: AppState) => ({
     keepLabeledInUnlabeled: state.general.keepLabeledInUnlabeled,
     keptUnlabeledImageIds: state.general.keptUnlabeledImageIds,
     imageClassCriteria: state.general.imageClassCriteria,
+    classSanityCheckViolationImageIds: state.general.classSanityCheckViolationImageIds,
+    classSanityCheckReviewMode: state.general.classSanityCheckReviewMode,
 });
 
 export default connect(

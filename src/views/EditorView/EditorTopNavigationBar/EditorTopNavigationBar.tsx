@@ -104,6 +104,7 @@ interface IProps {
     canRedoActiveImageAction: boolean;
     activeImageData: ImageData | null;
     imagesData: ImageData[];
+    classSanityCheckEnabled: boolean;
 }
 
 const EditorTopNavigationBar: React.FC<IProps> = (
@@ -134,7 +135,8 @@ const EditorTopNavigationBar: React.FC<IProps> = (
         canUndoActiveImageAction,
         canRedoActiveImageAction,
         activeImageData,
-        imagesData
+        imagesData,
+        classSanityCheckEnabled
     }) => {
     const [isPolygonPrecisionMenuOpen, setIsPolygonPrecisionMenuOpen] = React.useState(false);
     const [isRefreshingLocalImageFolders, setIsRefreshingLocalImageFolders] = React.useState(false);
@@ -204,6 +206,10 @@ const EditorTopNavigationBar: React.FC<IProps> = (
 
     const openImageClassFilter = () => {
         updateActivePopupTypeAction(PopupWindowType.IMAGE_CLASS_FILTER);
+    };
+
+    const openClassSanityCheck = () => {
+        updateActivePopupTypeAction(PopupWindowType.CLASS_SANITY_CHECK);
     };
 
     const deleteActiveImageOnClick = () => {
@@ -440,6 +446,17 @@ const EditorTopNavigationBar: React.FC<IProps> = (
                 }
                 {
                     getButtonWithTooltip(
+                        'class-sanity-check',
+                        classSanityCheckEnabled ? 'class sanity check settings' : 'class sanity check disabled',
+                        'ico/bug.png',
+                        'class-sanity-check',
+                        classSanityCheckEnabled,
+                        undefined,
+                        openClassSanityCheck
+                    )
+                }
+                {
+                    getButtonWithTooltip(
                         'copy-polygons',
                         copyPolygons ? '' : 'copy all polygons',
                         'ico/copy-polygons.png',
@@ -580,6 +597,7 @@ const mapStateToProps = (state: AppState) => {
         lineKeypointMode: state.general.lineKeypointMode,
         activeImageData,
         imagesData: state.labels.imagesData,
+        classSanityCheckEnabled: state.general.classSanityCheckSettings.enabled,
         canUndoActiveImageAction: hasActiveImageHistory && imageDataHistory.past.length > 0,
         canRedoActiveImageAction: hasActiveImageHistory && imageDataHistory.future.length > 0,
     };

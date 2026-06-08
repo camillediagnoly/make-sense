@@ -54,6 +54,22 @@
       }
     }
 
+
+
+    .SanityCheckExportCount {
+      margin-top: 18px;
+      padding-top: 14px;
+      border-top: 1px solid #3a3a3a;
+      color: #d0d0d0;
+      font-size: 15px;
+      font-weight: 700;
+
+      &.hasViolations {
+        color: #ff8b8b;
+      }
+    }
+
+
     // Backup settings styling
     .backup-settings-content {
       display: flex;
