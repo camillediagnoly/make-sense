@@ -10,6 +10,8 @@ import { connect } from 'react-redux';
 import { useDropzone } from 'react-dropzone';
 import { ImageData, LabelName } from '../../../store/labels/types';
 import { updateActiveLabelType, updateImageData, updateLabelNames } from '../../../store/labels/actionCreators';
+import { updateMeasurementFunctions } from '../../../store/general/actionCreators';
+import { MeasurementFunctionByName } from '../../../data/measurements/MeasurementFunctionData';
 import { ImporterSpecData } from '../../../data/ImporterSpecData';
 import { AnnotationFormatType } from '../../../data/enums/AnnotationFormatType';
 import { ILabelFormatData } from '../../../interfaces/ILabelFormatData';
@@ -26,6 +28,7 @@ interface IProps {
     updateImageDataAction: (imageData: ImageData[]) => any,
     updateLabelNamesAction: (labels: LabelName[]) => any,
     updateActiveLabelTypeAction: (activeLabelType: LabelType) => any;
+    updateMeasurementFunctionsAction: typeof updateMeasurementFunctions;
 }
 
 const ImportLabelPopup: React.FC<IProps> = (
@@ -33,7 +36,8 @@ const ImportLabelPopup: React.FC<IProps> = (
         activeLabelType,
         updateImageDataAction,
         updateLabelNamesAction,
-        updateActiveLabelTypeAction
+        updateActiveLabelTypeAction,
+        updateMeasurementFunctionsAction
     }) => {
     const resolveFormatType = (labelType: LabelType): AnnotationFormatType => {
         const possibleImportFormats = ImportFormatData[labelType];
@@ -44,6 +48,8 @@ const ImportLabelPopup: React.FC<IProps> = (
     const [formatType, setFormatType] = useState(resolveFormatType(activeLabelType));
     const [loadedLabelNames, setLoadedLabelNames] = useState([]);
     const [loadedImageData, setLoadedImageData] = useState([]);
+    const [loadedMeasurementFunctionByName, setLoadedMeasurementFunctionByName] =
+        useState<MeasurementFunctionByName>({});
     const [annotationsLoadedError, setAnnotationsLoadedError] = useState(null);
     const [failedAnnotationFiles, setFailedAnnotationFiles] = useState<string[]>([]);
     const [isImporting, setIsImporting] = useState(false);
@@ -63,14 +69,20 @@ const ImportLabelPopup: React.FC<IProps> = (
         setFormatType(resolveFormatType(type));
         setLoadedLabelNames([]);
         setLoadedImageData([]);
+        setLoadedMeasurementFunctionByName({});
         setAnnotationsLoadedError(null);
         setFailedAnnotationFiles([]);
         setIsImporting(false);
     };
 
-    const onAnnotationLoadSuccess = (imagesData: ImageData[], labelNames: LabelName[]) => {
+    const onAnnotationLoadSuccess = (
+        imagesData: ImageData[],
+        labelNames: LabelName[],
+        measurementFunctionByName: MeasurementFunctionByName = {},
+    ) => {
         setLoadedLabelNames(labelNames);
         setLoadedImageData(imagesData);
+        setLoadedMeasurementFunctionByName(measurementFunctionByName);
         setAnnotationsLoadedError(null);
         setFailedAnnotationFiles([]);
         setIsImporting(false);
@@ -80,6 +92,7 @@ const ImportLabelPopup: React.FC<IProps> = (
         if (error instanceof PartialVOCImportError) {
             setLoadedLabelNames(error.labelNames);
             setLoadedImageData(error.imagesData);
+            setLoadedMeasurementFunctionByName({});
             setAnnotationsLoadedError(null);
             setFailedAnnotationFiles(error.fileNames);
             setIsImporting(false);
@@ -88,6 +101,7 @@ const ImportLabelPopup: React.FC<IProps> = (
 
         setLoadedLabelNames([]);
         setLoadedImageData([]);
+        setLoadedMeasurementFunctionByName({});
         setAnnotationsLoadedError(error);
         setFailedAnnotationFiles([]);
         setIsImporting(false);
@@ -115,6 +129,7 @@ const ImportLabelPopup: React.FC<IProps> = (
             updateImageDataAction(loadedImageData);
             updateLabelNamesAction(loadedLabelNames);
             updateActiveLabelTypeAction(type);
+            updateMeasurementFunctionsAction(loadedMeasurementFunctionByName);
             PopupActions.close();
         }
     };
@@ -262,7 +277,8 @@ const ImportLabelPopup: React.FC<IProps> = (
 const mapDispatchToProps = {
     updateImageDataAction: updateImageData,
     updateLabelNamesAction: updateLabelNames,
-    updateActiveLabelTypeAction: updateActiveLabelType
+    updateActiveLabelTypeAction: updateActiveLabelType,
+    updateMeasurementFunctionsAction: updateMeasurementFunctions
 };
 
 const mapStateToProps = (state: AppState) => ({

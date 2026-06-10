@@ -27,9 +27,12 @@ export type COCOAnnotation = {
     bbox: COCOBBox;
 }
 
+export type COCOMeasurementConfig = { [functionId: string]: number[] }
+
 export type COCOObject = {
     info: COCOInfo,
     images: COCOImage[],
     annotations: COCOAnnotation[],
-    categories: COCOCategory[]
+    categories: COCOCategory[],
+    meas_config?: COCOMeasurementConfig
 }

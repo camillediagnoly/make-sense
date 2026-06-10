@@ -82,22 +82,12 @@ export class LabelActions {
         }, {});
 
 
-        // Map labelId in annotations to the corresponding name and filters only keypoints
-        const measurementNames = ['p-b.m:Asym-P', 'p-b.m:Asym-N',
-            'p-b.m:Angle-P', 'p-b.m:Angle-N',
-            'p-b.m:Position-P', 'p-b.m:Position-N',
-            'p-b.m:Surface-P', 'p-b.m:Surface-N',
-            'p-e.m:VxAsym-P', 'p-e.m:VxAsym-N',
-            'p-e.m:TGA-P', 'p-e.m:TGA-N',
-            'p-f.m:CSP-P', 'p-f.m:CSP-N',
-            'p-f.m:CI-P', 'p-f.m:CI-N',
-        ]
-
+        const measurementLabelPattern = /^p-[a-z]+\.m:.+/i;
         const measurementAnnotations = activeImageData.labelPolygons.map(annotation => ({
             ...annotation,
             labelName: annotation.labelId ? labelMap[annotation.labelId] || null : null // Find the name based on labelId
         }))
-            .filter(annotation => annotation.labelName && measurementNames.includes(annotation.labelName)); // Filter by specific names
+            .filter(annotation => annotation.labelName && measurementLabelPattern.test(annotation.labelName));
 
         for (let i = 0; i < measurementAnnotations.length; i++) {
             LabelActions.toggleLabelVisibilityById(activeImageData.id, measurementAnnotations[i].id);

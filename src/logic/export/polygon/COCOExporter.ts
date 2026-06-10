@@ -8,11 +8,13 @@ import {
     COCOCategory,
     COCOImage,
     COCOInfo,
+    COCOMeasurementConfig,
     COCOObject,
     COCOSegmentation
 } from "../../../data/labels/COCO";
 import {flatten} from "lodash";
 import {IPoint} from "../../../interfaces/IPoint";
+import { parseKeypointName } from "../../../data/measurements/MeasurementFunctionData";
 
 export type LabelDataMap = { [key: string]: number; }
 
@@ -43,12 +45,17 @@ export class COCOExporter {
         labelNames: LabelName[],
         projectName: string
     ): COCOObject {
-        return {
+        const cocoObject: COCOObject = {
             "info": COCOExporter.getInfoComponent(projectName),
             "images": COCOExporter.getImagesComponent(imagesData),
             "annotations": COCOExporter.getAnnotationsComponent(imagesData, labelNames),
-            "categories":COCOExporter.getCategoriesComponent(labelNames)
+            "categories": COCOExporter.getCategoriesComponent(labelNames)
+        };
+        const measConfig = COCOExporter.getMeasurementConfigComponent(labelNames);
+        if (Object.keys(measConfig).length !== 0) {
+            cocoObject.meas_config = measConfig;
         }
+        return cocoObject;
     }
 
     public static getInfoComponent(description: string): COCOInfo {
@@ -64,6 +71,29 @@ export class COCOExporter {
                 "name": labelName.name
             }
         })
+    }
+
+    public static getMeasurementConfigComponent(labelNames: LabelName[]): COCOMeasurementConfig {
+        const labelsMap: LabelDataMap = COCOExporter.mapLabelsData(labelNames);
+        const measurementFunctionByName = GeneralSelector.getMeasurementFunctionByName();
+
+        return labelNames.reduce((measConfig: COCOMeasurementConfig, labelName: LabelName) => {
+            const parsedKeypointName = parseKeypointName(labelName.name);
+            if (!parsedKeypointName) {
+                return measConfig;
+            }
+
+            const functionId = measurementFunctionByName[parsedKeypointName.measurementName];
+            if (!functionId) {
+                return measConfig;
+            }
+
+            if (!measConfig[functionId]) {
+                measConfig[functionId] = [];
+            }
+            measConfig[functionId].push(labelsMap[labelName.id]);
+            return measConfig;
+        }, {});
     }
 
     public static getImagesComponent(imagesData: ImageData[]): COCOImage[] {

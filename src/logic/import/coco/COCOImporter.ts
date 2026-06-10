@@ -1,6 +1,6 @@
 import {ImageData, LabelName} from '../../../store/labels/types';
 import {LabelsSelector} from '../../../store/selectors/LabelsSelector';
-import {COCOCategory, COCOImage, COCOObject} from '../../../data/labels/COCO';
+import {COCOCategory, COCOImage, COCOMeasurementConfig, COCOObject} from '../../../data/labels/COCO';
 import { v4 as uuidv4 } from 'uuid';
 import {ArrayUtil, PartitionResult} from '../../../utils/ArrayUtil';
 import {ImageDataUtil} from '../../../utils/ImageDataUtil';
@@ -15,6 +15,11 @@ import {LabelType} from '../../../data/enums/LabelType';
 import {AnnotationImporter, ImportResult} from '../AnnotationImporter';
 import {COCOUtils} from './COCOUtils';
 import {Settings} from "../../../settings/Settings";
+import {
+    MeasurementFunctionByName,
+    isMeasurementFunctionId,
+    parseKeypointName
+} from '../../../data/measurements/MeasurementFunctionData';
 
 export type FileNameCOCOIdMap = {[ fileName: string]: number; }
 export type LabelNameMap = { [labelCOCOId: number]: LabelName; }
@@ -25,7 +30,11 @@ export class COCOImporter extends AnnotationImporter {
 
     public import(
         filesData: File[],
-        onSuccess: (imagesData: ImageData[], labelNames: LabelName[]) => any,
+        onSuccess: (
+            imagesData: ImageData[],
+            labelNames: LabelName[],
+            measurementFunctionByName?: MeasurementFunctionByName,
+        ) => any,
         onFailure: (error?:Error) => any
     ): void {
         if (filesData.length > 1) {
@@ -38,8 +47,12 @@ export class COCOImporter extends AnnotationImporter {
             try {
                 const inputImagesData: ImageData[] = LabelsSelector.getImagesData();
                 const annotations = COCOImporter.deserialize(evt.target.result)
-                const {imagesData, labelNames} = this.applyLabels(inputImagesData, annotations);
-                onSuccess(imagesData,labelNames);
+                const {
+                    imagesData,
+                    labelNames,
+                    measurementFunctionByName
+                } = this.applyLabels(inputImagesData, annotations);
+                onSuccess(imagesData, labelNames, measurementFunctionByName);
             } catch (error) {
                 onFailure(error as Error);
             }
@@ -59,6 +72,10 @@ export class COCOImporter extends AnnotationImporter {
         COCOImporter.validateCocoFormat(annotationsObject);
         const {images, categories, annotations} = annotationsObject;
         const labelNameMap: LabelNameMap = COCOImporter.mapCOCOCategories(categories);
+        const measurementFunctionByName = COCOImporter.mapMeasurementConfig(
+            annotationsObject.meas_config,
+            labelNameMap,
+        );
         const cleanImageData: ImageData[] = imageData.map((item: ImageData) => ImageDataUtil.cleanAnnotations(item));
         const imageDataPartition: PartitionResult<ImageData> = COCOImporter.partitionImageData(cleanImageData, images);
         const imageDataMap: ImageDataMap = COCOImporter.mapImageData(imageDataPartition.pass, images);
@@ -88,8 +105,40 @@ export class COCOImporter extends AnnotationImporter {
 
         return {
             imagesData: ImageDataUtil.arrange(resultImageData, imageData.map((item: ImageData) => item.id)),
-            labelNames: Object.values(labelNameMap)
+            labelNames: Object.values(labelNameMap),
+            measurementFunctionByName
         }
+    }
+
+    protected static mapMeasurementConfig(
+        measConfig: COCOMeasurementConfig | undefined,
+        labelNameMap: LabelNameMap,
+    ): MeasurementFunctionByName {
+        if (!measConfig) {
+            return {};
+        }
+
+        return Object.entries(measConfig).reduce(
+            (measurementFunctionByName: MeasurementFunctionByName, [functionId, keypointIds]) => {
+                if (!isMeasurementFunctionId(functionId) || !Array.isArray(keypointIds)) {
+                    return measurementFunctionByName;
+                }
+
+                keypointIds.forEach((keypointId) => {
+                    const labelName = labelNameMap[keypointId]?.name;
+                    const parsedKeypointName = labelName
+                        ? parseKeypointName(labelName)
+                        : null;
+
+                    if (parsedKeypointName) {
+                        measurementFunctionByName[parsedKeypointName.measurementName] = functionId;
+                    }
+                });
+
+                return measurementFunctionByName;
+            },
+            {},
+        );
     }
 
     protected static partitionImageData(items: ImageData[], images: COCOImage[]): PartitionResult<ImageData> {

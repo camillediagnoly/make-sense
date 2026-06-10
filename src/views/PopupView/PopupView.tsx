@@ -20,6 +20,7 @@ import BackupSettingsPopup from './BackupSettingsPopup/BackupSettingsPopup';
 import ImageClassFilterPopup from './ImageClassFilterPopup/ImageClassFilterPopup';
 import ClassSanityCheckPopup from './ClassSanityCheckPopup/ClassSanityCheckPopup';
 import DeleteImagePopup from './DeleteImagePopup/DeleteImagePopup';
+import EditKeypointsPopup from './EditKeypointsPopup/EditKeypointsPopup';
 
 interface IProps {
     activePopupType: PopupWindowType;
@@ -65,6 +66,8 @@ const PopupView: React.FC<IProps> = ({ activePopupType }) => {
                 return <ClassSanityCheckPopup />;
             case PopupWindowType.DELETE_IMAGE:
                 return <DeleteImagePopup />;
+            case PopupWindowType.EDIT_KEYPOINTS:
+                return <EditKeypointsPopup />;
             case PopupWindowType.LOADER:
                 return <ClipLoader
                     size={50}

@@ -67,6 +67,14 @@ export const DropDownMenuData: DropDownMenuNode[] = [
                 onClick: () => store.dispatch(updateActivePopupType(PopupWindowType.IMAGE_CLASS_FILTER))
             },
             {
+                name: 'Edit Keypoints',
+                description: 'Configure measurement keypoint functions',
+                imageSrc: 'ico/keypoint-line.svg',
+                imageAlt: 'edit-keypoints',
+                disabled: false,
+                onClick: () => store.dispatch(updateActivePopupType(PopupWindowType.EDIT_KEYPOINTS))
+            },
+            {
                 name: 'Run AI locally',
                 description: 'Run annotation model in browser',
                 imageSrc: 'ico/ai.png',

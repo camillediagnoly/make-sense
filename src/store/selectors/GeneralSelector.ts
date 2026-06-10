@@ -5,6 +5,7 @@ import { CustomCursorStyle } from "../../data/enums/CustomCursorStyle";
 import { ProjectType } from "../../data/enums/ProjectType";
 import { ImageFilterMode } from "../../data/enums/ImageFilterMode";
 import { ClassSanityCheckSettings, ImageClassCriteria } from "../general/types";
+import { MeasurementFunctionByName } from "../../data/measurements/MeasurementFunctionData";
 
 export class GeneralSelector {
     public static getActivePopupType(): PopupWindowType {
@@ -117,5 +118,9 @@ export class GeneralSelector {
 
     public static getClassSanityCheckReviewMode(): boolean {
         return store.getState().general.classSanityCheckReviewMode;
+    }
+
+    public static getMeasurementFunctionByName(): MeasurementFunctionByName {
+        return store.getState().general.measurementFunctionByName;
     }
 }

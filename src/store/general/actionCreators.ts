@@ -5,6 +5,7 @@ import { PopupWindowType } from "../../data/enums/PopupWindowType";
 import { CustomCursorStyle } from "../../data/enums/CustomCursorStyle";
 import { ContextType } from "../../data/enums/ContextType";
 import { ImageFilterMode } from "../../data/enums/ImageFilterMode";
+import { MeasurementFunctionByName } from "../../data/measurements/MeasurementFunctionData";
 
 
 export function updateWindowSize(windowSize: ISize): GeneralActionTypes {
@@ -252,6 +253,17 @@ export function updateClassSanityCheckSettings(
         type: Action.UPDATE_CLASS_SANITY_CHECK_SETTINGS,
         payload: {
             classSanityCheckSettings,
+        },
+    };
+}
+
+export function updateMeasurementFunctions(
+    measurementFunctionByName: MeasurementFunctionByName
+): GeneralActionTypes {
+    return {
+        type: Action.UPDATE_MEASUREMENT_FUNCTIONS,
+        payload: {
+            measurementFunctionByName,
         },
     };
 }

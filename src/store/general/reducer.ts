@@ -185,6 +185,7 @@ const initialState: GeneralState = {
   classSanityCheckSettings: BrowserSettingsStorage.loadClassSanityCheckSettings(),
   classSanityCheckViolationImageIds: [],
   classSanityCheckReviewMode: false,
+  measurementFunctionByName: {},
   keyboardShortcuts: BrowserSettingsStorage.loadKeyboardShortcuts(
     defaultKeyboardShortcuts
   ),
@@ -350,6 +351,13 @@ export function generalReducer(
       return {
         ...state,
         classSanityCheckReviewMode: action.payload.classSanityCheckReviewMode,
+      };
+    }
+
+    case Action.UPDATE_MEASUREMENT_FUNCTIONS: {
+      return {
+        ...state,
+        measurementFunctionByName: action.payload.measurementFunctionByName,
       };
     }
 

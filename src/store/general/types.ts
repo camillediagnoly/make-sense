@@ -5,6 +5,7 @@ import { CustomCursorStyle } from "../../data/enums/CustomCursorStyle";
 import { ContextType } from "../../data/enums/ContextType";
 import { ProjectType } from "../../data/enums/ProjectType";
 import { ImageFilterMode } from "../../data/enums/ImageFilterMode";
+import { MeasurementFunctionByName } from "../../data/measurements/MeasurementFunctionData";
 
 export type ProjectData = {
     type: ProjectType;
@@ -93,6 +94,7 @@ export type GeneralState = {
     classSanityCheckSettings: ClassSanityCheckSettings;
     classSanityCheckViolationImageIds: string[];
     classSanityCheckReviewMode: boolean;
+    measurementFunctionByName: MeasurementFunctionByName;
 };
 
 interface UpdateProjectData {
@@ -270,6 +272,13 @@ interface UpdateClassSanityCheckReviewMode {
     };
 }
 
+interface UpdateMeasurementFunctions {
+    type: typeof Action.UPDATE_MEASUREMENT_FUNCTIONS;
+    payload: {
+        measurementFunctionByName: MeasurementFunctionByName;
+    };
+}
+
 interface UpdateKeyboardShortcuts {
     type: typeof Action.UPDATE_KEYBOARD_SHORTCUTS;
     payload: {
@@ -320,4 +329,5 @@ export type GeneralActionTypes =
     | UpdateImageClassCriteria
     | UpdateClassSanityCheckSettings
     | UpdateClassSanityCheckViolationImageIds
-    | UpdateClassSanityCheckReviewMode;
+    | UpdateClassSanityCheckReviewMode
+    | UpdateMeasurementFunctions;

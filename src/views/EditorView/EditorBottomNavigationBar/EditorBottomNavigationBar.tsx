@@ -8,7 +8,7 @@ import { ISize } from "../../../interfaces/ISize";
 import { ContextType } from "../../../data/enums/ContextType";
 import classNames from "classnames";
 import { ImageActions } from "../../../logic/actions/ImageActions";
-import { KeypointUtils } from "../../../logic/render/PolygonRenderEngine";
+import { KeypointUtils, MeasurementResult } from "../../../logic/render/PolygonRenderEngine";
 import { ImageFilterMode } from "../../../data/enums/ImageFilterMode";
 import { ImageFilterUtil } from "../../../utils/ImageFilterUtil";
 import { LabelType } from "../../../data/enums/LabelType";
@@ -29,7 +29,6 @@ interface IProps {
 }
 
 const EditorBottomNavigationBar: React.FC<IProps> = ({
-    size,
     imageData,
     imagesData,
     activeImageIndex,
@@ -41,8 +40,6 @@ const EditorBottomNavigationBar: React.FC<IProps> = ({
     keptUnlabeledImageIds,
     imageClassCriteria
 }) => {
-    const minWidth: number = 400;
-
     const filteredIndices = ImageFilterUtil.getFilteredImageIndices(
         imagesData,
         activeLabelType,
@@ -58,6 +55,14 @@ const EditorBottomNavigationBar: React.FC<IProps> = ({
     const totalImageCount = filteredIndices.length;
     const currentImagePosition = activeFilteredIndex >= 0 ? activeFilteredIndex + 1 : 0;
 
+    type CompletedMeasurementResult = MeasurementResult & { value: number };
+
+    const isCompletedMeasurementResult = (
+        measurementResult: MeasurementResult,
+    ): measurementResult is CompletedMeasurementResult => {
+        return measurementResult.value !== null;
+    };
+
     const getImageCounter = () => {
         return currentImagePosition + " / " + totalImageCount;
     };
@@ -70,12 +75,21 @@ const EditorBottomNavigationBar: React.FC<IProps> = ({
             }
         );
     };
-    const keypointUtilsInstance = new KeypointUtils();
-    const [asymRatio_B, angle_B, areaRatio_B, positionRatio_B, veinsRatio_B, avRatio_B,
-        tgaRatio_D, asymRatio_E, tgaRatio_E, asymRatioCSP_F, 
-        asymRatioCI_F, angleSF_F, ratioSF_F, ratioAtrVMG_F, ratio4V_G] = keypointUtilsInstance.buildMeasurements()
 
+    const formatMeasurementResult = (
+        measurementResult: CompletedMeasurementResult,
+    ): string => {
+        const formattedValue = measurementResult.unit === 'degree'
+            ? `${measurementResult.value.toFixed(3)}°`
+            : measurementResult.value.toFixed(3);
 
+        return `${measurementResult.displayName} = ${formattedValue}`;
+    };
+
+    const completedMeasurementTexts = new KeypointUtils()
+        .buildMeasurementResults()
+        .filter(isCompletedMeasurementResult)
+        .map(formatMeasurementResult);
 
     return (
         <div className={getClassName()}>
@@ -88,10 +102,10 @@ const EditorBottomNavigationBar: React.FC<IProps> = ({
                     isDisabled={totalImageCount === 0 || (activeFilteredIndex >= 0 && activeFilteredIndex === 0)}
                     externalClassName={"left"}
                 />
-            
+
                     <div className="CurrentImageName"> {imageData.fileData.name} </div> :
                     <div className="CurrentImageCount"> {getImageCounter()} </div>
-                
+
                 <ImageButton
                     image={"ico/right.png"}
                     imageAlt={"next"}
@@ -105,55 +119,11 @@ const EditorBottomNavigationBar: React.FC<IProps> = ({
                 />
             </div>
             <div className="BottomRow">
-                <div className="RatioMeasurement">
-                    <div className="RatioMeasurement">
-                        B-Asym = {asymRatio_B?.toFixed(3) ?? 'null'}
+                {completedMeasurementTexts.map((measurementText) => (
+                    <div className="RatioMeasurement" key={measurementText}>
+                        {measurementText}
                     </div>
-                    <div className="RatioMeasurement">
-                        B-Area = {areaRatio_B?.toFixed(3) ?? 'null'}
-                    </div>
-                    <div className="RatioMeasurement">
-                        B-Position = {positionRatio_B?.toFixed(3) ?? 'null'}
-                    </div>
-                    <div className="RatioMeasurement">
-                        B-Veins = {veinsRatio_B?.toFixed(3) ?? 'null'}
-                    </div>
-                    <div className="RatioMeasurement">
-                        B-AVL = {avRatio_B?.toFixed(3) ?? 'null'}
-                    </div>
-                    <div className="RatioMeasurement">
-                        B-Angle = {angle_B != null ? `${angle_B.toFixed(3)}°` : 'null'}
-                    </div>
-                    <div className="RatioMeasurement">
-                        D-TGA = {tgaRatio_D?.toFixed(3) ?? 'null'}
-                    </div>
-                    <div className="RatioMeasurement">
-                        E-Asym = {asymRatio_E?.toFixed(3) ?? 'null'}
-                    </div>
-                    <div className="RatioMeasurement">
-                        E-TGA = {tgaRatio_E?.toFixed(3) ?? 'null'}
-                    </div>
-                </div>
-                <div className="RatioMeasurement">
-                    <div className="RatioMeasurement">
-                        F-Asym-CSP = {asymRatioCSP_F?.toFixed(3) ?? 'null'}
-                    </div>
-                    <div className="RatioMeasurement">
-                        F-Asym-CI = {asymRatioCI_F?.toFixed(3) ?? 'null'}
-                    </div>
-                    <div className="RatioMeasurement">
-                        F-RatioSF = {ratioSF_F?.toFixed(3) ?? 'null'}
-                    </div>
-                    <div className="RatioMeasurement">
-                        F-AngleSF = {angleSF_F != null ? `${angleSF_F.toFixed(3)}°` : 'null'}
-                    </div>
-                    <div className="RatioMeasurement">
-                        F-Vp = {ratioAtrVMG_F?.toFixed(3) ?? 'null'}
-                    </div>
-                    <div className="RatioMeasurement">
-                        G-4V = {ratio4V_G?.toFixed(3) ?? 'null'}
-                    </div>
-                </div>
+                ))}
             </div>
         </div>
     );

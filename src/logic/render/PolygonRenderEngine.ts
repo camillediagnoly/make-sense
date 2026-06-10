@@ -28,96 +28,40 @@ import { GeneralSelector } from "../../store/selectors/GeneralSelector";
 import { Settings } from "../../settings/Settings";
 import { LabelUtil } from "../../utils/LabelUtil";
 import { PolygonUtil } from "../../utils/PolygonUtil";
-import { start } from "repl";
+import {
+    getMeasurementConnections,
+    inferMeasurementDefinitions,
+    MeasurementConnection,
+    MeasurementDefinition,
+    MeasurementFunctionId,
+    parseKeypointName,
+} from "../../data/measurements/MeasurementFunctionData";
 
-const asymKeypointNames_B = ["p-b.k:Asym-1", "p-b.k:Asym-2", "p-b.k:Asym-3"];
-const angleKeypointNames_B = [
-    "p-b.k:Angle-1",
-    "p-b.k:Angle-2",
-    "p-b.k:Angle-3",
-    "p-b.k:Angle-4",
-    "p-b.k:Angle-5",
-];
-const surfaceKeypointNames_B = [
-    "p-b.k:Surface-1",
-    "p-b.k:Surface-2",
-    "p-b.k:Surface-3",
-    "p-b.k:Surface-4",
-    "p-b.k:Surface-5",
-    "p-b.k:Surface-6",
-];
-const positionKeypointNames_B = [
-    "p-b.k:Position-1",
-    "p-b.k:Position-2",
-    "p-b.k:Position-3",
-    "p-b.k:Position-4",
-    "p-b.k:Position-5",
-];
-const veinsKeypointNames_B = [
-    "p-b.k:Veins-3",
-    "p-b.k:Veins-2",
-    "p-b.k:Veins-1",
-];
-const avKeypointNames_B = ["p-b.k:AVL-1", "p-b.k:AVL-2", "p-b.k:AVL-3"];
-const tgaKeypointNames_D = ["p-d.k:TGA-3", "p-d.k:TGA-1", "p-d.k:TGA-2"];
-const asymKeypointNames_E = [
-    "p-e.k:VxAsym-1",
-    "p-e.k:VxAsym-2",
-    "p-e.k:VxAsym-3",
-    "p-e.k:VxAsym-4",
-];
-const tgaKeypointNames_E = ["p-e.k:TGA-2", "p-e.k:TGA-1", "p-e.k:TGA-3"];
-const asymCSPKeypointNames_F = [
-    "p-f.k:CSP-1",
-    "p-f.k:CSP-2",
-    "p-f.k:CSP-3",
-    "p-f.k:CSP-4",
-];
-const asymCIKeypointNames_F = [
-    "p-f.k:CI-1",
-    "p-f.k:CI-2",
-    "p-f.k:CI-3",
-    "p-f.k:CI-4",
-];
-const angleSFKeypointNames_F = [
-    "p-f.k:AngleSF-1",
-    "p-f.k:AngleSF-2",
-    "p-f.k:AngleSF-3",
-];
-const ratioSFKeypointNames_F = [
-    "p-f.k:RatioSF-1",
-    "p-f.k:RatioSF-3",
-    "p-f.k:RatioSF-2",
-];
-const ratioAtrVMGKeypointNames_F = [
-    "p-f.k:Vp-3",
-    "p-f.k:Vp-4",
-    "p-f.k:Vp-1",
-    "p-f.k:Vp-2",
-];
-const ratio4VKeypointNames_G = [
-    "p-g.k:4V-1",
-    "p-g.k:4V-2",
-    "p-g.k:4V-3",
-    "p-g.k:4V-4",
-];
-const allKeypointNames = [
-    ...asymKeypointNames_B,
-    ...angleKeypointNames_B,
-    ...surfaceKeypointNames_B,
-    ...positionKeypointNames_B,
-    ...veinsKeypointNames_B,
-    ...avKeypointNames_B,
-    ...tgaKeypointNames_D,
-    ...asymKeypointNames_E,
-    ...tgaKeypointNames_E,
-    ...asymCSPKeypointNames_F,
-    ...asymCIKeypointNames_F,
-    ...angleSFKeypointNames_F,
-    ...ratioSFKeypointNames_F,
-    ...ratioAtrVMGKeypointNames_F,
-    ...ratio4VKeypointNames_G,
-];
+type RenderableKeypointData = {
+    id: string;
+    labelName: string;
+    centroid: IPoint;
+};
+
+type RenderableMeasurementCenterMap = Map<
+    string,
+    Map<number, Map<string, RenderableKeypointData>>
+>;
+
+export type KeypointCenter = RenderableKeypointData & {
+    measurementName: string;
+    keypointIndex: number;
+    suffix: string;
+};
+
+export type MeasurementResult = {
+    measurementName: string;
+    displayName: string;
+    functionId: MeasurementFunctionId | null;
+    functionName: string;
+    value: number | null;
+    unit: "degree" | null;
+};
 
 const LASSO_MIN_SAMPLE_DISTANCE = 5;
 const DEFAULT_LASSO_TARGET_VERTEX_COUNT = 20;
@@ -166,23 +110,25 @@ export class PolygonRenderEngine extends BaseRenderEngine {
         this.surfaceAnnotator = new KeypointSurfaceAnnotation();
     }
 
-    private buildRenderableKeypointCenterMap(): Map<
-        string,
-        Map<string, { id: string; labelName: string; centroid: IPoint }>
-    > {
+    private getMeasurementDefinitions(): MeasurementDefinition[] {
+        return inferMeasurementDefinitions(
+            LabelsSelector.getLabelNames(),
+            GeneralSelector.getMeasurementFunctionByName(),
+        );
+    }
+
+    private buildRenderableKeypointCenterMap(): RenderableMeasurementCenterMap {
         const imageData: ImageData = LabelsSelector.getActiveImageData();
         const labelNames: LabelName[] = LabelsSelector.getLabelNames();
         const labelMap = labelNames.reduce((map, label) => {
             map[label.id] = label.name;
             return map;
-        }, {});
-        const centerMap = new Map<
-            string,
-            Map<string, { id: string; labelName: string; centroid: IPoint }>
-        >();
-        const sortedBaseNames = [...allKeypointNames].sort(
-            (a, b) => b.length - a.length,
-        );
+        }, {} as Record<string, string>);
+        const centerMap: RenderableMeasurementCenterMap = new Map();
+
+        if (!imageData) {
+            return centerMap;
+        }
 
         imageData.labelPolygons
             .filter((annotation) => annotation.isVisible)
@@ -194,29 +140,28 @@ export class PolygonRenderEngine extends BaseRenderEngine {
                     return;
                 }
 
-                const baseLabelName =
-                    sortedBaseNames.find(
-                        (baseName) =>
-                            labelName === baseName ||
-                            labelName.startsWith(baseName),
-                    ) || null;
-                if (!baseLabelName) {
+                const parsedKeypointName = parseKeypointName(labelName);
+                if (!parsedKeypointName) {
                     return;
                 }
 
-                const suffix = labelName.slice(baseLabelName.length);
-                const perBaseMap =
-                    centerMap.get(baseLabelName) ||
-                    new Map<
-                        string,
-                        { id: string; labelName: string; centroid: IPoint }
-                    >();
-                perBaseMap.set(suffix, {
+                const perMeasurementMap =
+                    centerMap.get(parsedKeypointName.measurementName) ||
+                    new Map<number, Map<string, RenderableKeypointData>>();
+                const perIndexMap =
+                    perMeasurementMap.get(parsedKeypointName.keypointIndex) ||
+                    new Map<string, RenderableKeypointData>();
+
+                perIndexMap.set(parsedKeypointName.suffix, {
                     id: annotation.id,
                     labelName,
                     centroid: this.keypointUtils.computeCentroid(annotation),
                 });
-                centerMap.set(baseLabelName, perBaseMap);
+                perMeasurementMap.set(
+                    parsedKeypointName.keypointIndex,
+                    perIndexMap,
+                );
+                centerMap.set(parsedKeypointName.measurementName, perMeasurementMap);
             });
 
         return centerMap;
@@ -267,94 +212,150 @@ export class PolygonRenderEngine extends BaseRenderEngine {
         return hash;
     }
 
-    private drawKeypointLinesForSequence(
-        keypointNameSequence: string[],
-        step: number,
-        keypointCenterMap: Map<
-            string,
-            Map<string, { id: string; labelName: string; centroid: IPoint }>
-        >,
-        data: EditorData,
-    ): void {
-        for (let i = 0; i < keypointNameSequence.length - 1; i += step) {
-            const startBaseName = keypointNameSequence[i];
-            const endBaseName = keypointNameSequence[i + 1];
-            const startBySuffix = keypointCenterMap.get(startBaseName);
-            const endBySuffix = keypointCenterMap.get(endBaseName);
-            if (!startBySuffix || !endBySuffix) {
-                continue;
-            }
-
-            startBySuffix.forEach((startPointData, suffix) => {
-                const endPointData = endBySuffix.get(suffix);
-                if (!endPointData) {
-                    return;
-                }
-                const lineColor = this.resolveLineColorBySuffix(suffix);
-                this.drawLineBetweenKeypointCenters(
-                    startPointData.centroid,
-                    endPointData.centroid,
-                    lineColor,
-                    data,
-                );
-            });
+    private getRenderableKeypointsByPosition(
+        measurementDefinition: MeasurementDefinition,
+        keypointCenterMap: RenderableMeasurementCenterMap,
+        position: number,
+    ): Map<string, RenderableKeypointData> | null {
+        const keypointIndex = measurementDefinition.keypointIndexes[position];
+        if (keypointIndex === undefined) {
+            return null;
         }
+
+        return (
+            keypointCenterMap
+                .get(measurementDefinition.measurementName)
+                ?.get(keypointIndex) || null
+        );
     }
 
-    private drawSurfaceEllipsesForSequence(
-        keypointNameSequence: string[],
-        keypointCenterMap: Map<
-            string,
-            Map<string, { id: string; labelName: string; centroid: IPoint }>
-        >,
+    private drawMeasurementLineConnection(
+        measurementDefinition: MeasurementDefinition,
+        connection: Extract<MeasurementConnection, { type: "line" }>,
+        keypointCenterMap: RenderableMeasurementCenterMap,
         data: EditorData,
     ): void {
-        for (let i = 0; i < keypointNameSequence.length - 2; i += 3) {
-            const firstBaseName = keypointNameSequence[i];
-            const secondBaseName = keypointNameSequence[i + 1];
-            const thirdBaseName = keypointNameSequence[i + 2];
-            const firstBySuffix = keypointCenterMap.get(firstBaseName);
-            const secondBySuffix = keypointCenterMap.get(secondBaseName);
-            const thirdBySuffix = keypointCenterMap.get(thirdBaseName);
-            if (!firstBySuffix || !secondBySuffix || !thirdBySuffix) {
-                continue;
+        const startBySuffix = this.getRenderableKeypointsByPosition(
+            measurementDefinition,
+            keypointCenterMap,
+            connection.fromPosition,
+        );
+        const endBySuffix = this.getRenderableKeypointsByPosition(
+            measurementDefinition,
+            keypointCenterMap,
+            connection.toPosition,
+        );
+
+        if (!startBySuffix || !endBySuffix) {
+            return;
+        }
+
+        startBySuffix.forEach((startPointData, suffix) => {
+            const endPointData = endBySuffix.get(suffix);
+            if (!endPointData) {
+                return;
             }
 
-            firstBySuffix.forEach((firstPointData, suffix) => {
-                const secondPointData = secondBySuffix.get(suffix);
-                const thirdPointData = thirdBySuffix.get(suffix);
-                if (!secondPointData || !thirdPointData) {
-                    return;
-                }
+            this.drawLineBetweenKeypointCenters(
+                startPointData.centroid,
+                endPointData.centroid,
+                this.resolveLineColorBySuffix(suffix),
+                data,
+            );
+        });
+    }
 
-                const pointsOnCanvas =
-                    RenderEngineUtil.transferPolygonFromImageToViewPortContent(
-                        [
-                            firstPointData.centroid,
-                            secondPointData.centroid,
-                            thirdPointData.centroid,
-                        ],
-                        data,
-                    );
-                const startPoint = RenderEngineUtil.setPointBetweenPixels(
-                    pointsOnCanvas[0],
-                );
-                const endPoint = RenderEngineUtil.setPointBetweenPixels(
-                    pointsOnCanvas[1],
-                );
-                const constrainPoint = RenderEngineUtil.setPointBetweenPixels(
-                    pointsOnCanvas[2],
-                );
-                const ellipseColor = this.resolveLineColorBySuffix(suffix);
-                this.surfaceAnnotator.drawEllipse(
-                    this.canvas,
-                    startPoint,
-                    endPoint,
-                    constrainPoint,
-                    ellipseColor,
-                );
-            });
+    private drawMeasurementEllipseConnection(
+        measurementDefinition: MeasurementDefinition,
+        connection: Extract<MeasurementConnection, { type: "ellipse" }>,
+        keypointCenterMap: RenderableMeasurementCenterMap,
+        data: EditorData,
+    ): void {
+        const firstBySuffix = this.getRenderableKeypointsByPosition(
+            measurementDefinition,
+            keypointCenterMap,
+            connection.firstPosition,
+        );
+        const secondBySuffix = this.getRenderableKeypointsByPosition(
+            measurementDefinition,
+            keypointCenterMap,
+            connection.secondPosition,
+        );
+        const thirdBySuffix = this.getRenderableKeypointsByPosition(
+            measurementDefinition,
+            keypointCenterMap,
+            connection.thirdPosition,
+        );
+
+        if (!firstBySuffix || !secondBySuffix || !thirdBySuffix) {
+            return;
         }
+
+        firstBySuffix.forEach((firstPointData, suffix) => {
+            const secondPointData = secondBySuffix.get(suffix);
+            const thirdPointData = thirdBySuffix.get(suffix);
+            if (!secondPointData || !thirdPointData) {
+                return;
+            }
+
+            const pointsOnCanvas =
+                RenderEngineUtil.transferPolygonFromImageToViewPortContent(
+                    [
+                        firstPointData.centroid,
+                        secondPointData.centroid,
+                        thirdPointData.centroid,
+                    ],
+                    data,
+                );
+            const startPoint = RenderEngineUtil.setPointBetweenPixels(
+                pointsOnCanvas[0],
+            );
+            const endPoint = RenderEngineUtil.setPointBetweenPixels(
+                pointsOnCanvas[1],
+            );
+            const constrainPoint = RenderEngineUtil.setPointBetweenPixels(
+                pointsOnCanvas[2],
+            );
+
+            this.surfaceAnnotator.drawEllipse(
+                this.canvas,
+                startPoint,
+                endPoint,
+                constrainPoint,
+                this.resolveLineColorBySuffix(suffix),
+            );
+        });
+    }
+
+    private drawMeasurementConnections(
+        measurementDefinition: MeasurementDefinition,
+        keypointCenterMap: RenderableMeasurementCenterMap,
+        data: EditorData,
+    ): void {
+        if (!measurementDefinition.functionId) {
+            return;
+        }
+
+        getMeasurementConnections(
+            measurementDefinition.functionId,
+            measurementDefinition.keypointIndexes.length,
+        ).forEach((connection) => {
+            if (connection.type === "line") {
+                this.drawMeasurementLineConnection(
+                    measurementDefinition,
+                    connection,
+                    keypointCenterMap,
+                    data,
+                );
+            } else {
+                this.drawMeasurementEllipseConnection(
+                    measurementDefinition,
+                    connection,
+                    keypointCenterMap,
+                    data,
+                );
+            }
+        });
     }
 
     // =================================================================================================================
@@ -804,61 +805,16 @@ export class PolygonRenderEngine extends BaseRenderEngine {
             }
         });
 
-        // Create a map of keypoints' centers for rendering.
         const renderableKeypointCenterMap =
             this.buildRenderableKeypointCenterMap();
-        const keypointNamesPairedToDrawLine = [
-            ...angleKeypointNames_B.slice(0, -1),
-            ...positionKeypointNames_B.slice(0, 2),
-            ...asymKeypointNames_E,
-            ...tgaKeypointNames_E.slice(0, 2),
-            ...asymCSPKeypointNames_F,
-            ...asymCIKeypointNames_F,
-            ...ratioAtrVMGKeypointNames_F,
-            ...ratio4VKeypointNames_G,
-        ];
-        this.drawKeypointLinesForSequence(
-            keypointNamesPairedToDrawLine,
-            2,
-            renderableKeypointCenterMap,
-            data,
-        );
+        this.getMeasurementDefinitions().forEach((measurementDefinition) => {
+            this.drawMeasurementConnections(
+                measurementDefinition,
+                renderableKeypointCenterMap,
+                data,
+            );
+        });
 
-        const keypointNamesUnPairedToDrawLine = [
-            ...asymKeypointNames_B,
-            ...veinsKeypointNames_B,
-            "p-b.k:Veins-3",
-            ...avKeypointNames_B,
-            ...angleSFKeypointNames_F,
-            ...ratioSFKeypointNames_F,
-        ];
-        this.drawKeypointLinesForSequence(
-            keypointNamesUnPairedToDrawLine,
-            1,
-            renderableKeypointCenterMap,
-            data,
-        );
-
-        // Create a map of keypoints' centers for Surface annotations.
-        const keypointNamesSurfaceAndPositionB = [
-            ...surfaceKeypointNames_B,
-            ...positionKeypointNames_B.slice(2),
-        ];
-        this.drawSurfaceEllipsesForSequence(
-            keypointNamesSurfaceAndPositionB,
-            renderableKeypointCenterMap,
-            data,
-        );
-
-        //
-        // const [positionRatio_B, _ellipsePointsForRatio] = this.keypointUtils.computePositionRatio(allKeypointCenters, positionKeypointNames_B);
-        // const ellipsePointsForRatio = _ellipsePointsForRatio.map(([x, y]) => ({ x, y }));
-        // const ellipsePointsForRatioOnCanva = RenderEngineUtil.transferPolygonFromImageToViewPortContent(ellipsePointsForRatio, data);
-        // const standardizedEllipsePoints: IPoint[] = ellipsePointsForRatioOnCanva.map((point: IPoint) => RenderEngineUtil.setPointBetweenPixels(point));
-        // const anchorColor: string = BaseRenderEngine.resolveLabelAnchorColor(true);
-        // standardizedEllipsePoints.forEach((point: IPoint) => {
-        //     DrawUtil.drawCircleWithFill(this.canvas, point, Settings.RESIZE_HANDLE_DIMENSION_PX / 2, anchorColor);
-        // })
     }
 
     private drawPolygon(
@@ -1460,15 +1416,10 @@ export class PolygonRenderEngine extends BaseRenderEngine {
                 const labelPolygon0: LabelPolygon =
                     LabelUtil.createLabelPolygon(activeLabelId, polygons[0]);
 
-                let adjacentLabelName: string;
-                if (activeLabelName === "p-b.k:Veins-1") {
-                    adjacentLabelName = "p-b.k:Veins-3";
-                } else {
-                    adjacentLabelName = activeLabelName.replace(
-                        this.kptNameEndPattern,
-                        (match) => (parseInt(match, 10) + 1).toString(),
-                    );
-                }
+                const adjacentLabelName = activeLabelName.replace(
+                    this.kptNameEndPattern,
+                    (match) => (parseInt(match, 10) + 1).toString(),
+                );
                 const adjacentLabelId = labelNameToIdMap[adjacentLabelName];
                 if (adjacentLabelId) {
                     const labelPolygon1: LabelPolygon =
@@ -1487,24 +1438,18 @@ export class PolygonRenderEngine extends BaseRenderEngine {
     }
 
     private findKeypointGroup(labelName: string): string[] | null {
-        const allGroups = [
-            asymKeypointNames_B,
-            angleKeypointNames_B,
-            surfaceKeypointNames_B,
-            positionKeypointNames_B,
-            veinsKeypointNames_B,
-            avKeypointNames_B,
-            tgaKeypointNames_D,
-            asymKeypointNames_E,
-            tgaKeypointNames_E,
-            asymCSPKeypointNames_F,
-            asymCIKeypointNames_F,
-            angleSFKeypointNames_F,
-            ratioSFKeypointNames_F,
-            ratioAtrVMGKeypointNames_F,
-            ratio4VKeypointNames_G,
-        ];
-        return allGroups.find((group) => group.includes(labelName)) || null;
+        const parsedKeypointName = parseKeypointName(labelName);
+        if (!parsedKeypointName) {
+            return null;
+        }
+
+        const measurementDefinition = this.getMeasurementDefinitions().find(
+            (definition) =>
+                definition.measurementName ===
+                parsedKeypointName.measurementName,
+        );
+
+        return measurementDefinition ? measurementDefinition.keypointNames : null;
     }
 
     private addPolygonLabelNKeypoints(polygons: IPoint[][]): void {
@@ -2063,122 +2008,80 @@ export class KeypointSurfaceAnnotation {
 }
 
 export class KeypointUtils {
-    public getKeypointsFromPolygons() {
+    public getKeypointsFromPolygons(): KeypointCenter[] {
         const imageData: ImageData = LabelsSelector.getActiveImageData();
         const labelNames: LabelName[] = LabelsSelector.getLabelNames();
-
-        // Create a map of labelId to label name for easy lookup
         const labelMap = labelNames.reduce((map, label) => {
-            map[label.id] = label.name; // label id: label name
+            map[label.id] = label.name;
             return map;
-        }, {});
+        }, {} as Record<string, string>);
 
-        // Map labelId in annotations to the corresponding name and filters only keypoints
+        if (!imageData) {
+            return [];
+        }
 
-        const allKeypointAnnotations = imageData.labelPolygons
+        return imageData.labelPolygons
             .filter((annotation) => annotation.isVisible)
-            .map((annotation) => ({
-                ...annotation,
-                labelName: annotation.labelId
+            .map((annotation) => {
+                const labelName = annotation.labelId
                     ? labelMap[annotation.labelId] || null
-                    : null, // Find the name based on labelId
-            }))
-            .filter(
-                (annotation) =>
-                    annotation.labelName &&
-                    allKeypointNames.includes(annotation.labelName),
-            ); // Filter by specific names
+                    : null;
+                const parsedKeypointName = labelName
+                    ? parseKeypointName(labelName)
+                    : null;
 
-        // Compute centroids
-        const allKeypointCenters = allKeypointAnnotations.map((annotation) => ({
-            id: annotation.id,
-            labelName: annotation.labelName,
-            centroid: this.computeCentroid(annotation),
-        }));
+                if (!labelName || !parsedKeypointName) {
+                    return null;
+                }
 
-        return allKeypointCenters;
+                return {
+                    id: annotation.id,
+                    labelName,
+                    measurementName: parsedKeypointName.measurementName,
+                    keypointIndex: parsedKeypointName.keypointIndex,
+                    suffix: parsedKeypointName.suffix,
+                    centroid: this.computeCentroid(annotation),
+                };
+            })
+            .filter((keypoint): keypoint is KeypointCenter => !!keypoint);
     }
 
-    public buildMeasurements() {
+    public buildMeasurements(): Array<number | null> {
+        return this.buildMeasurementResults().map((result) => result.value);
+    }
+
+    public buildMeasurementResults(): MeasurementResult[] {
         const allKeypointCenters = this.getKeypointsFromPolygons();
-        const asymRatio_B = this.computeDistanceRatio(
-            allKeypointCenters,
-            asymKeypointNames_B,
-        );
-        const angle_B = this.computeAngle(
-            allKeypointCenters,
-            angleKeypointNames_B,
-        );
-        const areaRatio_B = this.computeSurfaceRatio(
-            allKeypointCenters,
-            surfaceKeypointNames_B,
-        );
-        const positionRatio_B = this.computePositionRatio(
-            allKeypointCenters,
-            positionKeypointNames_B,
-        );
-        const veinsRatio_B = this.computeDistanceRatio(
-            allKeypointCenters,
-            veinsKeypointNames_B,
-        );
-        const avRatio_B = this.computeDistanceRatio(
-            allKeypointCenters,
-            avKeypointNames_B,
-        );
-        const tgaRatio_D = this.computeDistanceRatio(
-            allKeypointCenters,
-            tgaKeypointNames_D,
-        );
-        const asymRatio_E = this.computeDistanceRatio(
-            allKeypointCenters,
-            asymKeypointNames_E,
-        );
-        const tgaRatio_E = this.computeDistanceRatioWithProjection(
-            allKeypointCenters,
-            tgaKeypointNames_E,
-        );
-        const asymRatioCSP_F = this.computeDistanceRatio(
-            allKeypointCenters,
-            asymCSPKeypointNames_F,
-        );
-        const asymRatioCI_F = this.computeDistanceRatio(
-            allKeypointCenters,
-            asymCIKeypointNames_F,
-        );
-        const angleSF_F = this.computeAngle(
-            allKeypointCenters,
-            angleSFKeypointNames_F,
-        );
-        const ratioSF_F = this.computeDistanceRatio(
-            allKeypointCenters,
-            ratioSFKeypointNames_F,
-        );
-        const ratioAtrVMG_F = this.computeDistanceRatio(
-            allKeypointCenters,
-            ratioAtrVMGKeypointNames_F,
-        );
-        const ratio4V_G = this.computeDistanceRatio(
-            allKeypointCenters,
-            ratio4VKeypointNames_G,
+        const measurementDefinitions = inferMeasurementDefinitions(
+            LabelsSelector.getLabelNames(),
+            GeneralSelector.getMeasurementFunctionByName(),
         );
 
-        return [
-            asymRatio_B,
-            angle_B,
-            areaRatio_B,
-            positionRatio_B,
-            veinsRatio_B,
-            avRatio_B,
-            tgaRatio_D,
-            asymRatio_E,
-            tgaRatio_E,
-            asymRatioCSP_F,
-            asymRatioCI_F,
-            angleSF_F,
-            ratioSF_F,
-            ratioAtrVMG_F,
-            ratio4V_G,
-        ];
+        return measurementDefinitions.map((measurementDefinition) => ({
+            measurementName: measurementDefinition.measurementName,
+            displayName: measurementDefinition.displayName,
+            functionId: measurementDefinition.functionId,
+            functionName: measurementDefinition.functionName,
+            value: this.computeMeasurementValue(
+                allKeypointCenters,
+                measurementDefinition,
+            ),
+            unit:
+                measurementDefinition.functionId === MeasurementFunctionId.ANGLE
+                    ? "degree"
+                    : null,
+        }));
+    }
+
+    public buildMeasurementResult(
+        measurementName: string,
+    ): MeasurementResult | null {
+        return (
+            this.buildMeasurementResults().find(
+                (measurementResult) =>
+                    measurementResult.measurementName === measurementName,
+            ) || null
+        );
     }
 
     public computeCentroid(polygon: LabelPolygon): IPoint {
@@ -2188,7 +2091,6 @@ export class KeypointUtils {
             throw new Error("No vertices in the polygon");
         }
 
-        // Summing up the x and y coordinates of the vertices
         const sum = vertices.reduce(
             (acc, point) => {
                 acc.x += point.x;
@@ -2198,13 +2100,93 @@ export class KeypointUtils {
             { x: 0, y: 0 },
         );
 
-        // Calculate the average to find the centroid
-        const centroid = {
+        return {
             x: sum.x / vertices.length,
             y: sum.y / vertices.length,
         };
+    }
 
-        return centroid;
+    private computeMeasurementValue(
+        keypointCenters: KeypointCenter[],
+        measurementDefinition: MeasurementDefinition,
+    ): number | null {
+        if (!measurementDefinition.functionId) {
+            return null;
+        }
+
+        const orderedKeypoints = this.getOrderedKeypointsForDefinition(
+            keypointCenters,
+            measurementDefinition,
+        );
+        if (!orderedKeypoints) {
+            return null;
+        }
+
+        switch (measurementDefinition.functionId) {
+            case MeasurementFunctionId.CHAIN_DISTANCE_RATIO:
+                return this.computeChainDistanceRatio(orderedKeypoints);
+            case MeasurementFunctionId.CLOSED_TRIANGLE_INVERSE_DISTANCE_RATIO:
+                return this.computeClosedTriangleInverseDistanceRatio(
+                    orderedKeypoints,
+                );
+            case MeasurementFunctionId.PAIRED_DISTANCE_RATIO:
+                return this.computePairedDistanceRatio(orderedKeypoints);
+            case MeasurementFunctionId.INVERSE_PAIRED_DISTANCE_RATIO:
+                return this.computeInversePairedDistanceRatio(orderedKeypoints);
+            case MeasurementFunctionId.ANCHORED_DISTANCE_RATIO:
+                return this.computeAnchoredDistanceRatio(orderedKeypoints);
+            case MeasurementFunctionId.TERMINAL_DISTANCE_RATIO:
+                return this.computeTerminalDistanceRatio(orderedKeypoints);
+            case MeasurementFunctionId.ANGLE:
+                return this.computeAngle(orderedKeypoints);
+            case MeasurementFunctionId.SURFACE_ELLIPSE_AREA_RATIO:
+                return this.computeSurfaceRatio(orderedKeypoints);
+            case MeasurementFunctionId.POSITION_ELLIPSE_SPLIT_RATIO:
+                return this.computePositionRatio(orderedKeypoints);
+            case MeasurementFunctionId.PROJECTED_DISTANCE_RATIO:
+                return this.computeDistanceRatioWithProjection(orderedKeypoints);
+            default:
+                return null;
+        }
+    }
+
+    private getOrderedKeypointsForDefinition(
+        keypointCenters: KeypointCenter[],
+        measurementDefinition: MeasurementDefinition,
+    ): KeypointCenter[] | null {
+        const measurementKeypoints = keypointCenters.filter(
+            (keypointCenter) =>
+                keypointCenter.measurementName ===
+                measurementDefinition.measurementName,
+        );
+        const suffixes = Array.from(
+            new Set(measurementKeypoints.map((keypoint) => keypoint.suffix)),
+        ).sort((first, second) => {
+            if (first === "") return -1;
+            if (second === "") return 1;
+            return first.localeCompare(second);
+        });
+
+        for (const suffix of suffixes) {
+            const orderedKeypoints = measurementDefinition.keypointIndexes.map(
+                (keypointIndex) =>
+                    measurementKeypoints.find(
+                        (keypoint) =>
+                            keypoint.keypointIndex === keypointIndex &&
+                            keypoint.suffix === suffix,
+                    ),
+            );
+
+            if (
+                orderedKeypoints.every(
+                    (keypoint): keypoint is KeypointCenter => !!keypoint,
+                )
+            ) {
+                return orderedKeypoints;
+            }
+        }
+
+        return null;
     }
 
     private computeDistance(point1: IPoint, point2: IPoint): number {
@@ -2213,113 +2195,130 @@ export class KeypointUtils {
         return Math.sqrt(dx * dx + dy * dy);
     }
 
-    // Function to compute the ratio of distances between kp1, kp2, and kp3 polygons
     private computeDistanceRatio(
-        keypointCenters: {
-            id: string;
-            labelName: string;
-            centroid: IPoint;
-        }[],
-        keypointNames: string[],
-    ): number | null {
-        const keypoints = [];
-
-        for (let i = 0; i < keypointNames.length; i++) {
-            const selectedCenter = keypointCenters.find(
-                (polygon) => polygon.labelName === keypointNames[i],
-            );
-            keypoints.push(selectedCenter);
-        }
-
-        // Ensure all selected keypoints are present
-        if (keypoints.includes(undefined)) {
-            // console.error('There are not enough keypoints')
-            return null;
-        }
-
-        // Compute distances
-        if (keypoints.length === 3) {
-            const distance_kp2_kp3 = this.computeDistance(
-                keypoints[1].centroid,
-                keypoints[2].centroid,
-            );
-            const distance_kp1_kp2 = this.computeDistance(
-                keypoints[0].centroid,
-                keypoints[1].centroid,
-            );
-            const ratio = distance_kp2_kp3 / (distance_kp1_kp2 + 1e-6);
-            // console.log('ratio', ratio)
-            return ratio;
-        } else if (keypoints.length === 4) {
-            const distance_kp3_kp4 = this.computeDistance(
-                keypoints[2].centroid,
-                keypoints[3].centroid,
-            );
-            const distance_kp1_kp2 = this.computeDistance(
-                keypoints[0].centroid,
-                keypoints[1].centroid,
-            );
-            const ratio = distance_kp3_kp4 / (distance_kp1_kp2 + 1e-6);
-            // console.log('ratio', ratio)
-            return ratio;
-        } else {
-            // console.error('There are an unexpected number of keypoints (${keypoints.length})')
-            return null;
-        }
+        numeratorStart: IPoint,
+        numeratorEnd: IPoint,
+        denominatorStart: IPoint,
+        denominatorEnd: IPoint,
+    ): number {
+        return (
+            this.computeDistance(numeratorStart, numeratorEnd) /
+            (this.computeDistance(denominatorStart, denominatorEnd) + 1e-6)
+        );
     }
 
-    private computeVector(point1: IPoint, point2: IPoint): IPoint {
-        const vector: IPoint = {
-            x: point1.x - point2.x,
-            y: point1.y - point2.y,
-        };
-        return vector;
-    }
-
-    // Function to compute the angle between the vectors formed by kp1, kp2, and kp3, kp4
-    private computeAngle(
-        keypointCenters: {
-            id: string;
-            labelName: string;
-            centroid: IPoint;
-        }[],
-        keypointNames: string[],
+    private computeChainDistanceRatio(
+        keypoints: KeypointCenter[],
     ): number | null {
-        const keypoints = [];
-
-        for (let i = 0; i < keypointNames.length; i++) {
-            const selectedCenter = keypointCenters.find(
-                (polygon) => polygon.labelName === keypointNames[i],
-            );
-            keypoints.push(selectedCenter);
-        }
-
-        // Ensure all selected keypoints are present
-        if (
-            (keypointNames.length === 5 &&
-                keypoints.slice(0, 4).includes(undefined)) ||
-            (keypointNames.length === 3 &&
-                keypoints.slice(0, 3).includes(undefined))
-        ) {
-            // console.error('There are not enough keypoints')
+        if (keypoints.length !== 3) {
             return null;
         }
-        console.log(keypoints);
-        console.log(keypointNames);
 
-        if (keypointNames.length === 3) {
-            // insert to keypoints at 3rd position with a copy of keypoints[1]
-            keypoints.splice(2, 0, keypoints[1]);
-        }
-
-        // Angle values
-        const vect1 = this.computeVector(
+        return this.computeDistanceRatio(
+            keypoints[1].centroid,
+            keypoints[2].centroid,
             keypoints[0].centroid,
             keypoints[1].centroid,
         );
-        const vect2 = this.computeVector(
+    }
+
+    private computeClosedTriangleInverseDistanceRatio(
+        keypoints: KeypointCenter[],
+    ): number | null {
+        if (keypoints.length !== 3) {
+            return null;
+        }
+
+        return this.computeDistanceRatio(
+            keypoints[0].centroid,
+            keypoints[1].centroid,
+            keypoints[1].centroid,
+            keypoints[2].centroid,
+        );
+    }
+
+    private computePairedDistanceRatio(
+        keypoints: KeypointCenter[],
+    ): number | null {
+        if (keypoints.length !== 4) {
+            return null;
+        }
+
+        return this.computeDistanceRatio(
             keypoints[2].centroid,
             keypoints[3].centroid,
+            keypoints[0].centroid,
+            keypoints[1].centroid,
+        );
+    }
+
+    private computeInversePairedDistanceRatio(
+        keypoints: KeypointCenter[],
+    ): number | null {
+        if (keypoints.length !== 4) {
+            return null;
+        }
+
+        return this.computeDistanceRatio(
+            keypoints[0].centroid,
+            keypoints[1].centroid,
+            keypoints[2].centroid,
+            keypoints[3].centroid,
+        );
+    }
+
+    private computeAnchoredDistanceRatio(keypoints: KeypointCenter[]): number | null {
+        if (keypoints.length !== 3) {
+            return null;
+        }
+
+        return this.computeDistanceRatio(
+            keypoints[0].centroid,
+            keypoints[1].centroid,
+            keypoints[2].centroid,
+            keypoints[0].centroid,
+        );
+    }
+
+    private computeTerminalDistanceRatio(
+        keypoints: KeypointCenter[],
+    ): number | null {
+        if (keypoints.length !== 3) {
+            return null;
+        }
+
+        return this.computeDistanceRatio(
+            keypoints[2].centroid,
+            keypoints[1].centroid,
+            keypoints[0].centroid,
+            keypoints[2].centroid,
+        );
+    }
+
+    private computeVector(point1: IPoint, point2: IPoint): IPoint {
+        return {
+            x: point1.x - point2.x,
+            y: point1.y - point2.y,
+        };
+    }
+
+    private computeAngle(keypoints: KeypointCenter[]): number | null {
+        if (keypoints.length !== 3 && keypoints.length !== 5) {
+            return null;
+        }
+
+        const angleKeypoints = [...keypoints];
+        if (angleKeypoints.length === 3) {
+            angleKeypoints.splice(2, 0, angleKeypoints[1]);
+        }
+
+        const vect1 = this.computeVector(
+            angleKeypoints[0].centroid,
+            angleKeypoints[1].centroid,
+        );
+        const vect2 = this.computeVector(
+            angleKeypoints[2].centroid,
+            angleKeypoints[3].centroid,
         );
         const angle =
             (Math.atan2(
@@ -2329,12 +2328,10 @@ export class KeypointUtils {
                 180) /
             Math.PI;
 
-        // Sign
-        // Check if the 5th keypoint is defined
-        if (keypoints[4] !== undefined) {
+        if (angleKeypoints[4] !== undefined) {
             const vect3 = this.computeVector(
-                keypoints[4].centroid,
-                keypoints[3].centroid,
+                angleKeypoints[4].centroid,
+                angleKeypoints[3].centroid,
             );
             const sign = Math.sign(vect2.x * vect3.y - vect2.y * vect3.x);
             return sign * angle;
@@ -2343,32 +2340,6 @@ export class KeypointUtils {
         return Math.abs(angle);
     }
 
-    // private computeAngle3Points(
-    //     keypointCenters: {
-    //         id: string;
-    //         labelName: string;
-    //         centroid: IPoint;
-    //     }[],
-    //     keypointNames: string[]
-    // ): number | null {
-    //     const keypoints = [];
-
-    // }
-
-    private findLineEquationFrom2Points(
-        linePoint1: IPoint,
-        linePoint2: IPoint,
-    ) {
-        // Solve for line parameters
-        // [x1 y1] [a] = [-1]
-        // [x2 y2] [b]   [-1]
-
-        const a = linePoint2.y - linePoint1.y;
-        const b = linePoint1.x - linePoint2.x;
-        const c = linePoint2.x * linePoint1.y - linePoint1.x * linePoint2.y;
-
-        return [a, b, c]; // Line equation: ax + by + c = 0
-    }
 
     private findLineEquationFromNormalVectorAnd1Point(
         normalVector: IPoint,
@@ -2378,7 +2349,7 @@ export class KeypointUtils {
         const b = normalVector.y;
         const c = -a * point.x - b * point.y;
 
-        return [a, b, c]; // Line equation: ax + by + c = 0
+        return [a, b, c];
     }
 
     private projectPointOntoLine(lineParams: number[], point: IPoint) {
@@ -2387,136 +2358,74 @@ export class KeypointUtils {
         const b2 = -a1;
         const c2 = -a2 * point.x - b2 * point.y;
         const x = -(c1 * b2 - c2 * b1) / (a1 * b2 - a2 * b1);
-        const projectedPoint: IPoint = {
+        return {
             x: x,
             y: (-c1 - a1 * x) / b1,
         };
-        return projectedPoint;
     }
 
-    // Function to compute the ratio of distances between kp1, kp2, and kp3 polygons
     private computeDistanceRatioWithProjection(
-        keypointCenters: {
-            id: string;
-            labelName: string;
-            centroid: IPoint;
-        }[],
-        keypointNames: string[],
+        keypoints: KeypointCenter[],
     ): number | null {
-        const keypoints = [];
-
-        for (let i = 0; i < keypointNames.length; i++) {
-            const selectedCenter = keypointCenters.find(
-                (polygon) => polygon.labelName === keypointNames[i],
-            );
-            keypoints.push(selectedCenter);
-        }
-
-        // Ensure all selected keypoints are present
-        if (keypoints.includes(undefined)) {
-            // console.error('There are not enough keypoints')
+        if (keypoints.length !== 3) {
             return null;
         }
 
-        // Compute distances
-        if (keypoints.length === 3) {
-            const directionVectorOfLine01 = this.computeVector(
-                keypoints[0].centroid,
-                keypoints[1].centroid,
-            );
-            const normalVectorOfLine01: IPoint = {
-                x: directionVectorOfLine01.y,
-                y: -directionVectorOfLine01.x,
-            };
-            const lineParamsOfLine2 =
-                this.findLineEquationFromNormalVectorAnd1Point(
-                    normalVectorOfLine01,
-                    keypoints[2].centroid,
-                );
-            const projectedPoint = this.projectPointOntoLine(
-                lineParamsOfLine2,
-                keypoints[1].centroid,
-            );
-            const distance_kp3_projectPoint = this.computeDistance(
-                projectedPoint,
+        const directionVectorOfLine01 = this.computeVector(
+            keypoints[0].centroid,
+            keypoints[1].centroid,
+        );
+        const normalVectorOfLine01: IPoint = {
+            x: directionVectorOfLine01.y,
+            y: -directionVectorOfLine01.x,
+        };
+        const lineParamsOfLine2 =
+            this.findLineEquationFromNormalVectorAnd1Point(
+                normalVectorOfLine01,
                 keypoints[2].centroid,
             );
-            const distance_kp1_kp2 = this.computeDistance(
-                keypoints[0].centroid,
-                keypoints[1].centroid,
-            );
-            const ratio = distance_kp3_projectPoint / (distance_kp1_kp2 + 1e-6);
-            // console.log('ratio', ratio)
-            return ratio;
-        } else {
-            // console.error('There are an unexpected number of keypoints (${keypoints.length})')
-            return null;
-        }
+        const projectedPoint = this.projectPointOntoLine(
+            lineParamsOfLine2,
+            keypoints[1].centroid,
+        );
+
+        return this.computeDistanceRatio(
+            projectedPoint,
+            keypoints[2].centroid,
+            keypoints[0].centroid,
+            keypoints[1].centroid,
+        );
     }
 
     private computeEllipseArea(majorAxis: number, minorAxis: number) {
         return Math.PI * majorAxis * minorAxis;
     }
-    private computeEllipseCircumference(majorAxis: number, minorAxis: number) {
-        const h = (majorAxis - minorAxis) ** 2 / (majorAxis + minorAxis) ** 2;
-        const approxCircumference =
-            Math.PI *
-            (majorAxis + minorAxis) *
-            (1 + (3 * h) / (10 + Math.sqrt(4 - 3 * h)));
-        return approxCircumference;
-    }
 
-    // Function to compute the surface ratio between the ellipse formed by kp1, kp2, kp3 and kp4, kp5, kp6
-    private computeSurfaceRatio(
-        keypointCenters: {
-            id: string;
-            labelName: string;
-            centroid: IPoint;
-        }[],
-        keypointNames: string[],
-    ): number | null {
-        const keypoints = [];
-
-        for (let i = 0; i < keypointNames.length; i++) {
-            const selectedCenter = keypointCenters.find(
-                (polygon) => polygon.labelName === keypointNames[i],
-            );
-            keypoints.push(selectedCenter);
-        }
-
-        // Ensure all selected keypoints are present
-        if (keypoints.includes(undefined)) {
-            // console.error('There are not enough keypoints')
+    private computeSurfaceRatio(keypoints: KeypointCenter[]): number | null {
+        if (keypoints.length !== 6) {
             return null;
         }
 
-        // Compute ellipse properties
-        if (keypoints.length === 6) {
-            const propertiesEllipse1 = KeypointSurfaceAnnotation.computeEllipse(
-                keypoints[3].centroid,
-                keypoints[4].centroid,
-                keypoints[5].centroid,
-            );
-            const propertiesEllipse2 = KeypointSurfaceAnnotation.computeEllipse(
-                keypoints[0].centroid,
-                keypoints[1].centroid,
-                keypoints[2].centroid,
-            );
-            // const circumferenceEllipse1 = this.computeEllipseCircumference(propertiesEllipse1.majorAxis, propertiesEllipse1.minorAxis);
-            // const circumferenceEllipse2 = this.computeEllipseCircumference(propertiesEllipse2.majorAxis, propertiesEllipse2.minorAxis);
-            const areaEllipse1 = this.computeEllipseArea(
-                propertiesEllipse1.majorAxis,
-                propertiesEllipse1.minorAxis,
-            );
-            const areaEllipse2 = this.computeEllipseArea(
-                propertiesEllipse2.majorAxis,
-                propertiesEllipse2.minorAxis,
-            );
-            const areaRatio = areaEllipse1 / (areaEllipse2 + 1e-6);
-            return areaRatio;
-        } else {
-            return null;
-        }
+        const propertiesEllipse1 = KeypointSurfaceAnnotation.computeEllipse(
+            keypoints[3].centroid,
+            keypoints[4].centroid,
+            keypoints[5].centroid,
+        );
+        const propertiesEllipse2 = KeypointSurfaceAnnotation.computeEllipse(
+            keypoints[0].centroid,
+            keypoints[1].centroid,
+            keypoints[2].centroid,
+        );
+        const areaEllipse1 = this.computeEllipseArea(
+            propertiesEllipse1.majorAxis,
+            propertiesEllipse1.minorAxis,
+        );
+        const areaEllipse2 = this.computeEllipseArea(
+            propertiesEllipse2.majorAxis,
+            propertiesEllipse2.minorAxis,
+        );
+
+        return areaEllipse1 / (areaEllipse2 + 1e-6);
     }
 
     private findEllipseKeypoints(
@@ -2549,13 +2458,11 @@ export class KeypointUtils {
             kp4Rotated = [0.0, minorAxis];
         }
 
-        // Create inverted rotation matrix
         const rotMatInverted = [
             [Math.cos(angleRad), -Math.sin(angleRad)],
             [Math.sin(angleRad), Math.cos(angleRad)],
         ];
 
-        // Parametric equation function
         const parametricEquation = (phi: number) => {
             const cosVal = Math.cos(phi);
             const sinVal = Math.sin(phi);
@@ -2570,7 +2477,6 @@ export class KeypointUtils {
             ];
         };
 
-        // Calculate key points
         const kp1 = [ellipseKp1.x, ellipseKp1.y];
         const kp2 = [ellipseKp2.x, ellipseKp2.y];
         const kp3 = [
@@ -2582,10 +2488,7 @@ export class KeypointUtils {
             center.y + rotMatInverted[1][1] * kp4Rotated[1],
         ];
 
-        // Create ellipse points array
         const ellipsePoints = [kp1, kp2, kp3, kp4];
-
-        // Add additional points
         const step = (2 * Math.PI) / nbPoints;
         for (let i = 0; i < nbPoints; i++) {
             const ang = i * step;
@@ -2598,7 +2501,6 @@ export class KeypointUtils {
     }
 
     private orderPointsCounterclockwise(points) {
-        // Calculate centroid
         let cx = 0,
             cy = 0;
         for (const point of points) {
@@ -2608,38 +2510,27 @@ export class KeypointUtils {
         cx /= points.length;
         cy /= points.length;
 
-        // Calculate angles and create pairs
         const pointsWithAngles = points.map((point) => {
             const angle = Math.atan2(point[1] - cy, point[0] - cx);
             return { point, angle };
         });
-        // Sort by angle
         pointsWithAngles.sort((a, b) => a.angle - b.angle);
 
-        // Extract sorted points
         return pointsWithAngles.map((item) => item.point);
     }
 
     private pointsToLineSign(linePoint1, linePoint2, points) {
-        // Convert line points to arrays
         const p1 = [linePoint1.x, linePoint1.y];
         const p2 = [linePoint2.x, linePoint2.y];
-
-        // Calculate the direction vector of the line
         const vectLine = [p2[0] - p1[0], p2[1] - p1[1]];
-
-        // Calculate vectors from p1 to each point
         const vectsPointsP1 = points.map((point) => [
             point[0] - p1[0],
             point[1] - p1[1],
         ]);
-
-        // Calculate cross product
         const crossProd = vectsPointsP1.map(
             (vect) => vectLine[0] * vect[1] - vectLine[1] * vect[0],
         );
 
-        // Return the sign of the cross product
         return crossProd.map((val) => Math.sign(val));
     }
 
@@ -2668,7 +2559,6 @@ export class KeypointUtils {
         linePoint2,
         nbApproxPointsEllipse,
     ) {
-        // Find ellipse keypoints
         const [ellipsePoints, majorAxis, minorAxis] = this.findEllipseKeypoints(
             ellipseP1,
             ellipseP2,
@@ -2679,76 +2569,39 @@ export class KeypointUtils {
         const kp1 = ellipsePoints[0];
         const kp2 = ellipsePoints[1];
         const kp3 = ellipsePoints[2];
-
-        // Calculate vectors
         const vectKp2Kp1 = [kp2[0] - kp1[0], kp2[1] - kp1[1]];
         const vectKp3Kp1 = [kp3[0] - kp1[0], kp3[1] - kp1[1]];
-
-        // Cross product sign
         const sign = Math.sign(
             vectKp2Kp1[0] * vectKp3Kp1[1] - vectKp2Kp1[1] * vectKp3Kp1[0],
         );
-
-        // Order points counterclockwise
         const orderedPoints = this.orderPointsCounterclockwise(ellipsePoints);
-
-        // Calculate signs for each point
         const signs = this.pointsToLineSign(
             linePoint1,
             linePoint2,
             orderedPoints,
         ).map((s) => !!(sign * s > 0));
-
-        // Filter points based on sign
         const ellipsePointsForRatio = orderedPoints.filter(
             (_, i) => signs[i] === true,
         );
 
-        // Calculate ratio
-        const ratio =
+        return (
             this.computePolygonAreaShoelace(ellipsePointsForRatio) /
-            (Math.PI * (majorAxis as number) * (minorAxis as number) + 1e-6);
-        return ratio;
+            (Math.PI * (majorAxis as number) * (minorAxis as number) + 1e-6)
+        );
     }
 
-    // Function to compute the surface ratio between the ellipse formed by kp1, kp2, kp3 and kp4, kp5, kp6
-    public computePositionRatio(
-        keypointCenters: {
-            id: string;
-            labelName: string;
-            centroid: IPoint;
-        }[],
-        keypointNames: string[],
-    ): number | null {
-        //
-        const keypoints = [];
-
-        for (let i = 0; i < keypointNames.length; i++) {
-            const selectedCenter = keypointCenters.find(
-                (polygon) => polygon.labelName === keypointNames[i],
-            );
-            keypoints.push(selectedCenter);
-        }
-
-        // Ensure all selected keypoints are present
-        if (keypoints.includes(undefined)) {
-            // console.error('There are not enough keypoints')
+    private computePositionRatio(keypoints: KeypointCenter[]): number | null {
+        if (keypoints.length !== 5) {
             return null;
         }
 
-        // Compute ellipse properties
-        if (keypoints.length === 5) {
-            const positionRatio = this.calculateEllipseRatioByPolygon(
-                keypoints[2].centroid,
-                keypoints[3].centroid,
-                keypoints[4].centroid,
-                keypoints[0].centroid,
-                keypoints[1].centroid,
-                1000,
-            );
-            return positionRatio;
-        } else {
-            return null;
-        }
+        return this.calculateEllipseRatioByPolygon(
+            keypoints[2].centroid,
+            keypoints[3].centroid,
+            keypoints[4].centroid,
+            keypoints[0].centroid,
+            keypoints[1].centroid,
+            1000,
+        );
     }
 }
