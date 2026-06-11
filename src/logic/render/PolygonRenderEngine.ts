@@ -30,6 +30,8 @@ import { LabelUtil } from "../../utils/LabelUtil";
 import { PolygonUtil } from "../../utils/PolygonUtil";
 import {
     getMeasurementConnections,
+    getMeasurementFunctionConfig,
+    getMinimumKeypointCount,
     inferMeasurementDefinitions,
     MeasurementConnection,
     MeasurementDefinition,
@@ -2173,8 +2175,19 @@ export class KeypointUtils {
             return first.localeCompare(second);
         });
 
+        const requiredKeypointIndexes = measurementDefinition.functionId
+            ? measurementDefinition.keypointIndexes.slice(
+                  0,
+                  getMinimumKeypointCount(
+                      getMeasurementFunctionConfig(
+                          measurementDefinition.functionId
+                      )
+                  )
+              )
+            : measurementDefinition.keypointIndexes;
+
         for (const suffix of suffixes) {
-            const orderedKeypoints = measurementDefinition.keypointIndexes.map(
+            const orderedKeypoints = requiredKeypointIndexes.map(
                 (keypointIndex) =>
                     measurementKeypoints.find(
                         (keypoint) =>
