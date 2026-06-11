@@ -1,38 +1,41 @@
-import React, { useMemo, useState } from 'react';
-import './ExportLabelPopup.scss';
-import { AnnotationFormatType } from '../../../data/enums/AnnotationFormatType';
-import { RectLabelsExporter } from '../../../logic/export/RectLabelsExporter';
-import { LabelType } from '../../../data/enums/LabelType';
-import { ILabelFormatData } from '../../../interfaces/ILabelFormatData';
-import { PointLabelsExporter } from '../../../logic/export/PointLabelsExport';
-import { PolygonLabelsExporter } from '../../../logic/export/polygon/PolygonLabelsExporter';
-import { PopupActions } from '../../../logic/actions/PopupActions';
-import { ImageActions } from '../../../logic/actions/ImageActions';
-import { LineLabelsExporter } from '../../../logic/export/LineLabelExport';
-import { TagLabelsExporter } from '../../../logic/export/TagLabelsExport';
-import GenericLabelTypePopup from '../GenericLabelTypePopup/GenericLabelTypePopup';
-import { ExportFormatData } from '../../../data/ExportFormatData';
-import { LabelToolkitData } from '../../../data/info/LabelToolkitData';
-import { AppState } from '../../../store';
-import { ClassSanityCheckSettings } from '../../../store/general/types';
-import { ImageData, LabelName } from '../../../store/labels/types';
-import { connect } from 'react-redux';
-import { BackupManager } from '../../../logic/backup/BackupManager';
-import { BackupTimerService } from '../../../logic/backup/BackupTimerService';
-import { BrowserDetection } from '../../../utils/BrowserDetection';
-import { ClassSanityCheckUtil } from '../../../utils/ClassSanityCheckUtil';
-import { IndexedDBStorage } from '../../../logic/backup/IndexedDBStorage';
+import React, { useMemo, useState } from "react";
+import "./ExportLabelPopup.scss";
+import { AnnotationFormatType } from "../../../data/enums/AnnotationFormatType";
+import { RectLabelsExporter } from "../../../logic/export/RectLabelsExporter";
+import { LabelType } from "../../../data/enums/LabelType";
+import { ILabelFormatData } from "../../../interfaces/ILabelFormatData";
+import { PointLabelsExporter } from "../../../logic/export/PointLabelsExport";
+import { PolygonLabelsExporter } from "../../../logic/export/polygon/PolygonLabelsExporter";
+import { PopupActions } from "../../../logic/actions/PopupActions";
+import { ImageActions } from "../../../logic/actions/ImageActions";
+import { LineLabelsExporter } from "../../../logic/export/LineLabelExport";
+import { TagLabelsExporter } from "../../../logic/export/TagLabelsExport";
+import GenericLabelTypePopup from "../GenericLabelTypePopup/GenericLabelTypePopup";
+import { ExportFormatData } from "../../../data/ExportFormatData";
+import { LabelToolkitData } from "../../../data/info/LabelToolkitData";
+import { AppState } from "../../../store";
+import { ClassSanityCheckSettings } from "../../../store/general/types";
+import { ImageData, LabelName } from "../../../store/labels/types";
+import { connect } from "react-redux";
+import { BackupManager } from "../../../logic/backup/BackupManager";
+import { BackupTimerService } from "../../../logic/backup/BackupTimerService";
+import { BrowserDetection } from "../../../utils/BrowserDetection";
+import { ClassSanityCheckUtil } from "../../../utils/ClassSanityCheckUtil";
+import { IndexedDBStorage } from "../../../logic/backup/IndexedDBStorage";
 import {
     updateBackupEnabled,
     updateBackupFrequency,
-} from '../../../store/backup/actionCreators';
-import { updateClassSanityCheckReviewMode, updateClassSanityCheckViolationImageIds } from '../../../store/general/actionCreators';
+} from "../../../store/backup/actionCreators";
+import {
+    updateClassSanityCheckReviewMode,
+    updateClassSanityCheckViolationImageIds,
+} from "../../../store/general/actionCreators";
 
 interface IProps {
     activeLabelType: LabelType;
     isEnabled: boolean;
     frequencyMinutes: number;
-    status: 'idle' | 'saving' | 'success' | 'error';
+    status: "idle" | "saving" | "success" | "error";
     lastBackupTime: Date | null;
     errorMessage: string | null;
     projectName: string;
@@ -63,6 +66,33 @@ const ExportLabelPopup: React.FC<IProps> = ({
     updateBackupEnabled,
     updateBackupFrequency,
 }) => {
+    const getLabeledImageCount = (type: LabelType) => {
+        switch (type) {
+            case LabelType.POINT:
+                return imagesData.reduce((count, imageData) => {
+                    return count + (imageData.labelPoints.length > 0 ? 1 : 0);
+                }, 0);
+            case LabelType.RECT:
+                return imagesData.reduce((count, imageData) => {
+                    return count + (imageData.labelRects.length > 0 ? 1 : 0);
+                }, 0);
+            case LabelType.POLYGON:
+                return imagesData.reduce((count, imageData) => {
+                    return count + (imageData.labelPolygons.length > 0 ? 1 : 0);
+                }, 0);
+            case LabelType.LINE:
+                return imagesData.reduce((count, imageData) => {
+                    return count + (imageData.labelLines.length > 0 ? 1 : 0);
+                }, 0);
+            case LabelType.IMAGE_RECOGNITION:
+                return imagesData.reduce((count, imageData) => {
+                    return count + (imageData.labelNameIds.length > 0 ? 1 : 0);
+                }, 0);
+            default:
+                return 0;
+        }
+    };
+
     // Helper function to get the last format for a given label type
     const getLastFormat = (type: LabelType): AnnotationFormatType => {
         const formats = ExportFormatData[type];
@@ -74,23 +104,37 @@ const ExportLabelPopup: React.FC<IProps> = ({
     const existingExportType = BackupManager.getExportLabelType();
 
     const [labelType, setLabelType] = useState(LabelType.POLYGON);
-    const [exportFormatType, setExportFormatType] = useState(getLastFormat(LabelType.POLYGON));
+    const [exportFormatType, setExportFormatType] = useState(
+        getLastFormat(LabelType.POLYGON)
+    );
     const [showBackupSettings, setShowBackupSettings] = useState(false);
     const [localEnabled, setLocalEnabled] = useState(isEnabled);
     const [localFrequency, setLocalFrequency] = useState(frequencyMinutes);
-    const [localLocation, setLocalLocation] = useState(existingDirectoryHandle ? existingDirectoryHandle.name : '~/makesense-backups/');
-    const [selectedExportType, setSelectedExportType] = useState(existingExportType);
-    const [directoryHandle, setDirectoryHandle] = useState<any>(existingDirectoryHandle);
+    const [localLocation, setLocalLocation] = useState(
+        existingDirectoryHandle
+            ? existingDirectoryHandle.name
+            : "~/makesense-backups/"
+    );
+    const [selectedExportType, setSelectedExportType] =
+        useState(existingExportType);
+    const [directoryHandle, setDirectoryHandle] = useState<any>(
+        existingDirectoryHandle
+    );
 
     const violations = useMemo(
-        () => ClassSanityCheckUtil.getImageViolations(
-            imagesData,
-            labels,
-            classSanityCheckSettings
-        ),
+        () =>
+            ClassSanityCheckUtil.getImageViolations(
+                imagesData,
+                labels,
+                classSanityCheckSettings
+            ),
         [imagesData, labels, classSanityCheckSettings]
     );
-    const shouldShowSanityCheckViolations = classSanityCheckSettings.enabled && violations.length > 0;
+    const shouldShowSanityCheckViolations =
+        classSanityCheckSettings.enabled && violations.length > 0;
+    const unlabeledImageCount = useMemo(() => {
+        return imagesData.length - getLabeledImageCount(labelType);
+    }, [imagesData, labelType]);
 
     const exportLabels = (type: LabelType) => {
         switch (type) {
@@ -151,18 +195,18 @@ const ExportLabelPopup: React.FC<IProps> = ({
     };
 
     const formatLastBackupTime = (): string => {
-        if (!lastBackupTime) return 'Never';
+        if (!lastBackupTime) return "Never";
 
         const now = new Date();
         const diff = now.getTime() - new Date(lastBackupTime).getTime();
         const minutes = Math.floor(diff / 60000);
 
-        if (minutes === 0) return 'Just now';
-        if (minutes === 1) return '1 minute ago';
+        if (minutes === 0) return "Just now";
+        if (minutes === 1) return "1 minute ago";
         if (minutes < 60) return `${minutes} minutes ago`;
 
         const hours = Math.floor(minutes / 60);
-        if (hours === 1) return '1 hour ago';
+        if (hours === 1) return "1 hour ago";
         return `${hours} hours ago`;
     };
 
@@ -172,7 +216,7 @@ const ExportLabelPopup: React.FC<IProps> = ({
             if (BrowserDetection.supportsFileSystemAccess()) {
                 // @ts-ignore - File System Access API types may not be available
                 const handle = await window.showDirectoryPicker({
-                    mode: 'readwrite',
+                    mode: "readwrite",
                 });
 
                 // Store the directory handle for later use
@@ -181,54 +225,60 @@ const ExportLabelPopup: React.FC<IProps> = ({
                 // Display the folder name
                 // Note: Browser security prevents access to full absolute paths
                 setLocalLocation(handle.name);
-                console.log('Selected folder:', handle.name);
+                console.log("Selected folder:", handle.name);
             } else {
                 // For browsers without File System Access API (Firefox, Safari, etc.)
                 const browserName = BrowserDetection.getBrowserName();
                 alert(
                     `${browserName} doesn't support folder selection.\n\n` +
-                    `Don't worry! Your backups will be automatically saved to your browser's secure storage (IndexedDB).\n\n` +
-                    `You can download your backups at any time using the "Download Backups" button.`
+                        `Don't worry! Your backups will be automatically saved to your browser's secure storage (IndexedDB).\n\n` +
+                        `You can download your backups at any time using the "Download Backups" button.`
                 );
             }
         } catch (error) {
             // User cancelled or error occurred
-            if (error instanceof Error && error.name !== 'AbortError') {
-                console.error('Error selecting folder:', error);
+            if (error instanceof Error && error.name !== "AbortError") {
+                console.error("Error selecting folder:", error);
             }
         }
     };
 
     const handleDownloadBackups = async () => {
         try {
-            await IndexedDBStorage.downloadAllProjectFiles(projectName || 'untitled-project');
-            alert('All backup files have been downloaded successfully!');
+            await IndexedDBStorage.downloadAllProjectFiles(
+                projectName || "untitled-project"
+            );
+            alert("All backup files have been downloaded successfully!");
         } catch (error) {
-            console.error('Error downloading backups:', error);
-            alert('Failed to download backups. Please try again.');
+            console.error("Error downloading backups:", error);
+            alert("Failed to download backups. Please try again.");
         }
     };
 
     const getOptions = (exportFormatData: ILabelFormatData[]) => {
         return exportFormatData.map((entry: ILabelFormatData) => {
-            return <div
-                className='OptionsItem'
-                onClick={() => onSelect(entry.type)}
-                key={entry.type}
-            >
-                {entry.type === exportFormatType ?
-                    <img
-                        draggable={false}
-                        src={'ico/checkbox-checked.png'}
-                        alt={'checked'}
-                    /> :
-                    <img
-                        draggable={false}
-                        src={'ico/checkbox-unchecked.png'}
-                        alt={'unchecked'}
-                    />}
-                {entry.label}
-            </div>;
+            return (
+                <div
+                    className="OptionsItem"
+                    onClick={() => onSelect(entry.type)}
+                    key={entry.type}
+                >
+                    {entry.type === exportFormatType ? (
+                        <img
+                            draggable={false}
+                            src={"ico/checkbox-checked.png"}
+                            alt={"checked"}
+                        />
+                    ) : (
+                        <img
+                            draggable={false}
+                            src={"ico/checkbox-unchecked.png"}
+                            alt={"unchecked"}
+                        />
+                    )}
+                    {entry.label}
+                </div>
+            );
         });
     };
 
@@ -273,7 +323,9 @@ const ExportLabelPopup: React.FC<IProps> = ({
                         <select
                             className="option-select"
                             value={localFrequency}
-                            onChange={(e) => setLocalFrequency(Number(e.target.value))}
+                            onChange={(e) =>
+                                setLocalFrequency(Number(e.target.value))
+                            }
                             disabled={!localEnabled}
                             title="Select how often to automatically save backups"
                         >
@@ -325,9 +377,10 @@ const ExportLabelPopup: React.FC<IProps> = ({
                                 </button>
                             </div>
                             <div className="location-note location-info">
-                                ℹ {BrowserDetection.getBrowserName()} uses browser storage for backups.
-                                Your data is saved securely and automatically.
-                                Click "Download Backups" to export files to your computer.
+                                ℹ {BrowserDetection.getBrowserName()} uses
+                                browser storage for backups. Your data is saved
+                                securely and automatically. Click "Download
+                                Backups" to export files to your computer.
                             </div>
                         </>
                     )}
@@ -339,14 +392,33 @@ const ExportLabelPopup: React.FC<IProps> = ({
                             <div className="export-format-selection">
                                 <div className="selection-label">Format</div>
                                 <div className="shape-icons-container">
-                                    {LabelToolkitData.filter((toolkit) => toolkit.labelType !== LabelType.IMAGE_RECOGNITION).map((toolkit) => (
+                                    {LabelToolkitData.filter(
+                                        (toolkit) =>
+                                            toolkit.labelType !==
+                                            LabelType.IMAGE_RECOGNITION
+                                    ).map((toolkit) => (
                                         <div
                                             key={toolkit.labelType}
-                                            className={`shape-icon-button ${selectedExportType === toolkit.labelType ? 'active' : ''} ${!localEnabled ? 'disabled' : ''}`}
-                                            onClick={() => localEnabled && setSelectedExportType(toolkit.labelType)}
+                                            className={`shape-icon-button ${
+                                                selectedExportType ===
+                                                toolkit.labelType
+                                                    ? "active"
+                                                    : ""
+                                            } ${
+                                                !localEnabled ? "disabled" : ""
+                                            }`}
+                                            onClick={() =>
+                                                localEnabled &&
+                                                setSelectedExportType(
+                                                    toolkit.labelType
+                                                )
+                                            }
                                             title={toolkit.headerText}
                                         >
-                                            <img src={toolkit.imageSrc} alt={toolkit.imageAlt} />
+                                            <img
+                                                src={toolkit.imageSrc}
+                                                alt={toolkit.imageAlt}
+                                            />
                                         </div>
                                     ))}
                                 </div>
@@ -356,25 +428,27 @@ const ExportLabelPopup: React.FC<IProps> = ({
                 </fieldset>
 
                 {/* Status Display */}
-                {(status !== 'idle' || lastBackupTime) && (
+                {(status !== "idle" || lastBackupTime) && (
                     <div className="status-section">
-                        {status === 'error' && (
+                        {status === "error" && (
                             <div className="status-error">
-                                ✗ {errorMessage || 'Backup failed'}
+                                ✗ {errorMessage || "Backup failed"}
                             </div>
                         )}
-                        {status === 'success' && (
+                        {status === "success" && (
                             <div className="status-success">
                                 ✓ Last backup: {formatLastBackupTime()}
                             </div>
                         )}
-                        {status === 'idle' && lastBackupTime && (
+                        {status === "idle" && lastBackupTime && (
                             <div className="status-idle">
                                 Last backup: {formatLastBackupTime()}
                             </div>
                         )}
-                        {status === 'saving' && (
-                            <div className="status-saving">⏳ Saving backup...</div>
+                        {status === "saving" && (
+                            <div className="status-saving">
+                                ⏳ Saving backup...
+                            </div>
                         )}
                     </div>
                 )}
@@ -387,19 +461,28 @@ const ExportLabelPopup: React.FC<IProps> = ({
             return renderBackupSettings();
         }
 
-        return <>
-            <div className='Message'>
-                Select label type and the file format you would like to use to export labels.
-            </div>,
-            <div className='Options'>
-                {getOptions(ExportFormatData[type])}
-                {shouldShowSanityCheckViolations && (
-                    <div className='SanityCheckExportCount hasViolations'>
-                        ({violations.length}) images violate the class presence rules.
+        return (
+            <>
+                <div className="Message">
+                    Select label type and the file format you would like to use
+                    to export labels.
+                </div>
+                ,
+                <div className="Options">
+                    {getOptions(ExportFormatData[type])}
+                    {shouldShowSanityCheckViolations && (
+                        <div className="SanityCheckExportCount hasViolations">
+                            ({violations.length}) images violate the class
+                            presence rules.
+                        </div>
+                    )}
+                    <div className="SanityCheckExportCount hasMissingLabels">
+                        ({unlabeledImageCount}) images have no{" "}
+                        {labelType.toLowerCase()} labels.
                     </div>
-                )}
-            </div>
-        </>;
+                </div>
+            </>
+        );
     };
 
     const onLabelTypeChange = (type: LabelType) => {
@@ -436,21 +519,48 @@ const ExportLabelPopup: React.FC<IProps> = ({
     return (
         <GenericLabelTypePopup
             activeLabelType={labelType}
-            title={showBackupSettings ? 'Backup Settings' : `Export ${labelType.toLowerCase()} annotations`}
+            title={
+                showBackupSettings
+                    ? "Backup Settings"
+                    : `Export ${labelType.toLowerCase()} annotations`
+            }
             onLabelTypeChange={onLabelTypeChange}
-            acceptLabel={showBackupSettings ? 'Apply' : 'Export'}
+            acceptLabel={showBackupSettings ? "Apply" : "Export"}
             onAccept={onAccept}
-            disableAcceptButton={showBackupSettings ? (BrowserDetection.supportsFileSystemAccess() && !directoryHandle) : !exportFormatType}
-            disabledTooltip={showBackupSettings && BrowserDetection.supportsFileSystemAccess() && !directoryHandle ? 'Please select a backup location first' : undefined}
-            rejectLabel={'Cancel'}
+            disableAcceptButton={
+                showBackupSettings
+                    ? BrowserDetection.supportsFileSystemAccess() &&
+                      !directoryHandle
+                    : !exportFormatType
+            }
+            disabledTooltip={
+                showBackupSettings &&
+                BrowserDetection.supportsFileSystemAccess() &&
+                !directoryHandle
+                    ? "Please select a backup location first"
+                    : undefined
+            }
+            rejectLabel={"Cancel"}
             onReject={onReject}
             renderInternalContent={renderInternalContent}
             showSettingsIcon={true}
             onSettingsIconClick={onSettingsIconClick}
             settingsIconActive={showBackupSettings}
-            extraActionLabel={!showBackupSettings && shouldShowSanityCheckViolations ? (classSanityCheckReviewMode ? 'Cancel Review' : 'Review') : undefined}
-            onExtraAction={!showBackupSettings && shouldShowSanityCheckViolations ? (classSanityCheckReviewMode ? onCancelReview : onReview) : undefined}
-            extraActionButtonClassName={'danger'}
+            extraActionLabel={
+                !showBackupSettings && shouldShowSanityCheckViolations
+                    ? classSanityCheckReviewMode
+                        ? "Cancel Review"
+                        : "Review"
+                    : undefined
+            }
+            onExtraAction={
+                !showBackupSettings && shouldShowSanityCheckViolations
+                    ? classSanityCheckReviewMode
+                        ? onCancelReview
+                        : onReview
+                    : undefined
+            }
+            extraActionButtonClassName={"danger"}
         />
     );
 };
@@ -476,7 +586,4 @@ const mapStateToProps = (state: AppState) => ({
     classSanityCheckReviewMode: state.general.classSanityCheckReviewMode,
 });
 
-export default connect(
-    mapStateToProps,
-    mapDispatchToProps
-)(ExportLabelPopup);
+export default connect(mapStateToProps, mapDispatchToProps)(ExportLabelPopup);
