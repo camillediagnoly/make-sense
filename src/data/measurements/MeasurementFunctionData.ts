@@ -26,6 +26,12 @@ export type MeasurementFunctionConfig = {
     compatibleKeypointCounts: number[];
 };
 
+export function getMinimumKeypointCount(
+    config: MeasurementFunctionConfig
+): number {
+    return Math.min(...config.compatibleKeypointCounts);
+}
+
 export type MeasurementConnection =
     | {
           type: "line";
@@ -51,12 +57,22 @@ export type MeasurementDefinition = {
 export const MEASUREMENT_FUNCTIONS: MeasurementFunctionConfig[] = [
     {
         id: MeasurementFunctionId.CHAIN_DISTANCE_RATIO,
-        name: "Chain Distance Ratio",
+        name: "Distance Ratio 1",
         compatibleKeypointCounts: [3],
     },
     {
         id: MeasurementFunctionId.CLOSED_TRIANGLE_INVERSE_DISTANCE_RATIO,
-        name: "Closed Triangle Distance Ratio",
+        name: "Distance Ratio 2",
+        compatibleKeypointCounts: [3],
+    },
+    {
+        id: MeasurementFunctionId.ANCHORED_DISTANCE_RATIO,
+        name: "Distance Ratio 3",
+        compatibleKeypointCounts: [3],
+    },
+    {
+        id: MeasurementFunctionId.TERMINAL_DISTANCE_RATIO,
+        name: "Distance Ratio 4",
         compatibleKeypointCounts: [3],
     },
     {
@@ -70,28 +86,18 @@ export const MEASUREMENT_FUNCTIONS: MeasurementFunctionConfig[] = [
         compatibleKeypointCounts: [4],
     },
     {
-        id: MeasurementFunctionId.ANCHORED_DISTANCE_RATIO,
-        name: "Anchored Distance Ratio",
-        compatibleKeypointCounts: [3],
-    },
-    {
-        id: MeasurementFunctionId.TERMINAL_DISTANCE_RATIO,
-        name: "Terminal Distance Ratio",
-        compatibleKeypointCounts: [3],
-    },
-    {
         id: MeasurementFunctionId.ANGLE,
         name: "Angle",
-        compatibleKeypointCounts: [3, 5],
+        compatibleKeypointCounts: [5],
     },
     {
         id: MeasurementFunctionId.SURFACE_ELLIPSE_AREA_RATIO,
-        name: "Surface Ellipse Area Ratio",
+        name: "Ellipse Area Ratio",
         compatibleKeypointCounts: [6],
     },
     {
         id: MeasurementFunctionId.POSITION_ELLIPSE_SPLIT_RATIO,
-        name: "Position Ellipse Split Ratio",
+        name: "Ellipse Split Ratio",
         compatibleKeypointCounts: [5],
     },
     {
@@ -103,7 +109,9 @@ export const MEASUREMENT_FUNCTIONS: MeasurementFunctionConfig[] = [
 
 const KEYPOINT_NAME_PATTERN = /^(.+\.k:.+)-(\d+)(.*)$/;
 
-export function parseKeypointName(labelName: string): ParsedKeypointName | null {
+export function parseKeypointName(
+    labelName: string
+): ParsedKeypointName | null {
     const match = labelName.match(KEYPOINT_NAME_PATTERN);
     if (!match) {
         return null;
@@ -121,20 +129,20 @@ export function parseKeypointName(labelName: string): ParsedKeypointName | null 
         suffix: match[3] || "",
         baseKeypointName: getMeasurementKeypointName(
             measurementName,
-            keypointIndex,
+            keypointIndex
         ),
     };
 }
 
 export function getMeasurementKeypointName(
     measurementName: string,
-    keypointIndex: number,
+    keypointIndex: number
 ): string {
     return `${measurementName}-${keypointIndex}`;
 }
 
 export function getMeasurementFunctionConfig(
-    functionId: MeasurementFunctionId,
+    functionId: MeasurementFunctionId
 ): MeasurementFunctionConfig {
     return (
         MEASUREMENT_FUNCTIONS.find((config) => config.id === functionId) ||
@@ -143,25 +151,26 @@ export function getMeasurementFunctionConfig(
 }
 
 export function getCompatibleMeasurementFunctions(
-    keypointCount: number,
+    keypointCount: number
 ): MeasurementFunctionConfig[] {
-    return MEASUREMENT_FUNCTIONS.filter((config) =>
-        config.compatibleKeypointCounts.includes(keypointCount),
+    return MEASUREMENT_FUNCTIONS.filter(
+        (config) => keypointCount >= getMinimumKeypointCount(config)
     );
 }
 
 export function isMeasurementFunctionId(
-    value: any,
+    value: any
 ): value is MeasurementFunctionId {
     return (Object.values(MeasurementFunctionId) as string[]).includes(value);
 }
 
 export function isMeasurementFunctionCompatible(
     functionId: MeasurementFunctionId,
-    keypointCount: number,
+    keypointCount: number
 ): boolean {
-    return getMeasurementFunctionConfig(functionId).compatibleKeypointCounts.includes(
-        keypointCount,
+    return (
+        keypointCount >=
+        getMinimumKeypointCount(getMeasurementFunctionConfig(functionId))
     );
 }
 
@@ -176,7 +185,7 @@ export function formatMeasurementDisplayName(measurementName: string): string {
 
 export function getMeasurementConnections(
     functionId: MeasurementFunctionId,
-    keypointCount: number,
+    keypointCount: number
 ): MeasurementConnection[] {
     switch (functionId) {
         case MeasurementFunctionId.CHAIN_DISTANCE_RATIO:
@@ -202,15 +211,10 @@ export function getMeasurementConnections(
                 { type: "line", fromPosition: 2, toPosition: 1 },
             ];
         case MeasurementFunctionId.ANGLE:
-            return keypointCount === 3
-                ? [
-                      { type: "line", fromPosition: 0, toPosition: 1 },
-                      { type: "line", fromPosition: 1, toPosition: 2 },
-                  ]
-                : [
-                      { type: "line", fromPosition: 0, toPosition: 1 },
-                      { type: "line", fromPosition: 2, toPosition: 3 },
-                  ];
+            return [
+                { type: "line", fromPosition: 0, toPosition: 1 },
+                { type: "line", fromPosition: 2, toPosition: 3 },
+            ];
         case MeasurementFunctionId.SURFACE_ELLIPSE_AREA_RATIO:
             return [
                 {
@@ -246,7 +250,7 @@ export function getMeasurementConnections(
 
 export function inferMeasurementDefinitions(
     labelNames: Array<{ name: string }>,
-    measurementFunctionByName: MeasurementFunctionByName = {},
+    measurementFunctionByName: MeasurementFunctionByName = {}
 ): MeasurementDefinition[] {
     const indexByMeasurementName = new Map<string, Set<number>>();
 
@@ -266,11 +270,11 @@ export function inferMeasurementDefinitions(
     return Array.from(indexByMeasurementName.entries())
         .map(([measurementName, indexSet]) => {
             const keypointIndexes = Array.from(indexSet).sort(
-                (first, second) => first - second,
+                (first, second) => first - second
             );
             const functionId = resolveMeasurementFunctionId(
                 measurementName,
-                measurementFunctionByName,
+                measurementFunctionByName
             );
             const functionConfig = functionId
                 ? getMeasurementFunctionConfig(functionId)
@@ -280,21 +284,23 @@ export function inferMeasurementDefinitions(
                 measurementName,
                 displayName: formatMeasurementDisplayName(measurementName),
                 functionId,
-                functionName: functionConfig ? functionConfig.name : "Not selected",
+                functionName: functionConfig
+                    ? functionConfig.name
+                    : "Not selected",
                 keypointIndexes,
                 keypointNames: keypointIndexes.map((keypointIndex) =>
-                    getMeasurementKeypointName(measurementName, keypointIndex),
+                    getMeasurementKeypointName(measurementName, keypointIndex)
                 ),
             };
         })
         .sort((first, second) =>
-            first.displayName.localeCompare(second.displayName),
+            first.displayName.localeCompare(second.displayName)
         );
 }
 
 export function resolveMeasurementFunctionId(
     measurementName: string,
-    measurementFunctionByName: MeasurementFunctionByName = {},
+    measurementFunctionByName: MeasurementFunctionByName = {}
 ): MeasurementFunctionId | null {
     const configuredFunctionId = measurementFunctionByName[measurementName];
     return configuredFunctionId && isMeasurementFunctionId(configuredFunctionId)

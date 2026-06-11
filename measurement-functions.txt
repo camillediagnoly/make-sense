@@ -1,0 +1,66 @@
+Measurement Function Reference
+
+Keypoints are ordered by their numeric suffix:
+measurementName-1, measurementName-2, measurementName-3, ...
+
+In the formulas below:
+- p1, p2, p3, ... are the ordered keypoints.
+- d(a, b) is the Euclidean distance between points a and b.
+- If a function receives the wrong number of keypoints, it returns null.
+
+1. Distance Ratio 1
+Minimum keypoints: 3
+Former name: Chain Distance Ratio
+Computation: d(p2, p3) / d(p1, p2)
+
+2. Distance Ratio 2
+Minimum keypoints: 3
+Former name: Closed Triangle Distance Ratio
+Computation: d(p1, p2) / d(p2, p3)
+
+3. Distance Ratio 3
+Minimum keypoints: 3
+Former name: Anchored Distance Ratio
+Computation: d(p1, p2) / d(p3, p1)
+
+4. Distance Ratio 4
+Minimum keypoints: 3
+Former name: Terminal Distance Ratio
+Computation: d(p3, p2) / d(p1, p3)
+
+5. Paired Distance Ratio
+Minimum keypoints: 4
+Computation: d(p3, p4) / d(p1, p2)
+
+6. Inverse Paired Distance Ratio
+Minimum keypoints: 4
+Computation: d(p1, p2) / d(p3, p4)
+
+7. Angle
+Minimum keypoints: 5
+Computation:
+Use only p1, p2, p3, p4, and p5. Extra keypoints in the same measurement are ignored.
+Compute the angle between line p1-p2 and line p3-p4.
+Use p5 to determine the sign of the angle.
+
+8. Ellipse Area Ratio
+Minimum keypoints: 6
+Computation:
+Build ellipse A from p4, p5, p6.
+Build ellipse B from p1, p2, p3.
+Return area(A) / area(B).
+
+9. Ellipse Split Ratio
+Minimum keypoints: 5
+Computation:
+Build an ellipse from p3, p4, p5.
+Split the ellipse by line p1-p2.
+Return selected-side area / total ellipse area.
+
+10. Projected Distance Ratio
+Minimum keypoints: 3
+Computation:
+Use only p1, p2, and p3. Extra keypoints in the same measurement are ignored.
+Draw a line through p3 parallel to p1-p2.
+Project p1 onto that line.
+Return d(projected p1, p3) / d(p1, p2).

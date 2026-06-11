@@ -113,7 +113,7 @@ export class PolygonRenderEngine extends BaseRenderEngine {
     private getMeasurementDefinitions(): MeasurementDefinition[] {
         return inferMeasurementDefinitions(
             LabelsSelector.getLabelNames(),
-            GeneralSelector.getMeasurementFunctionByName(),
+            GeneralSelector.getMeasurementFunctionByName()
         );
     }
 
@@ -159,9 +159,12 @@ export class PolygonRenderEngine extends BaseRenderEngine {
                 });
                 perMeasurementMap.set(
                     parsedKeypointName.keypointIndex,
-                    perIndexMap,
+                    perIndexMap
                 );
-                centerMap.set(parsedKeypointName.measurementName, perMeasurementMap);
+                centerMap.set(
+                    parsedKeypointName.measurementName,
+                    perMeasurementMap
+                );
             });
 
         return centerMap;
@@ -171,7 +174,7 @@ export class PolygonRenderEngine extends BaseRenderEngine {
         startCenter: IPoint,
         endCenter: IPoint,
         lineColor: string,
-        data: EditorData,
+        data: EditorData
     ): void {
         const lineToDraw: ILine = {
             start: startCenter,
@@ -180,7 +183,7 @@ export class PolygonRenderEngine extends BaseRenderEngine {
         const lineOnCanvas =
             RenderEngineUtil.transferLineFromImageToViewPortContent(
                 lineToDraw,
-                data,
+                data
             );
         const standardizedLine: ILine = {
             start: RenderEngineUtil.setPointBetweenPixels(lineOnCanvas.start),
@@ -191,7 +194,7 @@ export class PolygonRenderEngine extends BaseRenderEngine {
             standardizedLine.start,
             standardizedLine.end,
             lineColor,
-            RenderEngineSettings.LINE_THICKNESS,
+            RenderEngineSettings.LINE_THICKNESS
         );
     }
 
@@ -215,7 +218,7 @@ export class PolygonRenderEngine extends BaseRenderEngine {
     private getRenderableKeypointsByPosition(
         measurementDefinition: MeasurementDefinition,
         keypointCenterMap: RenderableMeasurementCenterMap,
-        position: number,
+        position: number
     ): Map<string, RenderableKeypointData> | null {
         const keypointIndex = measurementDefinition.keypointIndexes[position];
         if (keypointIndex === undefined) {
@@ -233,17 +236,17 @@ export class PolygonRenderEngine extends BaseRenderEngine {
         measurementDefinition: MeasurementDefinition,
         connection: Extract<MeasurementConnection, { type: "line" }>,
         keypointCenterMap: RenderableMeasurementCenterMap,
-        data: EditorData,
+        data: EditorData
     ): void {
         const startBySuffix = this.getRenderableKeypointsByPosition(
             measurementDefinition,
             keypointCenterMap,
-            connection.fromPosition,
+            connection.fromPosition
         );
         const endBySuffix = this.getRenderableKeypointsByPosition(
             measurementDefinition,
             keypointCenterMap,
-            connection.toPosition,
+            connection.toPosition
         );
 
         if (!startBySuffix || !endBySuffix) {
@@ -260,7 +263,7 @@ export class PolygonRenderEngine extends BaseRenderEngine {
                 startPointData.centroid,
                 endPointData.centroid,
                 this.resolveLineColorBySuffix(suffix),
-                data,
+                data
             );
         });
     }
@@ -269,22 +272,22 @@ export class PolygonRenderEngine extends BaseRenderEngine {
         measurementDefinition: MeasurementDefinition,
         connection: Extract<MeasurementConnection, { type: "ellipse" }>,
         keypointCenterMap: RenderableMeasurementCenterMap,
-        data: EditorData,
+        data: EditorData
     ): void {
         const firstBySuffix = this.getRenderableKeypointsByPosition(
             measurementDefinition,
             keypointCenterMap,
-            connection.firstPosition,
+            connection.firstPosition
         );
         const secondBySuffix = this.getRenderableKeypointsByPosition(
             measurementDefinition,
             keypointCenterMap,
-            connection.secondPosition,
+            connection.secondPosition
         );
         const thirdBySuffix = this.getRenderableKeypointsByPosition(
             measurementDefinition,
             keypointCenterMap,
-            connection.thirdPosition,
+            connection.thirdPosition
         );
 
         if (!firstBySuffix || !secondBySuffix || !thirdBySuffix) {
@@ -305,16 +308,16 @@ export class PolygonRenderEngine extends BaseRenderEngine {
                         secondPointData.centroid,
                         thirdPointData.centroid,
                     ],
-                    data,
+                    data
                 );
             const startPoint = RenderEngineUtil.setPointBetweenPixels(
-                pointsOnCanvas[0],
+                pointsOnCanvas[0]
             );
             const endPoint = RenderEngineUtil.setPointBetweenPixels(
-                pointsOnCanvas[1],
+                pointsOnCanvas[1]
             );
             const constrainPoint = RenderEngineUtil.setPointBetweenPixels(
-                pointsOnCanvas[2],
+                pointsOnCanvas[2]
             );
 
             this.surfaceAnnotator.drawEllipse(
@@ -322,7 +325,7 @@ export class PolygonRenderEngine extends BaseRenderEngine {
                 startPoint,
                 endPoint,
                 constrainPoint,
-                this.resolveLineColorBySuffix(suffix),
+                this.resolveLineColorBySuffix(suffix)
             );
         });
     }
@@ -330,7 +333,7 @@ export class PolygonRenderEngine extends BaseRenderEngine {
     private drawMeasurementConnections(
         measurementDefinition: MeasurementDefinition,
         keypointCenterMap: RenderableMeasurementCenterMap,
-        data: EditorData,
+        data: EditorData
     ): void {
         if (!measurementDefinition.functionId) {
             return;
@@ -338,21 +341,21 @@ export class PolygonRenderEngine extends BaseRenderEngine {
 
         getMeasurementConnections(
             measurementDefinition.functionId,
-            measurementDefinition.keypointIndexes.length,
+            measurementDefinition.keypointIndexes.length
         ).forEach((connection) => {
             if (connection.type === "line") {
                 this.drawMeasurementLineConnection(
                     measurementDefinition,
                     connection,
                     keypointCenterMap,
-                    data,
+                    data
                 );
             } else {
                 this.drawMeasurementEllipseConnection(
                     measurementDefinition,
                     connection,
                     keypointCenterMap,
-                    data,
+                    data
                 );
             }
         });
@@ -370,7 +373,7 @@ export class PolygonRenderEngine extends BaseRenderEngine {
             const polygonCenter: IPoint =
                 RenderEngineUtil.transferPointFromImageToViewPortContent(
                     this.keypointUtils.computeCentroid(this.draggingPolygon),
-                    data,
+                    data
                 );
             this.dragOffset = {
                 x: mousePosition.x - polygonCenter.x,
@@ -388,7 +391,7 @@ export class PolygonRenderEngine extends BaseRenderEngine {
                 vertices:
                     RenderEngineUtil.transferPolygonFromImageToViewPortContent(
                         this.draggingPolygon.vertices,
-                        data,
+                        data
                     ),
             };
             const currPolygonCenter: IPoint =
@@ -407,8 +410,8 @@ export class PolygonRenderEngine extends BaseRenderEngine {
                 this.draggingPolygon.id,
                 RenderEngineUtil.transferPolygonFromViewPortContentToImage(
                     newVertices,
-                    data,
-                ),
+                    data
+                )
             );
         }
     }
@@ -422,7 +425,7 @@ export class PolygonRenderEngine extends BaseRenderEngine {
     // Update polygon vertices
     private updatePolygonVertices(
         polygonId: string,
-        newVertices: IPoint[],
+        newVertices: IPoint[]
     ): void {
         const imageData: ImageData = LabelsSelector.getActiveImageData();
         imageData.labelPolygons = imageData.labelPolygons.map((polygon) => {
@@ -478,7 +481,7 @@ export class PolygonRenderEngine extends BaseRenderEngine {
                 }
                 const isMouseOverStartAnchor: boolean = this.isMouseOverAnchor(
                     data.mousePositionOnViewPortContent,
-                    this.activePath[0],
+                    this.activePath[0]
                 );
                 if (isMouseOverStartAnchor) {
                     this.addLabelAndFinishCreation(data);
@@ -497,18 +500,18 @@ export class PolygonRenderEngine extends BaseRenderEngine {
                                 (
                                     indexUnderMouse: number,
                                     anchor: IPoint,
-                                    index: number,
+                                    index: number
                                 ) => {
                                     if (indexUnderMouse === null) {
                                         const anchorOnCanvas: IPoint =
                                             RenderEngineUtil.transferPointFromImageToViewPortContent(
                                                 anchor,
-                                                data,
+                                                data
                                             );
                                         if (
                                             this.isMouseOverAnchor(
                                                 data.mousePositionOnViewPortContent,
-                                                anchorOnCanvas,
+                                                anchorOnCanvas
                                             )
                                         ) {
                                             return index;
@@ -516,23 +519,23 @@ export class PolygonRenderEngine extends BaseRenderEngine {
                                     }
                                     return indexUnderMouse;
                                 },
-                                null,
+                                null
                             );
 
                         if (anchorIndex !== null) {
                             this.startExistingLabelResize(
                                 data,
                                 polygonUnderMouse.id,
-                                anchorIndex,
+                                anchorIndex
                             );
                         } else {
                             store.dispatch(
-                                updateActiveLabelId(polygonUnderMouse.id),
+                                updateActiveLabelId(polygonUnderMouse.id)
                             );
                             const isMouseOverNewAnchor: boolean =
                                 this.isMouseOverAnchor(
                                     data.mousePositionOnViewPortContent,
-                                    this.suggestedAnchorPositionOnCanvas,
+                                    this.suggestedAnchorPositionOnCanvas
                                 );
                             if (isMouseOverNewAnchor) {
                                 this.addSuggestedAnchorToPolygonLabel(data);
@@ -585,13 +588,13 @@ export class PolygonRenderEngine extends BaseRenderEngine {
                             labelPolygon.id
                         ) {
                             store.dispatch(
-                                updateHighlightedLabelId(labelPolygon.id),
+                                updateHighlightedLabelId(labelPolygon.id)
                             );
                         }
                         const pathOnCanvas: IPoint[] =
                             RenderEngineUtil.transferPolygonFromImageToViewPortContent(
                                 labelPolygon.vertices,
-                                data,
+                                data
                             );
                         const linesOnCanvas: ILine[] =
                             PolygonUtil.getEdges(pathOnCanvas);
@@ -602,7 +605,7 @@ export class PolygonRenderEngine extends BaseRenderEngine {
                                     data.mousePositionOnViewPortContent,
                                     linesOnCanvas[j],
                                     RenderEngineSettings.anchorHoverSize.width /
-                                        2,
+                                        2
                                 );
                             if (mouseOverLine) {
                                 this.suggestedAnchorPositionOnCanvas =
@@ -679,15 +682,15 @@ export class PolygonRenderEngine extends BaseRenderEngine {
                     const isMouseOverStartAnchor: boolean =
                         this.isMouseOverAnchor(
                             data.mousePositionOnViewPortContent,
-                            this.activePath[0],
+                            this.activePath[0]
                         );
                     if (isMouseOverStartAnchor && this.activePath.length > 2)
                         store.dispatch(
-                            updateCustomCursorStyle(CustomCursorStyle.CLOSE),
+                            updateCustomCursorStyle(CustomCursorStyle.CLOSE)
                         );
                     else
                         store.dispatch(
-                            updateCustomCursorStyle(CustomCursorStyle.DEFAULT),
+                            updateCustomCursorStyle(CustomCursorStyle.DEFAULT)
                         );
                 } else {
                     const anchorUnderMouse: IPoint =
@@ -695,19 +698,19 @@ export class PolygonRenderEngine extends BaseRenderEngine {
                     const isMouseOverNewAnchor: boolean =
                         this.isMouseOverAnchor(
                             data.mousePositionOnViewPortContent,
-                            this.suggestedAnchorPositionOnCanvas,
+                            this.suggestedAnchorPositionOnCanvas
                         );
                     if (!!isMouseOverNewAnchor) {
                         store.dispatch(
-                            updateCustomCursorStyle(CustomCursorStyle.ADD),
+                            updateCustomCursorStyle(CustomCursorStyle.ADD)
                         );
                     } else if (this.isResizeInProgress()) {
                         store.dispatch(
-                            updateCustomCursorStyle(CustomCursorStyle.MOVE),
+                            updateCustomCursorStyle(CustomCursorStyle.MOVE)
                         );
                     } else if (!!anchorUnderMouse) {
                         store.dispatch(
-                            updateCustomCursorStyle(CustomCursorStyle.MOVE),
+                            updateCustomCursorStyle(CustomCursorStyle.MOVE)
                         );
                     } else {
                         RenderEngineUtil.wrapDefaultCursorStyleInCancel(data);
@@ -722,19 +725,19 @@ export class PolygonRenderEngine extends BaseRenderEngine {
 
     private drawActivelyCreatedLabel(data: EditorData) {
         const standardizedPoints: IPoint[] = this.activePath.map(
-            (point: IPoint) => RenderEngineUtil.setPointBetweenPixels(point),
+            (point: IPoint) => RenderEngineUtil.setPointBetweenPixels(point)
         );
         const path = standardizedPoints.concat(
-            data.mousePositionOnViewPortContent,
+            data.mousePositionOnViewPortContent
         );
         const lineColor: string = BaseRenderEngine.resolveLabelLineColor(
             null,
-            true,
+            true
         );
         DrawUtil.drawPolygonWithFill(
             this.canvas,
             path,
-            DrawUtil.hexToRGB(lineColor, 0.2),
+            DrawUtil.hexToRGB(lineColor, 0.2)
         );
         DrawUtil.drawDashedPolygon(
             this.canvas,
@@ -742,13 +745,13 @@ export class PolygonRenderEngine extends BaseRenderEngine {
             lineColor,
             RenderEngineSettings.LINE_THICKNESS,
             [8, 4],
-            false,
+            false
         );
         if (this.isDrawingEllipse)
             this.surfaceAnnotator.processAnnotation(
                 this.canvas,
                 data,
-                standardizedPoints,
+                standardizedPoints
             );
     }
 
@@ -758,7 +761,7 @@ export class PolygonRenderEngine extends BaseRenderEngine {
         if (!!activeLabelPolygon && this.isResizeInProgress()) {
             const snappedMousePosition: IPoint = RectUtil.snapPointToRect(
                 data.mousePositionOnViewPortContent,
-                data.viewPortContentImageRect,
+                data.viewPortContentImageRect
             );
             const polygonOnCanvas: IPoint[] = activeLabelPolygon.vertices.map(
                 (point: IPoint, index: number) => {
@@ -766,9 +769,9 @@ export class PolygonRenderEngine extends BaseRenderEngine {
                         ? snappedMousePosition
                         : RenderEngineUtil.transferPointFromImageToViewPortContent(
                               point,
-                              data,
+                              data
                           );
-                },
+                }
             );
             this.drawPolygon(activeLabelPolygon.labelId, polygonOnCanvas, true);
         }
@@ -788,7 +791,7 @@ export class PolygonRenderEngine extends BaseRenderEngine {
                 const pathOnCanvas: IPoint[] =
                     RenderEngineUtil.transferPolygonFromImageToViewPortContent(
                         labelPolygon.vertices,
-                        data,
+                        data
                     );
                 if (
                     !(
@@ -799,7 +802,7 @@ export class PolygonRenderEngine extends BaseRenderEngine {
                     this.drawPolygon(
                         labelPolygon.labelId,
                         pathOnCanvas,
-                        isActive,
+                        isActive
                     );
                 }
             }
@@ -811,38 +814,37 @@ export class PolygonRenderEngine extends BaseRenderEngine {
             this.drawMeasurementConnections(
                 measurementDefinition,
                 renderableKeypointCenterMap,
-                data,
+                data
             );
         });
-
     }
 
     private drawPolygon(
         labelId: string | null,
         polygon: IPoint[],
-        isActive: boolean,
+        isActive: boolean
     ) {
         const lineColor: string = BaseRenderEngine.resolveLabelLineColor(
             labelId,
-            true,
+            true
         );
         const anchorColor: string =
             BaseRenderEngine.resolveLabelAnchorColor(true);
         const standardizedPoints: IPoint[] = polygon.map((point: IPoint) =>
-            RenderEngineUtil.setPointBetweenPixels(point),
+            RenderEngineUtil.setPointBetweenPixels(point)
         );
         if (isActive) {
             DrawUtil.drawPolygonWithFill(
                 this.canvas,
                 standardizedPoints,
-                DrawUtil.hexToRGB(lineColor, 0.2),
+                DrawUtil.hexToRGB(lineColor, 0.2)
             );
         }
         DrawUtil.drawPolygon(
             this.canvas,
             standardizedPoints,
             lineColor,
-            RenderEngineSettings.LINE_THICKNESS,
+            RenderEngineSettings.LINE_THICKNESS
         );
         if (isActive) {
             standardizedPoints.forEach((point: IPoint) => {
@@ -850,7 +852,7 @@ export class PolygonRenderEngine extends BaseRenderEngine {
                     this.canvas,
                     point,
                     Settings.RESIZE_HANDLE_DIMENSION_PX / 2,
-                    anchorColor,
+                    anchorColor
                 );
             });
         }
@@ -863,11 +865,11 @@ export class PolygonRenderEngine extends BaseRenderEngine {
             const suggestedAnchorRect: IRect =
                 RectUtil.getRectWithCenterAndSize(
                     this.suggestedAnchorPositionOnCanvas,
-                    RenderEngineSettings.suggestedAnchorDetectionSize,
+                    RenderEngineSettings.suggestedAnchorDetectionSize
                 );
             const isMouseOverSuggestedAnchor: boolean = RectUtil.isPointInside(
                 suggestedAnchorRect,
-                data.mousePositionOnViewPortContent,
+                data.mousePositionOnViewPortContent
             );
 
             if (isMouseOverSuggestedAnchor) {
@@ -875,7 +877,7 @@ export class PolygonRenderEngine extends BaseRenderEngine {
                     this.canvas,
                     this.suggestedAnchorPositionOnCanvas,
                     Settings.RESIZE_HANDLE_DIMENSION_PX / 2,
-                    anchorColor,
+                    anchorColor
                 );
             }
         }
@@ -888,7 +890,7 @@ export class PolygonRenderEngine extends BaseRenderEngine {
     private arePointsClose(
         a: IPoint,
         b: IPoint,
-        tolerance: number = 1,
+        tolerance: number = 1
     ): boolean {
         return (
             Math.abs(a.x - b.x) <= tolerance && Math.abs(a.y - b.y) <= tolerance
@@ -917,12 +919,12 @@ export class PolygonRenderEngine extends BaseRenderEngine {
                     const mousePositionSnapped: IPoint =
                         RectUtil.snapPointToRect(
                             data.mousePositionOnViewPortContent,
-                            data.viewPortContentImageRect,
+                            data.viewPortContentImageRect
                         );
                     if (
                         this.arePointsClose(
                             this.activePath[0],
-                            mousePositionSnapped,
+                            mousePositionSnapped
                         )
                     ) {
                         this.addLabelAndFinishCreation(data);
@@ -932,13 +934,13 @@ export class PolygonRenderEngine extends BaseRenderEngine {
             }
             const mousePositionSnapped: IPoint = RectUtil.snapPointToRect(
                 data.mousePositionOnViewPortContent,
-                data.viewPortContentImageRect,
+                data.viewPortContentImageRect
             );
             this.activePath.push(mousePositionSnapped);
         } else {
             const isMouseOverImage: boolean = RectUtil.isPointInside(
                 data.viewPortContentImageRect,
-                data.mousePositionOnViewPortContent,
+                data.mousePositionOnViewPortContent
             );
             if (isMouseOverImage) {
                 EditorActions.setViewPortActionsDisabledStatus(true);
@@ -985,7 +987,7 @@ export class PolygonRenderEngine extends BaseRenderEngine {
     }
 
     private shouldFinishLassoCreationFromMoveRelease(
-        data: EditorData,
+        data: EditorData
     ): boolean {
         if (
             !this.lassoHadContactSinceStart ||
@@ -1103,7 +1105,7 @@ export class PolygonRenderEngine extends BaseRenderEngine {
 
         const snappedPoint = RectUtil.snapPointToRect(
             mousePositionOnViewPortContent,
-            viewPortContentImageRect,
+            viewPortContentImageRect
         );
         if (!snappedPoint) return;
 
@@ -1186,7 +1188,7 @@ export class PolygonRenderEngine extends BaseRenderEngine {
         const normalizedPoints = points.map((point) => ({ ...point }));
         const isClosed = this.arePointsEqual(
             normalizedPoints[0],
-            normalizedPoints[normalizedPoints.length - 1],
+            normalizedPoints[normalizedPoints.length - 1]
         );
         if (!isClosed) {
             normalizedPoints.push({ ...normalizedPoints[0] });
@@ -1261,7 +1263,7 @@ export class PolygonRenderEngine extends BaseRenderEngine {
             const polygonOnImage: IPoint[] =
                 RenderEngineUtil.transferPolygonFromViewPortContentToImage(
                     this.activePath,
-                    data,
+                    data
                 );
             const radius =
                 Math.min(...Object.values(data.realImageSize)) *
@@ -1272,13 +1274,13 @@ export class PolygonRenderEngine extends BaseRenderEngine {
                 const generatedPolygon = this.generatePolygonFromKeypoint(
                     polygonOnImage[0],
                     radius,
-                    8,
+                    8
                 );
                 this.addPolygonLabel(generatedPolygon);
             } else {
                 // Multiple clicks: assign sequentially from the start of the group
                 const generatedPolygons = polygonOnImage.map((p) =>
-                    this.generatePolygonFromKeypoint(p, radius, 8),
+                    this.generatePolygonFromKeypoint(p, radius, 8)
                 );
                 this.addPolygonLabelNKeypoints(generatedPolygons);
             }
@@ -1291,7 +1293,7 @@ export class PolygonRenderEngine extends BaseRenderEngine {
             const polygonOnImage: IPoint[] =
                 RenderEngineUtil.transferPolygonFromViewPortContentToImage(
                     pathForSaving,
-                    data,
+                    data
                 );
             this.addPolygonLabel(polygonOnImage);
             this.finishLabelCreation();
@@ -1299,7 +1301,7 @@ export class PolygonRenderEngine extends BaseRenderEngine {
             const polygonOnImage: IPoint[] =
                 RenderEngineUtil.transferPolygonFromViewPortContentToImage(
                     this.activePath,
-                    data,
+                    data
                 );
             const radius =
                 Math.min(...Object.values(data.realImageSize)) *
@@ -1314,7 +1316,7 @@ export class PolygonRenderEngine extends BaseRenderEngine {
             const polygonOnImage: IPoint[] =
                 RenderEngineUtil.transferPolygonFromViewPortContentToImage(
                     this.activePath,
-                    data,
+                    data
                 );
             const radius =
                 Math.min(...Object.values(data.realImageSize)) *
@@ -1327,7 +1329,7 @@ export class PolygonRenderEngine extends BaseRenderEngine {
                     this.generatePolygonFromKeypoint(
                         polygonOnImage[i],
                         radius,
-                        8,
+                        8
                     );
                 generatedPolygons.push(generatedPolygonFromKeypoint);
             }
@@ -1342,7 +1344,7 @@ export class PolygonRenderEngine extends BaseRenderEngine {
             const polygonOnImage: IPoint[] =
                 RenderEngineUtil.transferPolygonFromViewPortContentToImage(
                     this.activePath,
-                    data,
+                    data
                 );
             const radius =
                 Math.min(...Object.values(data.realImageSize)) *
@@ -1355,7 +1357,7 @@ export class PolygonRenderEngine extends BaseRenderEngine {
                     this.generatePolygonFromKeypoint(
                         polygonOnImage[i],
                         radius,
-                        8,
+                        8
                     );
                 generatedPolygons.push(generatedPolygonFromKeypoint);
             }
@@ -1363,20 +1365,20 @@ export class PolygonRenderEngine extends BaseRenderEngine {
 
             // Draw the ellipse
             let startPoint = RenderEngineUtil.setPointBetweenPixels(
-                polygonOnImage[0],
+                polygonOnImage[0]
             );
             let endPoint = RenderEngineUtil.setPointBetweenPixels(
-                polygonOnImage[1],
+                polygonOnImage[1]
             );
             let constrainPoint = RenderEngineUtil.setPointBetweenPixels(
-                polygonOnImage[2],
+                polygonOnImage[2]
             );
 
             this.surfaceAnnotator.drawEllipse(
                 this.canvas,
                 startPoint,
                 endPoint,
-                constrainPoint,
+                constrainPoint
             );
             this.finishLabelCreation();
         }
@@ -1387,7 +1389,7 @@ export class PolygonRenderEngine extends BaseRenderEngine {
         const imageData: ImageData = LabelsSelector.getActiveImageData();
         const labelPolygon: LabelPolygon = LabelUtil.createLabelPolygon(
             activeLabelId,
-            polygon,
+            polygon
         );
         imageData.labelPolygons.push(labelPolygon);
         store.dispatch(updateImageDataById(imageData.id, imageData));
@@ -1418,14 +1420,14 @@ export class PolygonRenderEngine extends BaseRenderEngine {
 
                 const adjacentLabelName = activeLabelName.replace(
                     this.kptNameEndPattern,
-                    (match) => (parseInt(match, 10) + 1).toString(),
+                    (match) => (parseInt(match, 10) + 1).toString()
                 );
                 const adjacentLabelId = labelNameToIdMap[adjacentLabelName];
                 if (adjacentLabelId) {
                     const labelPolygon1: LabelPolygon =
                         LabelUtil.createLabelPolygon(
                             adjacentLabelId,
-                            polygons[1],
+                            polygons[1]
                         );
                     imageData.labelPolygons.push(labelPolygon0);
                     imageData.labelPolygons.push(labelPolygon1);
@@ -1446,10 +1448,12 @@ export class PolygonRenderEngine extends BaseRenderEngine {
         const measurementDefinition = this.getMeasurementDefinitions().find(
             (definition) =>
                 definition.measurementName ===
-                parsedKeypointName.measurementName,
+                parsedKeypointName.measurementName
         );
 
-        return measurementDefinition ? measurementDefinition.keypointNames : null;
+        return measurementDefinition
+            ? measurementDefinition.keypointNames
+            : null;
     }
 
     private addPolygonLabelNKeypoints(polygons: IPoint[][]): void {
@@ -1488,7 +1492,7 @@ export class PolygonRenderEngine extends BaseRenderEngine {
             if (!labelId) continue;
             const labelPolygon: LabelPolygon = LabelUtil.createLabelPolygon(
                 labelId,
-                polygons[i],
+                polygons[i]
             );
             if (!firstLabelPolygon) firstLabelPolygon = labelPolygon;
             imageData.labelPolygons.push(labelPolygon);
@@ -1524,12 +1528,12 @@ export class PolygonRenderEngine extends BaseRenderEngine {
 
                 const nextLabelName1 = activeLabelName.replace(
                     this.kptNameEndPattern,
-                    (match) => (parseInt(match, 10) + 1).toString(),
+                    (match) => (parseInt(match, 10) + 1).toString()
                 );
                 const nextLabelId1 = labelNameToIdMap[nextLabelName1];
                 const nextLabelName2 = activeLabelName.replace(
                     this.kptNameEndPattern,
-                    (match) => (parseInt(match, 10) + 2).toString(),
+                    (match) => (parseInt(match, 10) + 2).toString()
                 );
                 const nextLabelId2 = labelNameToIdMap[nextLabelName2];
                 if (nextLabelId1) {
@@ -1551,7 +1555,7 @@ export class PolygonRenderEngine extends BaseRenderEngine {
     private generatePolygonFromKeypoint(
         point: IPoint,
         radius: number,
-        numberOfVertices: number,
+        numberOfVertices: number
     ) {
         const polygonVertices = [];
         const angleStep = (2 * Math.PI) / numberOfVertices;
@@ -1607,7 +1611,7 @@ export class PolygonRenderEngine extends BaseRenderEngine {
     private checkPolygonAlreadyInMemory(labelPolygon: LabelPolygon): boolean {
         const polygonId = labelPolygon.id;
         return this.annotationsInMemory.some(
-            (polygon) => polygon.id === polygonId,
+            (polygon) => polygon.id === polygonId
         );
     }
 
@@ -1620,11 +1624,11 @@ export class PolygonRenderEngine extends BaseRenderEngine {
                 const labelId = currentLabelPolygon.labelId;
                 const labelPolygonWithNewId = LabelUtil.createLabelPolygon(
                     labelId,
-                    currPolygon,
+                    currPolygon
                 );
                 imageData.labelPolygons = this.removePolygonsInImageWithLabelId(
                     imageData,
-                    labelId,
+                    labelId
                 );
                 imageData.labelPolygons.push(labelPolygonWithNewId);
             }
@@ -1635,10 +1639,10 @@ export class PolygonRenderEngine extends BaseRenderEngine {
 
     private removePolygonsInImageWithLabelId(
         imageData: ImageData,
-        labelId: string,
+        labelId: string
     ) {
         return imageData.labelPolygons.filter(
-            (polygon) => polygon.labelId != labelId,
+            (polygon) => polygon.labelId != labelId
         );
     }
 
@@ -1649,7 +1653,7 @@ export class PolygonRenderEngine extends BaseRenderEngine {
     private startExistingLabelResize(
         data: EditorData,
         labelId: string,
-        anchorIndex: number,
+        anchorIndex: number
     ) {
         store.dispatch(updateActiveLabelId(labelId));
         this.resizeAnchorIndex = anchorIndex;
@@ -1681,18 +1685,18 @@ export class PolygonRenderEngine extends BaseRenderEngine {
                                     const snappedMousePosition: IPoint =
                                         RectUtil.snapPointToRect(
                                             data.mousePositionOnViewPortContent,
-                                            data.viewPortContentImageRect,
+                                            data.viewPortContentImageRect
                                         );
                                     return RenderEngineUtil.transferPointFromViewPortContentToImage(
                                         snappedMousePosition,
-                                        data,
+                                        data
                                     );
                                 }
-                            },
+                            }
                         ),
                     };
                 }
-            },
+            }
         );
         store.dispatch(updateImageDataById(imageData.id, imageData));
         store.dispatch(updateActiveLabelId(activeLabel.id));
@@ -1714,7 +1718,7 @@ export class PolygonRenderEngine extends BaseRenderEngine {
         const newAnchorPositionOnImage: IPoint =
             RenderEngineUtil.transferPointFromViewPortContentToImage(
                 this.suggestedAnchorPositionOnCanvas,
-                data,
+                data
             );
         const insert = (arr, index, newItem) => [
             ...arr.slice(0, index),
@@ -1734,11 +1738,11 @@ export class PolygonRenderEngine extends BaseRenderEngine {
                             vertices: insert(
                                 polygon.vertices,
                                 this.suggestedAnchorIndexInPolygon,
-                                newAnchorPositionOnImage,
+                                newAnchorPositionOnImage
                             ),
                         };
                     }
-                },
+                }
             ),
         };
 
@@ -1746,7 +1750,7 @@ export class PolygonRenderEngine extends BaseRenderEngine {
         this.startExistingLabelResize(
             data,
             activeLabel.id,
-            this.suggestedAnchorIndexInPolygon,
+            this.suggestedAnchorIndexInPolygon
         );
         this.discardSuggestedPoint();
     }
@@ -1772,9 +1776,9 @@ export class PolygonRenderEngine extends BaseRenderEngine {
         return RectUtil.isPointInside(
             RectUtil.getRectWithCenterAndSize(
                 anchor,
-                RenderEngineSettings.anchorSize,
+                RenderEngineSettings.anchorSize
             ),
-            mouse,
+            mouse
         );
     }
 
@@ -1788,7 +1792,7 @@ export class PolygonRenderEngine extends BaseRenderEngine {
 
         const labelPolygons: LabelPolygon[] =
             LabelsSelector.getActiveImageData().labelPolygons.filter(
-                (labelPolygon: LabelPolygon) => labelPolygon.isVisible,
+                (labelPolygon: LabelPolygon) => labelPolygon.isVisible
             );
         const radius = RenderEngineSettings.anchorHoverSize.width / 2;
 
@@ -1796,13 +1800,13 @@ export class PolygonRenderEngine extends BaseRenderEngine {
             const verticesOnCanvas =
                 RenderEngineUtil.transferPolygonFromImageToViewPortContent(
                     labelPolygon.vertices,
-                    data,
+                    data
                 );
             if (
                 RenderEngineUtil.isMouseOverPolygon(
                     mouseOnCanvas,
                     verticesOnCanvas,
-                    radius,
+                    radius
                 )
             ) {
                 return labelPolygon;
@@ -1817,7 +1821,7 @@ export class PolygonRenderEngine extends BaseRenderEngine {
 
         const labelPolygons: LabelPolygon[] =
             LabelsSelector.getActiveImageData().labelPolygons.filter(
-                (labelPolygon: LabelPolygon) => labelPolygon.isVisible,
+                (labelPolygon: LabelPolygon) => labelPolygon.isVisible
             );
         const radius = RenderEngineSettings.anchorHoverSize.width / 2;
 
@@ -1825,14 +1829,14 @@ export class PolygonRenderEngine extends BaseRenderEngine {
             const verticesOnCanvas =
                 RenderEngineUtil.transferPolygonFromImageToViewPortContent(
                     labelPolygon.vertices,
-                    data,
+                    data
                 );
             for (const vertexOnCanvas of verticesOnCanvas) {
                 if (
                     RenderEngineUtil.isMouseOverAnchor(
                         mouseOnCanvas,
                         vertexOnCanvas,
-                        radius,
+                        radius
                     )
                 )
                     return vertexOnCanvas;
@@ -1863,7 +1867,7 @@ export class KeypointSurfaceAnnotation {
     public processAnnotation(
         canvas: HTMLCanvasElement,
         data: EditorData,
-        points: IPoint[],
+        points: IPoint[]
     ) {
         if (points.length > 0) {
             this.activeAnchorPoints = points;
@@ -1879,7 +1883,7 @@ export class KeypointSurfaceAnnotation {
                     ? this.activeAnchorPoints[1]
                     : data.mousePositionOnViewPortContent;
             let mousePosition = RenderEngineUtil.setPointBetweenPixels(
-                data.mousePositionOnViewPortContent,
+                data.mousePositionOnViewPortContent
             );
             if (
                 this.activeAnchorPoints.length == 1 ||
@@ -1895,14 +1899,14 @@ export class KeypointSurfaceAnnotation {
                     canvas,
                     startPoint,
                     endPoint,
-                    data.mousePositionOnViewPortContent,
+                    data.mousePositionOnViewPortContent
                 );
             } else if (this.activeAnchorPoints.length == 3) {
                 this.drawEllipse(
                     canvas,
                     startPoint,
                     endPoint,
-                    this.activeAnchorPoints[2],
+                    this.activeAnchorPoints[2]
                 );
             }
         } else {
@@ -1913,7 +1917,7 @@ export class KeypointSurfaceAnnotation {
     public drawCircle(
         canvas: HTMLCanvasElement,
         startPoint: IPoint,
-        endPoint: IPoint,
+        endPoint: IPoint
     ) {
         // Calculate circle properties
         const dx = endPoint.x - startPoint.x;
@@ -1932,7 +1936,7 @@ export class KeypointSurfaceAnnotation {
     public static computeEllipse(
         startPoint: IPoint,
         endPoint: IPoint,
-        constrainPoint: IPoint,
+        constrainPoint: IPoint
     ) {
         // Calculate circle properties
         const dx = endPoint.x - startPoint.x;
@@ -1978,12 +1982,12 @@ export class KeypointSurfaceAnnotation {
         startPoint: IPoint,
         endPoint: IPoint,
         constrainPoint: IPoint,
-        color: string = "#ffffff",
+        color: string = "#ffffff"
     ) {
         const ellipseProperties = KeypointSurfaceAnnotation.computeEllipse(
             startPoint,
             endPoint,
-            constrainPoint,
+            constrainPoint
         );
         // Draw ellipse
         DrawUtil.drawDashEllipse(
@@ -1995,7 +1999,7 @@ export class KeypointSurfaceAnnotation {
             0,
             360,
             1,
-            color,
+            color
         );
     }
 
@@ -2054,7 +2058,7 @@ export class KeypointUtils {
         const allKeypointCenters = this.getKeypointsFromPolygons();
         const measurementDefinitions = inferMeasurementDefinitions(
             LabelsSelector.getLabelNames(),
-            GeneralSelector.getMeasurementFunctionByName(),
+            GeneralSelector.getMeasurementFunctionByName()
         );
 
         return measurementDefinitions.map((measurementDefinition) => ({
@@ -2064,7 +2068,7 @@ export class KeypointUtils {
             functionName: measurementDefinition.functionName,
             value: this.computeMeasurementValue(
                 allKeypointCenters,
-                measurementDefinition,
+                measurementDefinition
             ),
             unit:
                 measurementDefinition.functionId === MeasurementFunctionId.ANGLE
@@ -2074,12 +2078,12 @@ export class KeypointUtils {
     }
 
     public buildMeasurementResult(
-        measurementName: string,
+        measurementName: string
     ): MeasurementResult | null {
         return (
             this.buildMeasurementResults().find(
                 (measurementResult) =>
-                    measurementResult.measurementName === measurementName,
+                    measurementResult.measurementName === measurementName
             ) || null
         );
     }
@@ -2097,7 +2101,7 @@ export class KeypointUtils {
                 acc.y += point.y;
                 return acc;
             },
-            { x: 0, y: 0 },
+            { x: 0, y: 0 }
         );
 
         return {
@@ -2108,7 +2112,7 @@ export class KeypointUtils {
 
     private computeMeasurementValue(
         keypointCenters: KeypointCenter[],
-        measurementDefinition: MeasurementDefinition,
+        measurementDefinition: MeasurementDefinition
     ): number | null {
         if (!measurementDefinition.functionId) {
             return null;
@@ -2116,7 +2120,7 @@ export class KeypointUtils {
 
         const orderedKeypoints = this.getOrderedKeypointsForDefinition(
             keypointCenters,
-            measurementDefinition,
+            measurementDefinition
         );
         if (!orderedKeypoints) {
             return null;
@@ -2127,7 +2131,7 @@ export class KeypointUtils {
                 return this.computeChainDistanceRatio(orderedKeypoints);
             case MeasurementFunctionId.CLOSED_TRIANGLE_INVERSE_DISTANCE_RATIO:
                 return this.computeClosedTriangleInverseDistanceRatio(
-                    orderedKeypoints,
+                    orderedKeypoints
                 );
             case MeasurementFunctionId.PAIRED_DISTANCE_RATIO:
                 return this.computePairedDistanceRatio(orderedKeypoints);
@@ -2144,7 +2148,9 @@ export class KeypointUtils {
             case MeasurementFunctionId.POSITION_ELLIPSE_SPLIT_RATIO:
                 return this.computePositionRatio(orderedKeypoints);
             case MeasurementFunctionId.PROJECTED_DISTANCE_RATIO:
-                return this.computeDistanceRatioWithProjection(orderedKeypoints);
+                return this.computeDistanceRatioWithProjection(
+                    orderedKeypoints
+                );
             default:
                 return null;
         }
@@ -2152,15 +2158,15 @@ export class KeypointUtils {
 
     private getOrderedKeypointsForDefinition(
         keypointCenters: KeypointCenter[],
-        measurementDefinition: MeasurementDefinition,
+        measurementDefinition: MeasurementDefinition
     ): KeypointCenter[] | null {
         const measurementKeypoints = keypointCenters.filter(
             (keypointCenter) =>
                 keypointCenter.measurementName ===
-                measurementDefinition.measurementName,
+                measurementDefinition.measurementName
         );
         const suffixes = Array.from(
-            new Set(measurementKeypoints.map((keypoint) => keypoint.suffix)),
+            new Set(measurementKeypoints.map((keypoint) => keypoint.suffix))
         ).sort((first, second) => {
             if (first === "") return -1;
             if (second === "") return 1;
@@ -2173,13 +2179,13 @@ export class KeypointUtils {
                     measurementKeypoints.find(
                         (keypoint) =>
                             keypoint.keypointIndex === keypointIndex &&
-                            keypoint.suffix === suffix,
-                    ),
+                            keypoint.suffix === suffix
+                    )
             );
 
             if (
                 orderedKeypoints.every(
-                    (keypoint): keypoint is KeypointCenter => !!keypoint,
+                    (keypoint): keypoint is KeypointCenter => !!keypoint
                 )
             ) {
                 return orderedKeypoints;
@@ -2199,7 +2205,7 @@ export class KeypointUtils {
         numeratorStart: IPoint,
         numeratorEnd: IPoint,
         denominatorStart: IPoint,
-        denominatorEnd: IPoint,
+        denominatorEnd: IPoint
     ): number {
         return (
             this.computeDistance(numeratorStart, numeratorEnd) /
@@ -2208,90 +2214,98 @@ export class KeypointUtils {
     }
 
     private computeChainDistanceRatio(
-        keypoints: KeypointCenter[],
+        keypoints: KeypointCenter[]
     ): number | null {
-        if (keypoints.length !== 3) {
+        if (keypoints.length < 3) {
             return null;
         }
 
+        const [point1, point2, point3] = keypoints;
         return this.computeDistanceRatio(
-            keypoints[1].centroid,
-            keypoints[2].centroid,
-            keypoints[0].centroid,
-            keypoints[1].centroid,
+            point2.centroid,
+            point3.centroid,
+            point1.centroid,
+            point2.centroid
         );
     }
 
     private computeClosedTriangleInverseDistanceRatio(
-        keypoints: KeypointCenter[],
+        keypoints: KeypointCenter[]
     ): number | null {
-        if (keypoints.length !== 3) {
+        if (keypoints.length < 3) {
             return null;
         }
 
+        const [point1, point2, point3] = keypoints;
         return this.computeDistanceRatio(
-            keypoints[0].centroid,
-            keypoints[1].centroid,
-            keypoints[1].centroid,
-            keypoints[2].centroid,
+            point1.centroid,
+            point2.centroid,
+            point2.centroid,
+            point3.centroid
         );
     }
 
     private computePairedDistanceRatio(
-        keypoints: KeypointCenter[],
+        keypoints: KeypointCenter[]
     ): number | null {
-        if (keypoints.length !== 4) {
+        if (keypoints.length < 4) {
             return null;
         }
 
+        const [point1, point2, point3, point4] = keypoints;
         return this.computeDistanceRatio(
-            keypoints[2].centroid,
-            keypoints[3].centroid,
-            keypoints[0].centroid,
-            keypoints[1].centroid,
+            point3.centroid,
+            point4.centroid,
+            point1.centroid,
+            point2.centroid
         );
     }
 
     private computeInversePairedDistanceRatio(
-        keypoints: KeypointCenter[],
+        keypoints: KeypointCenter[]
     ): number | null {
-        if (keypoints.length !== 4) {
+        if (keypoints.length < 4) {
             return null;
         }
 
+        const [point1, point2, point3, point4] = keypoints;
         return this.computeDistanceRatio(
-            keypoints[0].centroid,
-            keypoints[1].centroid,
-            keypoints[2].centroid,
-            keypoints[3].centroid,
+            point1.centroid,
+            point2.centroid,
+            point3.centroid,
+            point4.centroid
         );
     }
 
-    private computeAnchoredDistanceRatio(keypoints: KeypointCenter[]): number | null {
-        if (keypoints.length !== 3) {
+    private computeAnchoredDistanceRatio(
+        keypoints: KeypointCenter[]
+    ): number | null {
+        if (keypoints.length < 3) {
             return null;
         }
 
+        const [point1, point2, point3] = keypoints;
         return this.computeDistanceRatio(
-            keypoints[0].centroid,
-            keypoints[1].centroid,
-            keypoints[2].centroid,
-            keypoints[0].centroid,
+            point1.centroid,
+            point2.centroid,
+            point3.centroid,
+            point1.centroid
         );
     }
 
     private computeTerminalDistanceRatio(
-        keypoints: KeypointCenter[],
+        keypoints: KeypointCenter[]
     ): number | null {
-        if (keypoints.length !== 3) {
+        if (keypoints.length < 3) {
             return null;
         }
 
+        const [point1, point2, point3] = keypoints;
         return this.computeDistanceRatio(
-            keypoints[2].centroid,
-            keypoints[1].centroid,
-            keypoints[0].centroid,
-            keypoints[2].centroid,
+            point3.centroid,
+            point2.centroid,
+            point1.centroid,
+            point3.centroid
         );
     }
 
@@ -2303,47 +2317,29 @@ export class KeypointUtils {
     }
 
     private computeAngle(keypoints: KeypointCenter[]): number | null {
-        if (keypoints.length !== 3 && keypoints.length !== 5) {
+        if (keypoints.length < 5) {
             return null;
         }
 
-        const angleKeypoints = [...keypoints];
-        if (angleKeypoints.length === 3) {
-            angleKeypoints.splice(2, 0, angleKeypoints[1]);
-        }
-
-        const vect1 = this.computeVector(
-            angleKeypoints[0].centroid,
-            angleKeypoints[1].centroid,
-        );
-        const vect2 = this.computeVector(
-            angleKeypoints[2].centroid,
-            angleKeypoints[3].centroid,
-        );
+        const [point1, point2, point3, point4, point5] = keypoints;
+        const vect1 = this.computeVector(point1.centroid, point2.centroid);
+        const vect2 = this.computeVector(point3.centroid, point4.centroid);
         const angle =
             (Math.atan2(
                 vect1.x * vect2.y - vect1.y * vect2.x,
-                vect1.x * vect2.x + vect1.y * vect2.y,
+                vect1.x * vect2.x + vect1.y * vect2.y
             ) *
                 180) /
             Math.PI;
 
-        if (angleKeypoints[4] !== undefined) {
-            const vect3 = this.computeVector(
-                angleKeypoints[4].centroid,
-                angleKeypoints[3].centroid,
-            );
-            const sign = Math.sign(vect2.x * vect3.y - vect2.y * vect3.x);
-            return sign * angle;
-        }
-
-        return Math.abs(angle);
+        const vect3 = this.computeVector(point5.centroid, point4.centroid);
+        const sign = Math.sign(vect2.x * vect3.y - vect2.y * vect3.x);
+        return sign * angle;
     }
-
 
     private findLineEquationFromNormalVectorAnd1Point(
         normalVector: IPoint,
-        point: IPoint,
+        point: IPoint
     ) {
         const a = normalVector.x;
         const b = normalVector.y;
@@ -2364,36 +2360,55 @@ export class KeypointUtils {
         };
     }
 
-    private computeDistanceRatioWithProjection(
-        keypoints: KeypointCenter[],
-    ): number | null {
-        if (keypoints.length !== 3) {
+    private projectPointOntoLineByPoints(
+        linePoint1: IPoint,
+        linePoint2: IPoint,
+        point: IPoint
+    ): IPoint | null {
+        const dx = linePoint2.x - linePoint1.x;
+        const dy = linePoint2.y - linePoint1.y;
+        const lengthSquared = dx * dx + dy * dy;
+        if (lengthSquared === 0) {
             return null;
         }
 
-        const directionVectorOfLine01 = this.computeVector(
-            keypoints[0].centroid,
-            keypoints[1].centroid,
-        );
-        const normalVectorOfLine01: IPoint = {
-            x: directionVectorOfLine01.y,
-            y: -directionVectorOfLine01.x,
+        const t =
+            ((point.x - linePoint1.x) * dx + (point.y - linePoint1.y) * dy) /
+            lengthSquared;
+
+        return {
+            x: linePoint1.x + t * dx,
+            y: linePoint1.y + t * dy,
         };
-        const lineParamsOfLine2 =
-            this.findLineEquationFromNormalVectorAnd1Point(
-                normalVectorOfLine01,
-                keypoints[2].centroid,
-            );
-        const projectedPoint = this.projectPointOntoLine(
-            lineParamsOfLine2,
-            keypoints[1].centroid,
+    }
+
+    private computeDistanceRatioWithProjection(
+        keypoints: KeypointCenter[]
+    ): number | null {
+        if (keypoints.length < 3) {
+            return null;
+        }
+
+        const [point1, point2, point3] = keypoints;
+        const linePoint1 = point3.centroid;
+        const linePoint2 = {
+            x: point3.centroid.x + point2.centroid.x - point1.centroid.x,
+            y: point3.centroid.y + point2.centroid.y - point1.centroid.y,
+        };
+        const projectedPoint = this.projectPointOntoLineByPoints(
+            linePoint1,
+            linePoint2,
+            point1.centroid
         );
+        if (!projectedPoint) {
+            return null;
+        }
 
         return this.computeDistanceRatio(
             projectedPoint,
-            keypoints[2].centroid,
-            keypoints[0].centroid,
-            keypoints[1].centroid,
+            point3.centroid,
+            point1.centroid,
+            point2.centroid
         );
     }
 
@@ -2402,27 +2417,28 @@ export class KeypointUtils {
     }
 
     private computeSurfaceRatio(keypoints: KeypointCenter[]): number | null {
-        if (keypoints.length !== 6) {
+        if (keypoints.length < 6) {
             return null;
         }
 
+        const [point1, point2, point3, point4, point5, point6] = keypoints;
         const propertiesEllipse1 = KeypointSurfaceAnnotation.computeEllipse(
-            keypoints[3].centroid,
-            keypoints[4].centroid,
-            keypoints[5].centroid,
+            point4.centroid,
+            point5.centroid,
+            point6.centroid
         );
         const propertiesEllipse2 = KeypointSurfaceAnnotation.computeEllipse(
-            keypoints[0].centroid,
-            keypoints[1].centroid,
-            keypoints[2].centroid,
+            point1.centroid,
+            point2.centroid,
+            point3.centroid
         );
         const areaEllipse1 = this.computeEllipseArea(
             propertiesEllipse1.majorAxis,
-            propertiesEllipse1.minorAxis,
+            propertiesEllipse1.minorAxis
         );
         const areaEllipse2 = this.computeEllipseArea(
             propertiesEllipse2.majorAxis,
-            propertiesEllipse2.minorAxis,
+            propertiesEllipse2.minorAxis
         );
 
         return areaEllipse1 / (areaEllipse2 + 1e-6);
@@ -2432,7 +2448,7 @@ export class KeypointUtils {
         ellipseKp1: IPoint,
         ellipseKp2: IPoint,
         ellipseKp3: IPoint,
-        nbPoints: number = 4,
+        nbPoints: number = 4
     ) {
         if (nbPoints < 4) {
             throw new Error("Number of points must be at least 4");
@@ -2440,7 +2456,7 @@ export class KeypointUtils {
         const propertiesEllipse = KeypointSurfaceAnnotation.computeEllipse(
             ellipseKp1,
             ellipseKp2,
-            ellipseKp3,
+            ellipseKp3
         );
 
         const center = propertiesEllipse.center;
@@ -2528,7 +2544,7 @@ export class KeypointUtils {
             point[1] - p1[1],
         ]);
         const crossProd = vectsPointsP1.map(
-            (vect) => vectLine[0] * vect[1] - vectLine[1] * vect[0],
+            (vect) => vectLine[0] * vect[1] - vectLine[1] * vect[0]
         );
 
         return crossProd.map((val) => Math.sign(val));
@@ -2557,13 +2573,13 @@ export class KeypointUtils {
         ellipseP3,
         linePoint1,
         linePoint2,
-        nbApproxPointsEllipse,
+        nbApproxPointsEllipse
     ) {
         const [ellipsePoints, majorAxis, minorAxis] = this.findEllipseKeypoints(
             ellipseP1,
             ellipseP2,
             ellipseP3,
-            nbApproxPointsEllipse,
+            nbApproxPointsEllipse
         );
 
         const kp1 = ellipsePoints[0];
@@ -2572,16 +2588,16 @@ export class KeypointUtils {
         const vectKp2Kp1 = [kp2[0] - kp1[0], kp2[1] - kp1[1]];
         const vectKp3Kp1 = [kp3[0] - kp1[0], kp3[1] - kp1[1]];
         const sign = Math.sign(
-            vectKp2Kp1[0] * vectKp3Kp1[1] - vectKp2Kp1[1] * vectKp3Kp1[0],
+            vectKp2Kp1[0] * vectKp3Kp1[1] - vectKp2Kp1[1] * vectKp3Kp1[0]
         );
         const orderedPoints = this.orderPointsCounterclockwise(ellipsePoints);
         const signs = this.pointsToLineSign(
             linePoint1,
             linePoint2,
-            orderedPoints,
+            orderedPoints
         ).map((s) => !!(sign * s > 0));
         const ellipsePointsForRatio = orderedPoints.filter(
-            (_, i) => signs[i] === true,
+            (_, i) => signs[i] === true
         );
 
         return (
@@ -2591,17 +2607,18 @@ export class KeypointUtils {
     }
 
     private computePositionRatio(keypoints: KeypointCenter[]): number | null {
-        if (keypoints.length !== 5) {
+        if (keypoints.length < 5) {
             return null;
         }
 
+        const [point1, point2, point3, point4, point5] = keypoints;
         return this.calculateEllipseRatioByPolygon(
-            keypoints[2].centroid,
-            keypoints[3].centroid,
-            keypoints[4].centroid,
-            keypoints[0].centroid,
-            keypoints[1].centroid,
-            1000,
+            point3.centroid,
+            point4.centroid,
+            point5.centroid,
+            point1.centroid,
+            point2.centroid,
+            1000
         );
     }
 }

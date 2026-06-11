@@ -1,9 +1,9 @@
 @import '../../../settings/Settings';
 
 .GenericYesNoPopup.EditKeypointsPopupDialog {
-  width: 760px;
-  max-width: 80vw;
-  max-height: 640px;
+  width: 920px;
+  max-width: 90vw;
+  max-height: 760px;
 
   .Content {
     justify-content: flex-start;
@@ -16,10 +16,82 @@
   width: 100%;
   color: white;
 
+  .FunctionGuide {
+    padding: 14px 32px 12px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    background-color: rgba(0, 0, 0, 0.08);
+  }
+
+  .FunctionGuideHeader {
+    margin-bottom: 12px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    gap: 8px;
+    text-align: center;
+  }
+
+  .FunctionGuideTitle {
+    color: rgba(255, 255, 255, 0.9);
+    font-size: 13px;
+    font-weight: 700;
+  }
+
+  .FunctionGuideLegend {
+    width: 100%;
+    display: flex;
+    flex-direction: row;
+    justify-content: center;
+    align-items: center;
+    gap: 8px;
+    color: rgba(255, 255, 255, 0.68);
+    font-size: 12px;
+  }
+
+  .LegendLine {
+    width: 22px;
+    height: 0;
+    border-top: 4px solid #5bd6ff;
+    border-radius: 4px;
+
+    &.denominator {
+      border-top-color: #f4bd50;
+    }
+  }
+
+  .FunctionGuideGrid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+    gap: 10px;
+  }
+
+  .FunctionGuideItem {
+    min-height: 118px;
+    padding: 10px 10px 12px;
+    box-sizing: border-box;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-start;
+    align-items: center;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 6px;
+    background-color: rgba(255, 255, 255, 0.03);
+  }
+
+  .FunctionGuideName {
+    margin-top: 4px;
+    width: 100%;
+    font-size: 12px;
+    line-height: 15px;
+    color: rgba(255, 255, 255, 0.86);
+    text-align: center;
+  }
+
   .KeypointsTableHeader,
   .KeypointsTableRow {
     display: grid;
-    grid-template-columns: minmax(220px, 1fr) minmax(260px, 1fr);
+    grid-template-columns: minmax(230px, 0.8fr) minmax(360px, 1.2fr);
     column-gap: 24px;
     align-items: center;
   }
@@ -37,7 +109,7 @@
   }
 
   .KeypointsTableBody {
-    max-height: 440px;
+    max-height: 360px;
     overflow-y: auto;
   }
 
@@ -51,15 +123,22 @@
     font-weight: 700;
   }
 
-  .MeasurementRawName,
-  .FunctionRawName {
+  .MeasurementPointCount {
     margin-top: 4px;
     color: rgba(255, 255, 255, 0.58);
     font-size: 12px;
   }
 
+  .FunctionSelection {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    gap: 12px;
+  }
+
   select {
-    width: 100%;
+    flex: 1;
+    min-width: 0;
     height: 34px;
     border: 1px solid rgba(255, 255, 255, 0.18);
     border-radius: 4px;
@@ -67,5 +146,80 @@
     color: white;
     padding: 0 10px;
     outline: none;
+  }
+
+  .MeasurementFunctionDiagram {
+    width: 152px;
+    height: 88px;
+    flex: 0 0 auto;
+    overflow: visible;
+
+    &.compact {
+      width: 78px;
+      height: 46px;
+      flex-basis: 78px;
+    }
+
+    .DiagramLine,
+    .DiagramArc,
+    .DiagramEllipse {
+      fill: none;
+      stroke-width: 4;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }
+
+    .DiagramLine.numerator,
+    .DiagramEllipse.numerator,
+    .DiagramArc {
+      stroke: #5bd6ff;
+    }
+
+    .DiagramLine.denominator,
+    .DiagramEllipse.denominator {
+      stroke: #f4bd50;
+    }
+
+    .DiagramLine.neutral,
+    .DiagramEllipse.neutral {
+      stroke: rgba(255, 255, 255, 0.58);
+    }
+
+    .DiagramLine.guide {
+      stroke: rgba(255, 255, 255, 0.38);
+      stroke-width: 2;
+      stroke-dasharray: 4 4;
+    }
+
+    .DiagramArea {
+      fill: rgba(91, 214, 255, 0.2);
+      stroke: none;
+    }
+
+    .DiagramArea.numerator {
+      fill: #5bd6ff;
+      stroke: none;
+    }
+
+    .DiagramPoint {
+      fill: #ffffff;
+      stroke: $darkThemeFirstColor;
+      stroke-width: 1.5;
+    }
+
+    .DiagramPoint.projected {
+      fill: #5bd6ff;
+    }
+
+    .DiagramPointLabel {
+      fill: rgba(255, 255, 255, 0.9);
+      stroke: $darkThemeSecondColor;
+      stroke-width: 3px;
+      paint-order: stroke fill;
+      font-size: 9px;
+      font-weight: 700;
+      text-anchor: middle;
+      dominant-baseline: middle;
+    }
   }
 }

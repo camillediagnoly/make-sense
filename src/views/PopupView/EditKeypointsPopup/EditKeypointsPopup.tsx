@@ -11,13 +11,14 @@ import {
     MeasurementFunctionId,
     inferMeasurementDefinitions,
 } from "../../../data/measurements/MeasurementFunctionData";
+import { MeasurementFunctionDiagram } from "./MeasurementFunctionDiagram";
 import "./EditKeypointsPopup.scss";
 
 interface IProps {
     labelNames: LabelName[];
     measurementFunctionByName: MeasurementFunctionByName;
     updateMeasurementFunctionsAction: (
-        measurementFunctionByName: MeasurementFunctionByName,
+        measurementFunctionByName: MeasurementFunctionByName
     ) => any;
 }
 
@@ -35,12 +36,12 @@ const EditKeypointsPopup: React.FC<IProps> = ({
 
     const measurementDefinitions = inferMeasurementDefinitions(
         labelNames,
-        localMeasurementFunctions,
+        localMeasurementFunctions
     );
 
     const onFunctionChange = (
         measurementName: string,
-        functionId: MeasurementFunctionId | null,
+        functionId: MeasurementFunctionId | null
     ) => {
         setLocalMeasurementFunctions((previous) => {
             const next = { ...previous };
@@ -56,13 +57,40 @@ const EditKeypointsPopup: React.FC<IProps> = ({
     const renderContent = () => {
         return (
             <div className="EditKeypointsPopupContent">
+                <div className="FunctionGuide">
+                    <div className="FunctionGuideHeader">
+                        <div className="FunctionGuideTitle">Function guide</div>
+                        <div className="FunctionGuideLegend">
+                            <span className="LegendLine numerator" />
+                            <span>Numerator</span>
+                            <span className="LegendLine denominator" />
+                            <span>Denominator</span>
+                        </div>
+                    </div>
+                    <div className="FunctionGuideGrid">
+                        {MEASUREMENT_FUNCTIONS.map((measurementFunction) => (
+                            <div
+                                className="FunctionGuideItem"
+                                key={measurementFunction.id}
+                            >
+                                <MeasurementFunctionDiagram
+                                    functionId={measurementFunction.id}
+                                />
+                                <div className="FunctionGuideName">
+                                    {measurementFunction.name}
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                </div>
                 <div className="KeypointsTableHeader">
                     <div className="MeasurementNameColumn">Measurement</div>
                     <div className="FunctionNameColumn">Function</div>
                 </div>
                 <div className="KeypointsTableBody">
                     {measurementDefinitions.map((measurementDefinition) => {
-                        const selectedFunctionId = measurementDefinition.functionId || "";
+                        const selectedFunctionId =
+                            measurementDefinition.functionId || "";
 
                         return (
                             <div
@@ -71,39 +99,58 @@ const EditKeypointsPopup: React.FC<IProps> = ({
                             >
                                 <div className="MeasurementNameColumn">
                                     <div className="MeasurementDisplayName">
-                                        {measurementDefinition.displayName}
-                                    </div>
-                                    <div className="MeasurementRawName">
                                         {measurementDefinition.measurementName}
                                     </div>
                                     <div className="MeasurementPointCount">
-                                        {measurementDefinition.keypointIndexes.length} keypoints
+                                        {
+                                            measurementDefinition
+                                                .keypointIndexes.length
+                                        }{" "}
+                                        keypoints
                                     </div>
                                 </div>
                                 <div className="FunctionNameColumn">
-                                    <select
-                                        value={selectedFunctionId}
-                                        onChange={(event) =>
-                                            onFunctionChange(
-                                                measurementDefinition.measurementName,
-                                                event.target.value
-                                                    ? event.target.value as MeasurementFunctionId
-                                                    : null,
-                                            )
-                                        }
-                                    >
-                                        <option value="">Select function</option>
-                                        {MEASUREMENT_FUNCTIONS.map((measurementFunction) => (
-                                            <option
-                                                key={measurementFunction.id}
-                                                value={measurementFunction.id}
-                                            >
-                                                {measurementFunction.name}
+                                    <div className="FunctionSelection">
+                                        <select
+                                            value={selectedFunctionId}
+                                            onChange={(event) =>
+                                                onFunctionChange(
+                                                    measurementDefinition.measurementName,
+                                                    event.target.value
+                                                        ? (event.target
+                                                              .value as MeasurementFunctionId)
+                                                        : null
+                                                )
+                                            }
+                                        >
+                                            <option value="">
+                                                Select function
                                             </option>
-                                        ))}
-                                    </select>
-                                    <div className="FunctionRawName">
-                                        {measurementDefinition.functionName}
+                                            {MEASUREMENT_FUNCTIONS.map(
+                                                (measurementFunction) => (
+                                                    <option
+                                                        key={
+                                                            measurementFunction.id
+                                                        }
+                                                        value={
+                                                            measurementFunction.id
+                                                        }
+                                                    >
+                                                        {
+                                                            measurementFunction.name
+                                                        }
+                                                    </option>
+                                                )
+                                            )}
+                                        </select>
+                                        {measurementDefinition.functionId && (
+                                            <MeasurementFunctionDiagram
+                                                functionId={
+                                                    measurementDefinition.functionId
+                                                }
+                                                compact
+                                            />
+                                        )}
                                     </div>
                                 </div>
                             </div>
@@ -141,7 +188,4 @@ const mapStateToProps = (state: AppState) => ({
     measurementFunctionByName: state.general.measurementFunctionByName,
 });
 
-export default connect(
-    mapStateToProps,
-    mapDispatchToProps,
-)(EditKeypointsPopup);
+export default connect(mapStateToProps, mapDispatchToProps)(EditKeypointsPopup);
