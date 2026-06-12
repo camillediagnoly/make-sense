@@ -476,10 +476,12 @@ const ExportLabelPopup: React.FC<IProps> = ({
                             presence rules.
                         </div>
                     )}
-                    <div className="SanityCheckExportCount hasMissingLabels">
-                        ({unlabeledImageCount}) images have no{" "}
-                        {labelType.toLowerCase()} labels.
-                    </div>
+                    {unlabeledImageCount > 0 && (
+                        <div className="SanityCheckExportCount hasMissingLabels">
+                            ({unlabeledImageCount}) images have no{" "}
+                            {labelType.toLowerCase()} labels.
+                        </div>
+                    )}
                 </div>
             </>
         );
