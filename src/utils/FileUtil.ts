@@ -10,12 +10,31 @@ export class FileUtil {
     }
 
     public static loadImage(fileData: File): Promise<HTMLImageElement> {
-        return new Promise((resolve, reject) => {
-            const url = URL.createObjectURL(fileData);
-            const image = new Image();
-            image.src = url;
-            image.onload = () => resolve(image);
-            image.onerror = reject;
+        return new Promise(async (resolve, reject) => {
+            try {
+                // Decode ignoring EXIF orientation so everything stays in raw pixel space, matching
+                // cv2/COCO tooling. Browsers auto-rotate images loaded via `new Image()` per their EXIF
+                // Orientation tag, which would misalign imported (un-rotated) annotation coordinates.
+                const bitmap = await createImageBitmap(fileData, {imageOrientation: 'none'});
+                const canvas = document.createElement('canvas');
+                canvas.width = bitmap.width;
+                canvas.height = bitmap.height;
+                canvas.getContext('2d').drawImage(bitmap, 0, 0);
+                bitmap.close();
+                canvas.toBlob((blob: Blob) => {
+                    const image = new Image();
+                    image.onload = () => resolve(image);
+                    image.onerror = reject;
+                    // The re-encoded blob carries no EXIF tag, so all consumers see identical raw pixels.
+                    image.src = URL.createObjectURL(blob);
+                }, 'image/png'); // PNG is lossless, preserving annotation fidelity.
+            } catch (error) {
+                // Fallback for environments without createImageBitmap orientation support.
+                const image = new Image();
+                image.onload = () => resolve(image);
+                image.onerror = reject;
+                image.src = URL.createObjectURL(fileData);
+            }
         });
     }
 
