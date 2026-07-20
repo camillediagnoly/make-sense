@@ -60,6 +60,7 @@ export class ContextManager {
 
     private static onUp(event: KeyboardEvent): void {
         const keyCode: string = ContextManager.getKeyCodeFromEvent(event);
+        ContextManager.executeRelease(keyCode, event);
         ContextManager.removeFromCombo(keyCode);
     }
 
@@ -72,6 +73,20 @@ export class ContextManager {
             const hotKey: HotKeyAction = ContextManager.actions[i];
             if (ContextManager.matchCombo(ContextManager.activeCombo, hotKey.keyCombo)) {
                 hotKey.action(event);
+            }
+        }
+    }
+
+    // Fires onRelease for actions whose combo was matching right before this key let go - i.e. the
+    // combo stops matching because of THIS key release, not merely because some other key is up.
+    private static executeRelease(releasedKeyCode: string, event: KeyboardEvent): void {
+        for (let i = 0; i < ContextManager.actions.length; i++) {
+            const hotKey: HotKeyAction = ContextManager.actions[i];
+            if (!hotKey.onRelease || hotKey.keyCombo.indexOf(releasedKeyCode) === -1) {
+                continue;
+            }
+            if (ContextManager.matchCombo(ContextManager.activeCombo, hotKey.keyCombo)) {
+                hotKey.onRelease(event);
             }
         }
     }

@@ -2,7 +2,6 @@ import React from 'react';
 import './Editor.scss';
 import {ISize} from '../../../interfaces/ISize';
 import {ImageData, LabelPoint, LabelRect} from '../../../store/labels/types';
-import {FileUtil} from '../../../utils/FileUtil';
 import {AppState} from '../../../store';
 import {connect} from 'react-redux';
 import {updateImageDataById} from '../../../store/labels/actionCreators';
@@ -157,7 +156,7 @@ class Editor extends React.Component<IProps, IState> {
             if (!EditorModel.isLoading) {
                 EditorActions.setLoadingStatus(true);
                 const saveLoadedImagePartial = (image: HTMLImageElement) => this.saveLoadedImage(image, imageData);
-                FileUtil.loadImage(imageData.fileData)
+                ImageRepository.loadAndStore(imageData.id, imageData.fileData)
                     .then((image:HTMLImageElement) => saveLoadedImagePartial(image))
                     .catch((error) => this.handleLoadImageError())
             }
@@ -165,19 +164,25 @@ class Editor extends React.Component<IProps, IState> {
     };
 
     private saveLoadedImage = (image: HTMLImageElement, imageData: ImageData) => {
+        EditorActions.setLoadingStatus(false);
+        // Defense-in-depth: navigation may have moved on to a different image while this decode
+        // was in flight - don't paint it over whatever is now actually on screen.
+        if (this.props.imageData.id !== imageData.id) {
+            return;
+        }
         const loadedImageData = {
             ...imageData,
             loadStatus: true,
         };
         this.props.updateImageDataById(loadedImageData.id, loadedImageData);
-        ImageRepository.storeImage(loadedImageData.id, image);
         EditorActions.setActiveImage(image);
         AIActions.detect(loadedImageData.id, image);
-        EditorActions.setLoadingStatus(false);
         this.updateModelAndRender()
     };
 
-    private handleLoadImageError = () => {};
+    private handleLoadImageError = () => {
+        EditorActions.setLoadingStatus(false);
+    };
 
     // =================================================================================================================
     // HELPER METHODS

@@ -9,7 +9,6 @@ import { ImageRepository } from "../../../../logic/imageRepository/ImageReposito
 import { AppState } from "../../../../store";
 import { updateImageDataById } from "../../../../store/labels/actionCreators";
 import { ImageData } from "../../../../store/labels/types";
-import { FileUtil } from "../../../../utils/FileUtil";
 import { RectUtil } from "../../../../utils/RectUtil";
 import './ImagePreview.scss';
 import { CSSHelper } from "../../../../logic/helpers/CSSHelper";
@@ -86,7 +85,7 @@ class ImagePreview extends React.Component<IProps, IState> {
         else if (!isScrolling || !this.isLoading) {
             this.isLoading = true;
             const saveLoadedImagePartial = (image: HTMLImageElement) => this.saveLoadedImage(image, imageData);
-            FileUtil.loadImage(imageData.fileData)
+            ImageRepository.loadAndStore(imageData.id, imageData.fileData)
                 .then((image: HTMLImageElement) => saveLoadedImagePartial(image))
                 .catch((error) => this.handleLoadImageError())
         }
@@ -98,7 +97,6 @@ class ImagePreview extends React.Component<IProps, IState> {
             loadStatus: true,
         };
         this.props.updateImageDataById(loadedImageData.id, loadedImageData);
-        ImageRepository.storeImage(loadedImageData.id, image);
         if (loadedImageData.id === this.props.imageData.id) {
             this.setState({ image });
             this.isLoading = false;

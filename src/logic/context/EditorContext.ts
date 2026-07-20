@@ -116,18 +116,30 @@ export class EditorContext extends BaseContext {
             };
         }
 
+        // Handlers that fire the instant a shortcut's key combo stops matching (key released),
+        // rather than on every other keyup. Used to stop draining a queued action immediately.
+        const releaseHandlers: {[key: string]: (event: KeyboardEvent) => void} = {
+            'Previous Image': (event: KeyboardEvent) => {
+                ImageActions.cancelPendingNavigation();
+            },
+            'Next Image': (event: KeyboardEvent) => {
+                ImageActions.cancelPendingNavigation();
+            },
+        };
+
         // Get all shortcuts from Redux
         const shortcuts = store.getState().general.keyboardShortcuts;
-        
+
         // Build actions array by matching shortcuts with handlers
         const actions: HotKeyAction[] = [];
-        
+
         shortcuts.forEach(shortcut => {
             // If we have a handler for this shortcut
             if (actionHandlers[shortcut.name]) {
                 actions.push({
                     keyCombo: shortcut.keyCombo,
-                    action: actionHandlers[shortcut.name]
+                    action: actionHandlers[shortcut.name],
+                    onRelease: releaseHandlers[shortcut.name]
                 });
             }
         });
