@@ -52,6 +52,12 @@ export class ImageActions {
   private static isSyncingDeletedLocalImages: boolean = false;
   private static isRefreshingLocalImageFolders: boolean = false;
 
+  // Bumped on every navigateToIndex call; a call whose id no longer matches after an await was
+  // superseded by a later navigation (e.g. reversing direction) and must not commit its result.
+  private static navigationRequestId: number = 0;
+  private static navigationSteps: Array<() => number | null> = [];
+  private static isProcessingNavigationSteps: boolean = false;
+
   private static getFilteredImageIndices(): number[] {
     const imagesData = LabelsSelector.getImagesData();
     const activeLabelType = LabelsSelector.getActiveLabelType();
@@ -100,58 +106,98 @@ export class ImageActions {
   }
 
   public static getPreviousImage(): void {
-    const filteredIndices = ImageActions.getFilteredImageIndices();
-    if (!filteredIndices.length) {
-      return;
-    }
-
-    const currentImageIndex: number | null = LabelsSelector.getActiveImageIndex();
-    if (currentImageIndex === null || currentImageIndex === undefined) {
-      ImageActions.getImageByIndex(
-        filteredIndices[filteredIndices.length - 1]
-      );
-      return;
-    }
-
-    const currentFilteredIndex = filteredIndices.indexOf(currentImageIndex);
-    if (currentFilteredIndex === -1) {
-      ImageActions.getImageByIndex(
-        filteredIndices[filteredIndices.length - 1]
-      );
-      return;
-    }
-    if (currentFilteredIndex === 0) {
-      return;
-    }
-    ImageActions.getImageByIndex(filteredIndices[currentFilteredIndex - 1]);
+    ImageActions.enqueueNavigationStep(() => ImageActions.resolvePreviousIndex());
   }
 
   public static getNextImage(): void {
+    ImageActions.enqueueNavigationStep(() => ImageActions.resolveNextIndex());
+  }
+
+  // Clears any steps still waiting in the queue - used to make releasing a held navigation key
+  // stop immediately instead of draining the whole backlog queued up during the hold.
+  public static cancelPendingNavigation(): void {
+    ImageActions.navigationSteps = [];
+  }
+
+  private static resolvePreviousIndex(): number | null {
     const filteredIndices = ImageActions.getFilteredImageIndices();
     if (!filteredIndices.length) {
-      return;
+      return null;
     }
 
     const currentImageIndex: number | null = LabelsSelector.getActiveImageIndex();
     if (currentImageIndex === null || currentImageIndex === undefined) {
-      ImageActions.getImageByIndex(filteredIndices[0]);
-      return;
-    }
-
-    if (GeneralSelector.getClassSanityCheckReviewMode()) {
-      ImageActions.getNextClassSanityCheckReviewImage(filteredIndices, currentImageIndex);
-      return;
+      return filteredIndices[filteredIndices.length - 1];
     }
 
     const currentFilteredIndex = filteredIndices.indexOf(currentImageIndex);
     if (currentFilteredIndex === -1) {
-      ImageActions.getImageByIndex(filteredIndices[0]);
-      return;
+      return filteredIndices[filteredIndices.length - 1];
+    }
+    if (currentFilteredIndex === 0) {
+      return null;
+    }
+    return filteredIndices[currentFilteredIndex - 1];
+  }
+
+  private static resolveNextIndex(): number | null {
+    const filteredIndices = ImageActions.getFilteredImageIndices();
+    if (!filteredIndices.length) {
+      return null;
+    }
+
+    const currentImageIndex: number | null = LabelsSelector.getActiveImageIndex();
+    if (currentImageIndex === null || currentImageIndex === undefined) {
+      return filteredIndices[0];
+    }
+
+    if (GeneralSelector.getClassSanityCheckReviewMode()) {
+      return ImageActions.resolveNextClassSanityCheckReviewIndex(filteredIndices, currentImageIndex);
+    }
+
+    const currentFilteredIndex = filteredIndices.indexOf(currentImageIndex);
+    if (currentFilteredIndex === -1) {
+      return filteredIndices[0];
     }
     if (currentFilteredIndex === filteredIndices.length - 1) {
+      return null;
+    }
+    return filteredIndices[currentFilteredIndex + 1];
+  }
+
+  // Steps are resolved lazily (only once they're actually processed) so each one reads the
+  // index the previous step just committed, rather than a stale snapshot taken at enqueue time.
+  private static enqueueNavigationStep(resolveStep: () => number | null): void {
+    if (EditorModel.viewPortActionsDisabled) {
       return;
     }
-    ImageActions.getImageByIndex(filteredIndices[currentFilteredIndex + 1]);
+    ImageActions.navigationSteps.push(resolveStep);
+    void ImageActions.processNavigationSteps();
+  }
+
+  private static async processNavigationSteps(): Promise<void> {
+    if (ImageActions.isProcessingNavigationSteps) {
+      return;
+    }
+    ImageActions.isProcessingNavigationSteps = true;
+    try {
+      while (ImageActions.navigationSteps.length > 0) {
+        const resolveStep = ImageActions.navigationSteps.shift();
+        const targetIndex = resolveStep();
+        if (targetIndex !== null) {
+          await ImageActions.navigateToIndex(targetIndex);
+          // Without this, a burst of key-repeat events resolving in the same JS turn would
+          // never actually get painted - only the last one would ever show up on screen.
+          await ImageActions.waitForNextPaint();
+        }
+      }
+    } finally {
+      ImageActions.isProcessingNavigationSteps = false;
+    }
+  }
+
+  private static waitForNextPaint(): Promise<void> {
+    return new Promise((resolve) => requestAnimationFrame(() => resolve()));
   }
 
   private static getViolationImageIndices(
@@ -172,10 +218,10 @@ export class ImageActions {
       .filter((index): index is number => index !== undefined);
   }
 
-  private static getNextClassSanityCheckReviewImage(
+  private static resolveNextClassSanityCheckReviewIndex(
     filteredIndices: number[],
     currentImageIndex: number
-  ): void {
+  ): number {
     const previousViolationIndices = ImageActions.getViolationImageIndices(
       filteredIndices,
       GeneralSelector.getClassSanityCheckViolationImageIds()
@@ -188,13 +234,11 @@ export class ImageActions {
     );
 
     if (nextViolationIndices.length === 0) {
-      ImageActions.activateImageByIndex(0);
-      return;
+      return 0;
     }
 
     if (previousViolationPosition === -1) {
-      ImageActions.activateImageByIndex(nextViolationIndices[0]);
-      return;
+      return nextViolationIndices[0];
     }
 
     const currentStillViolates = nextViolationIndices.includes(currentImageIndex);
@@ -202,7 +246,7 @@ export class ImageActions {
       ? previousViolationPosition + 1
       : previousViolationPosition;
     const targetPosition = nextPosition >= nextViolationIndices.length ? 0 : nextPosition;
-    ImageActions.activateImageByIndex(nextViolationIndices[targetPosition]);
+    return nextViolationIndices[targetPosition];
   }
 
   private static updateClassSanityCheckForImageIndex(index: number | null): string[] {
@@ -249,20 +293,57 @@ export class ImageActions {
   }
 
   public static getImageByIndex(index: number): void {
+    void ImageActions.navigateToIndex(index);
+  }
+
+  // The active image index (and therefore the annotations, which are read live off it) only
+  // advances once the target image is actually decoded and stored - instant if it's cached,
+  // awaited otherwise. This is what guarantees the displayed image and its annotations can never
+  // drift apart. A navigationRequestId token discards any decode superseded by a later navigation
+  // (e.g. reversing direction) so a slow, now-irrelevant decode can't clobber a newer one.
+  public static async navigateToIndex(index: number): Promise<void> {
     if (EditorModel.viewPortActionsDisabled) return;
 
-    const imageCount: number = LabelsSelector.getImagesData().length;
-
-    if (index < 0 || index > imageCount - 1) {
+    const imagesData = LabelsSelector.getImagesData();
+    if (index < 0 || index > imagesData.length - 1) {
       return;
-    } else {
-      const activeImageIndex = LabelsSelector.getActiveImageIndex();
-      if (activeImageIndex !== index) {
-        ImageActions.updateClassSanityCheckForImageIndex(activeImageIndex);
-      }
-
-      ImageActions.activateImageByIndex(index);
     }
+
+    const activeImageIndex = LabelsSelector.getActiveImageIndex();
+    if (activeImageIndex !== index) {
+      ImageActions.updateClassSanityCheckForImageIndex(activeImageIndex);
+    }
+
+    const targetImageData = imagesData[index];
+    const requestId = ++ImageActions.navigationRequestId;
+
+    if (!ImageActions.isImageReady(targetImageData)) {
+      try {
+        const image = await ImageRepository.loadAndStore(targetImageData.id, targetImageData.fileData);
+        if (requestId !== ImageActions.navigationRequestId) {
+          return;
+        }
+        if (image && !targetImageData.loadStatus) {
+          store.dispatch(updateImageDataById(targetImageData.id, {
+            ...targetImageData,
+            loadStatus: true,
+          }));
+        }
+      } catch (error) {
+        console.warn('Could not load image for navigation:', error);
+        return;
+      }
+    }
+
+    if (requestId !== ImageActions.navigationRequestId) {
+      return;
+    }
+
+    ImageActions.activateImageByIndex(index);
+  }
+
+  private static isImageReady(imageData: ImageData): boolean {
+    return imageData.loadStatus && !!ImageRepository.getById(imageData.id);
   }
 
   public static async deleteImage(imageData: ImageData): Promise<void> {
