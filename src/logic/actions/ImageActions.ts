@@ -151,10 +151,6 @@ export class ImageActions {
       return filteredIndices[0];
     }
 
-    if (GeneralSelector.getClassSanityCheckReviewMode()) {
-      return ImageActions.resolveNextClassSanityCheckReviewIndex(filteredIndices, currentImageIndex);
-    }
-
     const currentFilteredIndex = filteredIndices.indexOf(currentImageIndex);
     if (currentFilteredIndex === -1) {
       return filteredIndices[0];
@@ -200,55 +196,6 @@ export class ImageActions {
     return new Promise((resolve) => requestAnimationFrame(() => resolve()));
   }
 
-  private static getViolationImageIndices(
-    filteredIndices: number[],
-    violationImageIds: string[]
-  ): number[] {
-    const imagesData = LabelsSelector.getImagesData();
-    const filteredIndexByImageId = new Map<string, number>();
-    filteredIndices.forEach((index: number) => {
-      const imageId = imagesData[index]?.id;
-      if (imageId) {
-        filteredIndexByImageId.set(imageId, index);
-      }
-    });
-
-    return violationImageIds
-      .map((imageId: string) => filteredIndexByImageId.get(imageId))
-      .filter((index): index is number => index !== undefined);
-  }
-
-  private static resolveNextClassSanityCheckReviewIndex(
-    filteredIndices: number[],
-    currentImageIndex: number
-  ): number {
-    const previousViolationIndices = ImageActions.getViolationImageIndices(
-      filteredIndices,
-      GeneralSelector.getClassSanityCheckViolationImageIds()
-    );
-    const previousViolationPosition = previousViolationIndices.indexOf(currentImageIndex);
-    const nextViolationImageIds = ImageActions.updateClassSanityCheckForImageIndex(currentImageIndex);
-    const nextViolationIndices = ImageActions.getViolationImageIndices(
-      filteredIndices,
-      nextViolationImageIds
-    );
-
-    if (nextViolationIndices.length === 0) {
-      return 0;
-    }
-
-    if (previousViolationPosition === -1) {
-      return nextViolationIndices[0];
-    }
-
-    const currentStillViolates = nextViolationIndices.includes(currentImageIndex);
-    const nextPosition = currentStillViolates
-      ? previousViolationPosition + 1
-      : previousViolationPosition;
-    const targetPosition = nextPosition >= nextViolationIndices.length ? 0 : nextPosition;
-    return nextViolationIndices[targetPosition];
-  }
-
   private static updateClassSanityCheckForImageIndex(index: number | null): string[] {
     const settings = GeneralSelector.getClassSanityCheckSettings();
     const currentViolationImageIds = GeneralSelector.getClassSanityCheckViolationImageIds();
@@ -292,8 +239,11 @@ export class ImageActions {
     store.dispatch(updateActiveLabelId(null));
   }
 
+  // Routed through the navigation queue (not a direct navigateToIndex call) so that a
+  // getNextImage/getPreviousImage triggered right after this jump waits for the jump's async
+  // updateActiveImageIndex dispatch to actually commit before reading the current index.
   public static getImageByIndex(index: number): void {
-    void ImageActions.navigateToIndex(index);
+    ImageActions.enqueueNavigationStep(() => index);
   }
 
   // The active image index (and therefore the annotations, which are read live off it) only
