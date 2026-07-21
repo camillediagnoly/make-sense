@@ -50,6 +50,13 @@ npm start
 ```
 To ensure proper functionality of the application locally, npm `8.x.x` and node.js `v16.x.x` versions are required. More information about this problem is available in the [#16][4].
 
+## Git management
+
+```
+git push origin develop
+```
+
+
 ## 🐳 Docker Setup
 
 ```bash
