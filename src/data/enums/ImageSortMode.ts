@@ -1,0 +1,5 @@
+export enum ImageSortMode {
+    DEFAULT = "DEFAULT",
+    MODIFIED_DATE_ASC = "MODIFIED_DATE_ASC",
+    MODIFIED_DATE_DESC = "MODIFIED_DATE_DESC"
+}
