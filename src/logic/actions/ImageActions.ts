@@ -23,6 +23,7 @@ import { LabelStatus } from "../../data/enums/LabelStatus";
 import { GeneralSelector } from "../../store/selectors/GeneralSelector";
 import { ImageFilterUtil } from "../../utils/ImageFilterUtil";
 import { ImageFilterMode } from "../../data/enums/ImageFilterMode";
+import { ImageSortMode } from "../../data/enums/ImageSortMode";
 import { ImageClassCriteria } from "../../store/general/types";
 import { FileSystemAccessUtil } from "../../utils/FileSystemAccessUtil";
 import { ImageDataUtil } from "../../utils/ImageDataUtil";
@@ -66,6 +67,7 @@ export class ImageActions {
     const imageClassCriteria: ImageClassCriteria[] = GeneralSelector.getImageClassCriteria();
     const keepLabeledInUnlabeled: boolean = GeneralSelector.getKeepLabeledInUnlabeled();
     const keptUnlabeledImageIds: string[] = GeneralSelector.getKeptUnlabeledImageIds();
+    const sortMode: ImageSortMode = GeneralSelector.getImageListSortMode();
     return ImageFilterUtil.getFilteredImageIndices(
       imagesData,
       activeLabelType,
@@ -73,7 +75,8 @@ export class ImageActions {
       searchText,
       imageClassCriteria,
       keepLabeledInUnlabeled,
-      keptUnlabeledImageIds
+      keptUnlabeledImageIds,
+      sortMode
     );
   }
 
@@ -93,12 +96,15 @@ export class ImageActions {
       return;
     }
 
-    const nextImageInOriginalOrder = filteredIndices.find(
-      (index: number) => index > currentImageIndex
+    const nextImagePosition = ImageFilterUtil.findNextOrderedPosition(
+      LabelsSelector.getImagesData(),
+      filteredIndices,
+      currentImageIndex,
+      GeneralSelector.getImageListSortMode()
     );
 
-    if (nextImageInOriginalOrder !== undefined) {
-      ImageActions.getImageByIndex(nextImageInOriginalOrder);
+    if (nextImagePosition !== -1) {
+      ImageActions.getImageByIndex(filteredIndices[nextImagePosition]);
       return;
     }
 

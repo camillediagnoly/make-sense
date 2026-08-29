@@ -4,6 +4,7 @@ import { CustomCursorStyle } from "../../data/enums/CustomCursorStyle";
 import { ViewPointSettings } from "../../settings/ViewPointSettings";
 import { PlatformUtil } from "../../utils/PlatformUtil";
 import { ImageFilterMode } from "../../data/enums/ImageFilterMode";
+import { ImageSortMode } from "../../data/enums/ImageSortMode";
 import { BrowserSettingsStorage } from "../../utils/BrowserSettingsStorage";
 
 const defaultKeyboardShortcuts = [
@@ -179,6 +180,7 @@ const initialState: GeneralState = {
   lineKeypointMode: false,
   imageListFilterMode: ImageFilterMode.ALL,
   imageListSearchText: "",
+  imageListSortMode: ImageSortMode.DEFAULT,
   keepLabeledInUnlabeled: false,
   keptUnlabeledImageIds: [],
   imageClassCriteria: [],
@@ -316,6 +318,12 @@ export function generalReducer(
       return {
         ...state,
         imageListSearchText: action.payload.imageListSearchText,
+      };
+    }
+    case Action.UPDATE_IMAGE_LIST_SORT_MODE: {
+      return {
+        ...state,
+        imageListSortMode: action.payload.imageListSortMode,
       };
     }
     case Action.UPDATE_KEEP_LABELED_IN_UNLABELED: {

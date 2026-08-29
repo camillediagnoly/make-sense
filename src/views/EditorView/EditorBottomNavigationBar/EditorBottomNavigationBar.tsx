@@ -10,6 +10,7 @@ import classNames from "classnames";
 import { ImageActions } from "../../../logic/actions/ImageActions";
 import { KeypointUtils, MeasurementResult } from "../../../logic/render/PolygonRenderEngine";
 import { ImageFilterMode } from "../../../data/enums/ImageFilterMode";
+import { ImageSortMode } from "../../../data/enums/ImageSortMode";
 import { ImageFilterUtil } from "../../../utils/ImageFilterUtil";
 import { LabelType } from "../../../data/enums/LabelType";
 import { ImageClassCriteria } from "../../../store/general/types";
@@ -23,6 +24,7 @@ interface IProps {
     activeLabelType: LabelType;
     filterMode: ImageFilterMode;
     searchText: string;
+    sortMode: ImageSortMode;
     keepLabeledInUnlabeled: boolean;
     keptUnlabeledImageIds: string[];
     imageClassCriteria: ImageClassCriteria[];
@@ -36,6 +38,7 @@ const EditorBottomNavigationBar: React.FC<IProps> = ({
     activeLabelType,
     filterMode,
     searchText,
+    sortMode,
     keepLabeledInUnlabeled,
     keptUnlabeledImageIds,
     imageClassCriteria
@@ -47,7 +50,8 @@ const EditorBottomNavigationBar: React.FC<IProps> = ({
         searchText,
         imageClassCriteria,
         keepLabeledInUnlabeled,
-        keptUnlabeledImageIds
+        keptUnlabeledImageIds,
+        sortMode
     );
     const activeFilteredIndex = activeImageIndex === null
         ? -1
@@ -138,6 +142,7 @@ const mapStateToProps = (state: AppState) => ({
     activeLabelType: state.labels.activeLabelType,
     filterMode: state.general.imageListFilterMode,
     searchText: state.general.imageListSearchText,
+    sortMode: state.general.imageListSortMode,
     keepLabeledInUnlabeled: state.general.keepLabeledInUnlabeled,
     keptUnlabeledImageIds: state.general.keptUnlabeledImageIds,
     imageClassCriteria: state.general.imageClassCriteria

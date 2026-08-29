@@ -5,6 +5,7 @@ import { PopupWindowType } from "../../data/enums/PopupWindowType";
 import { CustomCursorStyle } from "../../data/enums/CustomCursorStyle";
 import { ContextType } from "../../data/enums/ContextType";
 import { ImageFilterMode } from "../../data/enums/ImageFilterMode";
+import { ImageSortMode } from "../../data/enums/ImageSortMode";
 import { MeasurementFunctionByName } from "../../data/measurements/MeasurementFunctionData";
 
 
@@ -218,6 +219,17 @@ export function updateImageListSearchText(
         type: Action.UPDATE_IMAGE_LIST_SEARCH_TEXT,
         payload: {
             imageListSearchText,
+        },
+    };
+}
+
+export function updateImageListSortMode(
+    imageListSortMode: ImageSortMode
+): GeneralActionTypes {
+    return {
+        type: Action.UPDATE_IMAGE_LIST_SORT_MODE,
+        payload: {
+            imageListSortMode,
         },
     };
 }

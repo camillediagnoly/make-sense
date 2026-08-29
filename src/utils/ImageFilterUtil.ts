@@ -8,6 +8,7 @@ import {
 import { LabelType } from "../data/enums/LabelType";
 import { LabelStatus } from "../data/enums/LabelStatus";
 import { ImageFilterMode } from "../data/enums/ImageFilterMode";
+import { ImageSortMode } from "../data/enums/ImageSortMode";
 import {
     ImageClassBooleanOperator,
     ImageClassCriteria,
@@ -496,6 +497,74 @@ export class ImageFilterUtil {
         }
     }
 
+    // The search box accepts a list of names separated by commas (or newlines, when a list gets
+    // pasted in), and keeps an image as soon as it matches any one of them.
+    public static parseSearchTerms(searchText: string): string[] {
+        return (searchText || "")
+            .split(/[,\n]/)
+            .map((term: string) => term.trim().toLowerCase())
+            .filter((term: string) => term.length > 0);
+    }
+
+    private static getImageLastModified(imageData: ImageData): number {
+        const lastModified = imageData?.fileData?.lastModified;
+        return typeof lastModified === "number" && !Number.isNaN(lastModified)
+            ? lastModified
+            : 0;
+    }
+
+    // Negative when the image at indexA comes first in the requested order. Falls back to the
+    // original upload order, which is also the whole ordering in DEFAULT mode.
+    private static compareImageIndices(
+        imagesData: ImageData[],
+        indexA: number,
+        indexB: number,
+        sortMode: ImageSortMode
+    ): number {
+        if (sortMode === ImageSortMode.MODIFIED_DATE_ASC ||
+            sortMode === ImageSortMode.MODIFIED_DATE_DESC) {
+            const lastModifiedDelta =
+                ImageFilterUtil.getImageLastModified(imagesData[indexA]) -
+                ImageFilterUtil.getImageLastModified(imagesData[indexB]);
+
+            if (lastModifiedDelta !== 0) {
+                return sortMode === ImageSortMode.MODIFIED_DATE_DESC
+                    ? -lastModifiedDelta
+                    : lastModifiedDelta;
+            }
+        }
+
+        return indexA - indexB;
+    }
+
+    public static sortImageIndices(
+        imagesData: ImageData[],
+        indices: number[],
+        sortMode: ImageSortMode = ImageSortMode.DEFAULT
+    ): number[] {
+        if (sortMode === ImageSortMode.DEFAULT) {
+            return indices;
+        }
+
+        return [...indices].sort((indexA: number, indexB: number) =>
+            ImageFilterUtil.compareImageIndices(imagesData, indexA, indexB, sortMode)
+        );
+    }
+
+    // Position, inside an already ordered list of indices, of the first image that comes after
+    // the reference image in the active order. Used to move on to the next image when the
+    // reference one is not part of the list anymore. Returns -1 when there is none.
+    public static findNextOrderedPosition(
+        imagesData: ImageData[],
+        orderedIndices: number[],
+        referenceIndex: number,
+        sortMode: ImageSortMode = ImageSortMode.DEFAULT
+    ): number {
+        return orderedIndices.findIndex((index: number) =>
+            ImageFilterUtil.compareImageIndices(imagesData, index, referenceIndex, sortMode) > 0
+        );
+    }
+
     public static getFilteredImageIndices(
         imagesData: ImageData[],
         labelType: LabelType,
@@ -503,9 +572,10 @@ export class ImageFilterUtil {
         searchText: string,
         classCriteria: ImageClassCriteria[] = [],
         keepLabeledInUnlabeled: boolean = false,
-        keptUnlabeledImageIds: string[] = []
+        keptUnlabeledImageIds: string[] = [],
+        sortMode: ImageSortMode = ImageSortMode.DEFAULT
     ): number[] {
-        const normalizedSearchText = (searchText || "").toLowerCase();
+        const searchTerms = ImageFilterUtil.parseSearchTerms(searchText);
         const normalizedCriteria = ImageFilterUtil.normalizeImageClassCriteria(classCriteria);
         const criteriaAst = normalizedCriteria.length > 0
             ? ImageFilterUtil.parseImageClassCriteria(normalizedCriteria)
@@ -514,13 +584,13 @@ export class ImageFilterUtil {
         const hasValidCriteria = normalizedCriteria.length === 0 || !!criteriaAst;
         const keptUnlabeledImageIdSet = new Set<string>(keptUnlabeledImageIds);
 
-        return imagesData
+        const filteredIndices = imagesData
             .map((image, index) => ({ image, index }))
             .filter(({ image, index }) => {
-                const filename = image.fileData?.name || "";
+                const filename = (image.fileData?.name || "").toLowerCase();
                 const matchesSearch =
-                    normalizedSearchText.length === 0 ||
-                    filename.toLowerCase().includes(normalizedSearchText);
+                    searchTerms.length === 0 ||
+                    searchTerms.some((term: string) => filename.includes(term));
 
                 let matchesFilter = true;
                 if (filterMode === ImageFilterMode.LABELED) {
@@ -547,5 +617,7 @@ export class ImageFilterUtil {
                 return matchesSearch && matchesFilter && criteriaResult;
             })
             .map(({ index }) => index);
+
+        return ImageFilterUtil.sortImageIndices(imagesData, filteredIndices, sortMode);
     }
 }

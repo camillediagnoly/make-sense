@@ -35,6 +35,36 @@
   color: #888;
 }
 
+.SortContainer {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.SortLabel {
+  color: #bdbdbd;
+  font-size: 12px;
+  flex-shrink: 0;
+}
+
+.SortSelect {
+  flex: 1;
+  min-width: 0;
+  padding: 6px 8px;
+  border-radius: 4px;
+  border: 1px solid #444;
+  background-color: #333;
+  color: #fff;
+  font-size: 12px;
+  cursor: pointer;
+  box-sizing: border-box;
+}
+
+.SortSelect:hover {
+  background-color: #444;
+}
+
 .FilterButtons {
   display: flex;
   gap: 6px;

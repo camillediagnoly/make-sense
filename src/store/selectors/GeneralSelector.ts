@@ -4,6 +4,7 @@ import { ContextType } from "../../data/enums/ContextType";
 import { CustomCursorStyle } from "../../data/enums/CustomCursorStyle";
 import { ProjectType } from "../../data/enums/ProjectType";
 import { ImageFilterMode } from "../../data/enums/ImageFilterMode";
+import { ImageSortMode } from "../../data/enums/ImageSortMode";
 import { ClassSanityCheckSettings, ImageClassCriteria } from "../general/types";
 import { MeasurementFunctionByName } from "../../data/measurements/MeasurementFunctionData";
 
@@ -94,6 +95,10 @@ export class GeneralSelector {
 
     public static getImageListSearchText(): string {
         return store.getState().general.imageListSearchText;
+    }
+
+    public static getImageListSortMode(): ImageSortMode {
+        return store.getState().general.imageListSortMode;
     }
 
     public static getKeepLabeledInUnlabeled(): boolean {

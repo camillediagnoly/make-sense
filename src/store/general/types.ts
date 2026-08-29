@@ -5,6 +5,7 @@ import { CustomCursorStyle } from "../../data/enums/CustomCursorStyle";
 import { ContextType } from "../../data/enums/ContextType";
 import { ProjectType } from "../../data/enums/ProjectType";
 import { ImageFilterMode } from "../../data/enums/ImageFilterMode";
+import { ImageSortMode } from "../../data/enums/ImageSortMode";
 import { MeasurementFunctionByName } from "../../data/measurements/MeasurementFunctionData";
 
 export type ProjectData = {
@@ -88,6 +89,7 @@ export type GeneralState = {
     lineKeypointMode: boolean;
     imageListFilterMode: ImageFilterMode;
     imageListSearchText: string;
+    imageListSortMode: ImageSortMode;
     keepLabeledInUnlabeled: boolean;
     keptUnlabeledImageIds: string[];
     imageClassCriteria: ImageClassCriteria[];
@@ -236,6 +238,13 @@ interface UpdateImageListSearchText {
     };
 }
 
+interface UpdateImageListSortMode {
+    type: typeof Action.UPDATE_IMAGE_LIST_SORT_MODE;
+    payload: {
+        imageListSortMode: ImageSortMode;
+    };
+}
+
 interface UpdateKeepLabeledInUnlabeled {
     type: typeof Action.UPDATE_KEEP_LABELED_IN_UNLABELED;
     payload: {
@@ -325,6 +334,7 @@ export type GeneralActionTypes =
     | UpdateLineKeypointMode
     | UpdateImageListFilterMode
     | UpdateImageListSearchText
+    | UpdateImageListSortMode
     | UpdateKeepLabeledInUnlabeled
     | UpdateImageClassCriteria
     | UpdateClassSanityCheckSettings
