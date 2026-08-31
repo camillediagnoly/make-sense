@@ -18,6 +18,7 @@ import {
     updateImageListFilterMode,
     updateImageListSearchText,
     updateImageListSortMode,
+    updateImageListSortOrderLock,
     updateKeepLabeledInUnlabeled
 } from "../../../../store/general/actionCreators";
 import {ImageClassCriteria} from "../../../../store/general/types";
@@ -29,6 +30,8 @@ interface IProps {
     filterMode: ImageFilterMode;
     searchText: string;
     sortMode: ImageSortMode;
+    sortOrderLocked: boolean;
+    lockedImageSortOrderIds: string[];
     keepLabeledInUnlabeled: boolean;
     keptUnlabeledImageIds: string[];
     imageClassCriteria: ImageClassCriteria[];
@@ -37,6 +40,10 @@ interface IProps {
     updateImageListFilterModeAction: (filterMode: ImageFilterMode) => any;
     updateImageListSearchTextAction: (searchText: string) => any;
     updateImageListSortModeAction: (sortMode: ImageSortMode) => any;
+    updateImageListSortOrderLockAction: (
+        sortOrderLocked: boolean,
+        lockedImageSortOrderIds?: string[]
+    ) => any;
     updateKeepLabeledInUnlabeledAction: (
         keepLabeledInUnlabeled: boolean,
         keptUnlabeledImageIds?: string[]
@@ -101,6 +108,8 @@ class ImagesList extends React.Component<IProps, IState> {
             filterMode,
             searchText,
             sortMode,
+            sortOrderLocked,
+            lockedImageSortOrderIds,
             keepLabeledInUnlabeled,
             keptUnlabeledImageIds,
             imageClassCriteria,
@@ -116,7 +125,8 @@ class ImagesList extends React.Component<IProps, IState> {
             imageClassCriteria,
             keepLabeledInUnlabeled,
             keptUnlabeledImageIds,
-            sortMode
+            sortMode,
+            sortOrderLocked ? lockedImageSortOrderIds : []
         );
 
         if (!classSanityCheckReviewMode || classSanityCheckViolationImageIds.length === 0) {
@@ -160,7 +170,8 @@ class ImagesList extends React.Component<IProps, IState> {
             this.props.imagesData,
             filteredIndices,
             activeImageIndex,
-            this.props.sortMode
+            this.props.sortMode,
+            this.props.sortOrderLocked ? this.props.lockedImageSortOrderIds : []
         );
         return nextFilteredIndex !== -1
             ? nextFilteredIndex
@@ -176,6 +187,8 @@ class ImagesList extends React.Component<IProps, IState> {
             prevProps.activeLabelType !== this.props.activeLabelType ||
             prevProps.searchText !== this.props.searchText ||
             prevProps.sortMode !== this.props.sortMode ||
+            prevProps.sortOrderLocked !== this.props.sortOrderLocked ||
+            prevProps.lockedImageSortOrderIds !== this.props.lockedImageSortOrderIds ||
             prevProps.filterMode !== this.props.filterMode ||
             prevProps.keepLabeledInUnlabeled !== this.props.keepLabeledInUnlabeled ||
             prevProps.keptUnlabeledImageIds !== this.props.keptUnlabeledImageIds ||
@@ -220,6 +233,19 @@ class ImagesList extends React.Component<IProps, IState> {
         this.props.updateImageListSortModeAction(e.target.value as ImageSortMode);
     };
 
+    private toggleSortOrderLock = () => {
+        if (this.props.sortOrderLocked) {
+            this.props.updateImageListSortOrderLockAction(false);
+            return;
+        }
+
+        const { imagesData, sortMode } = this.props;
+        this.props.updateImageListSortOrderLockAction(
+            true,
+            ImageFilterUtil.getImageSortOrderSnapshot(imagesData, sortMode)
+        );
+    };
+
     private setFilterMode = (filterMode: ImageFilterMode) => {
         this.props.updateImageListFilterModeAction(filterMode);
     };
@@ -248,7 +274,14 @@ class ImagesList extends React.Component<IProps, IState> {
     };
 
     private renderSearchAndFilter = () => {
-        const { filterMode, searchText, sortMode, keepLabeledInUnlabeled } = this.props;
+        const {
+            filterMode,
+            searchText,
+            sortMode,
+            sortOrderLocked,
+            keepLabeledInUnlabeled,
+        } = this.props;
+        const isDateSortActive = sortMode !== ImageSortMode.DEFAULT;
         const isUnlabeledFilterActive = filterMode === ImageFilterMode.UNLABELED;
         return (
             <div className="ImagesListControls" ref={(ref) => this.controlsRef = ref}>
@@ -274,6 +307,23 @@ class ImagesList extends React.Component<IProps, IState> {
                         <option value={ImageSortMode.MODIFIED_DATE_ASC}>Modified date - oldest first</option>
                         <option value={ImageSortMode.MODIFIED_DATE_DESC}>Modified date - newest first</option>
                     </select>
+                    {isDateSortActive && (
+                        <button
+                            type="button"
+                            className={`FreezeSortOrderButton ${sortOrderLocked ? 'locked' : 'unlocked'}`}
+                            title={sortOrderLocked ? 'Unfreeze image order' : 'Freeze image order'}
+                            aria-label={sortOrderLocked ? 'Unfreeze image order' : 'Freeze image order'}
+                            aria-pressed={sortOrderLocked}
+                            onClick={this.toggleSortOrderLock}
+                        >
+                            <img
+                                className="FreezeSortOrderIcon"
+                                src={sortOrderLocked ? 'ico/lock-closed.svg' : 'ico/lock-open.svg'}
+                                alt=""
+                                aria-hidden="true"
+                            />
+                        </button>
+                    )}
                 </div>
                 <div className="FilterButtons">
                     <button
@@ -357,6 +407,8 @@ const mapStateToProps = (state: AppState) => ({
     filterMode: state.general.imageListFilterMode,
     searchText: state.general.imageListSearchText,
     sortMode: state.general.imageListSortMode,
+    sortOrderLocked: state.general.imageListSortOrderLocked,
+    lockedImageSortOrderIds: state.general.lockedImageSortOrderIds,
     keepLabeledInUnlabeled: state.general.keepLabeledInUnlabeled,
     keptUnlabeledImageIds: state.general.keptUnlabeledImageIds,
     imageClassCriteria: state.general.imageClassCriteria,
@@ -370,6 +422,7 @@ export default connect(
         updateImageListFilterModeAction: updateImageListFilterMode,
         updateImageListSearchTextAction: updateImageListSearchText,
         updateImageListSortModeAction: updateImageListSortMode,
+        updateImageListSortOrderLockAction: updateImageListSortOrderLock,
         updateKeepLabeledInUnlabeledAction: updateKeepLabeledInUnlabeled,
     }
 )(ImagesList);

@@ -68,6 +68,9 @@ export class ImageActions {
     const keepLabeledInUnlabeled: boolean = GeneralSelector.getKeepLabeledInUnlabeled();
     const keptUnlabeledImageIds: string[] = GeneralSelector.getKeptUnlabeledImageIds();
     const sortMode: ImageSortMode = GeneralSelector.getImageListSortMode();
+    const lockedImageSortOrderIds: string[] = GeneralSelector.getImageListSortOrderLocked()
+      ? GeneralSelector.getLockedImageSortOrderIds()
+      : [];
     return ImageFilterUtil.getFilteredImageIndices(
       imagesData,
       activeLabelType,
@@ -76,7 +79,8 @@ export class ImageActions {
       imageClassCriteria,
       keepLabeledInUnlabeled,
       keptUnlabeledImageIds,
-      sortMode
+      sortMode,
+      lockedImageSortOrderIds
     );
   }
 
@@ -100,7 +104,10 @@ export class ImageActions {
       LabelsSelector.getImagesData(),
       filteredIndices,
       currentImageIndex,
-      GeneralSelector.getImageListSortMode()
+      GeneralSelector.getImageListSortMode(),
+      GeneralSelector.getImageListSortOrderLocked()
+        ? GeneralSelector.getLockedImageSortOrderIds()
+        : []
     );
 
     if (nextImagePosition !== -1) {

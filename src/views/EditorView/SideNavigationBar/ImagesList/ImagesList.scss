@@ -114,7 +114,8 @@
   gap: 4px;
 }
 
-.FreezeUnlabeledButton {
+.FreezeUnlabeledButton,
+.FreezeSortOrderButton {
   width: 44px;
   min-width: 44px;
   border: 1px solid #444;
@@ -128,27 +129,32 @@
   transition: all 0.2s ease;
 }
 
-.FreezeUnlabeledButton.unlocked {
+.FreezeUnlabeledButton.unlocked,
+.FreezeSortOrderButton.unlocked {
   background-color: #333;
   border-color: #444;
 }
 
-.FreezeUnlabeledButton.locked {
+.FreezeUnlabeledButton.locked,
+.FreezeSortOrderButton.locked {
   background-color: #2980b9;
   border-color: #2980b9;
 }
 
-.FreezeUnlabeledButton.unlocked:hover {
+.FreezeUnlabeledButton.unlocked:hover,
+.FreezeSortOrderButton.unlocked:hover {
   background-color: #444;
   border-color: #444;
 }
 
-.FreezeUnlabeledButton.locked:hover {
+.FreezeUnlabeledButton.locked:hover,
+.FreezeSortOrderButton.locked:hover {
   background-color: #3498db;
   border-color: #3498db;
 }
 
-.FreezeUnlabeledIcon {
+.FreezeUnlabeledIcon,
+.FreezeSortOrderIcon {
   width: 27px;
   height: 27px;
   display: block;
@@ -156,12 +162,26 @@
   filter: none;
 }
 
-.FreezeUnlabeledButton.locked .FreezeUnlabeledIcon {
+.FreezeUnlabeledButton.locked .FreezeUnlabeledIcon,
+.FreezeSortOrderButton.locked .FreezeSortOrderIcon {
   filter: brightness(0) invert(1);
 }
 
-.FreezeUnlabeledButton.unlocked .FreezeUnlabeledIcon {
+.FreezeUnlabeledButton.unlocked .FreezeUnlabeledIcon,
+.FreezeSortOrderButton.unlocked .FreezeSortOrderIcon {
   filter: brightness(0) invert(1);
+}
+
+.FreezeSortOrderButton {
+  width: 34px;
+  min-width: 34px;
+  height: 28px;
+  flex-shrink: 0;
+}
+
+.FreezeSortOrderIcon {
+  width: 20px;
+  height: 20px;
 }
 
 .NoImagesFound {

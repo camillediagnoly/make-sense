@@ -281,3 +281,71 @@ describe('ImageFilterUtil sorting by modified date', () => {
         )).toEqual(-1);
     });
 });
+
+describe('ImageFilterUtil frozen sort order', () => {
+    const buildImages = (lastModifiedByImage: number[]): ImageData[] =>
+        lastModifiedByImage.map((lastModified: number, index: number) =>
+            createImageData(`image-${index}`, [], undefined, lastModified)
+        );
+
+    const sortedIds = (images: ImageData[], lockedIds: string[]): string[] =>
+        ImageFilterUtil.getFilteredImageIndices(
+            images,
+            LabelType.RECT,
+            ImageFilterMode.ALL,
+            '',
+            [],
+            false,
+            [],
+            ImageSortMode.MODIFIED_DATE_ASC,
+            lockedIds
+        ).map((index: number) => images[index].id);
+
+    it('should snapshot the order of every image', () => {
+        expect(ImageFilterUtil.getImageSortOrderSnapshot(
+            buildImages([3000, 1000, 2000]),
+            ImageSortMode.MODIFIED_DATE_ASC
+        )).toEqual(['image-1', 'image-2', 'image-0']);
+    });
+
+    it('should keep the frozen order when a file gets modified afterwards', () => {
+        const images = buildImages([3000, 1000, 2000]);
+        const lockedIds = ImageFilterUtil.getImageSortOrderSnapshot(
+            images,
+            ImageSortMode.MODIFIED_DATE_ASC
+        );
+
+        // image-1, the oldest one when the order got frozen, is now the most recent one.
+        const touchedImages = buildImages([3000, 9000, 2000]);
+
+        expect(sortedIds(touchedImages, [])).toEqual(['image-2', 'image-0', 'image-1']);
+        expect(sortedIds(touchedImages, lockedIds)).toEqual(lockedIds);
+    });
+
+    it('should append images imported after the order got frozen', () => {
+        const images = buildImages([3000, 1000]);
+        const lockedIds = ImageFilterUtil.getImageSortOrderSnapshot(
+            images,
+            ImageSortMode.MODIFIED_DATE_ASC
+        );
+        const imagesWithImports = [
+            ...images,
+            createImageData('image-2', [], undefined, 500),
+            createImageData('image-3', [], undefined, 100),
+        ];
+
+        expect(sortedIds(imagesWithImports, lockedIds))
+            .toEqual(['image-1', 'image-0', 'image-3', 'image-2']);
+    });
+
+    it('should ignore a frozen order while sorting by import order', () => {
+        const images = buildImages([3000, 1000, 2000]);
+
+        expect(ImageFilterUtil.sortImageIndices(
+            images,
+            [0, 1, 2],
+            ImageSortMode.DEFAULT,
+            ['image-2', 'image-1', 'image-0']
+        )).toEqual([0, 1, 2]);
+    });
+});

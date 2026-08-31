@@ -181,6 +181,8 @@ const initialState: GeneralState = {
   imageListFilterMode: ImageFilterMode.ALL,
   imageListSearchText: "",
   imageListSortMode: ImageSortMode.DEFAULT,
+  imageListSortOrderLocked: false,
+  lockedImageSortOrderIds: [],
   keepLabeledInUnlabeled: false,
   keptUnlabeledImageIds: [],
   imageClassCriteria: [],
@@ -321,9 +323,19 @@ export function generalReducer(
       };
     }
     case Action.UPDATE_IMAGE_LIST_SORT_MODE: {
+      // A frozen order is a snapshot of one specific ordering, so picking another one releases it.
       return {
         ...state,
         imageListSortMode: action.payload.imageListSortMode,
+        imageListSortOrderLocked: false,
+        lockedImageSortOrderIds: [],
+      };
+    }
+    case Action.UPDATE_IMAGE_LIST_SORT_ORDER_LOCK: {
+      return {
+        ...state,
+        imageListSortOrderLocked: action.payload.imageListSortOrderLocked,
+        lockedImageSortOrderIds: action.payload.lockedImageSortOrderIds,
       };
     }
     case Action.UPDATE_KEEP_LABELED_IN_UNLABELED: {

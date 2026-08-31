@@ -101,6 +101,14 @@ export class GeneralSelector {
         return store.getState().general.imageListSortMode;
     }
 
+    public static getImageListSortOrderLocked(): boolean {
+        return store.getState().general.imageListSortOrderLocked;
+    }
+
+    public static getLockedImageSortOrderIds(): string[] {
+        return store.getState().general.lockedImageSortOrderIds;
+    }
+
     public static getKeepLabeledInUnlabeled(): boolean {
         return store.getState().general.keepLabeledInUnlabeled;
     }

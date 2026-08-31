@@ -537,17 +537,61 @@ export class ImageFilterUtil {
         return indexA - indexB;
     }
 
+    // A locked order is a snapshot of the image ids as they were ordered when the lock got closed.
+    // It takes precedence over the live modified dates, so a file being touched while the app is
+    // open cannot move it around anymore. Images imported after the lock have no frozen rank and
+    // are kept after the frozen ones, ordered by the active sort mode.
+    private static createImageOrderComparator(
+        imagesData: ImageData[],
+        sortMode: ImageSortMode,
+        lockedImageSortOrderIds: string[]
+    ): (indexA: number, indexB: number) => number {
+        const lockedRankByImageId = new Map<string, number>();
+        if (sortMode !== ImageSortMode.DEFAULT) {
+            lockedImageSortOrderIds.forEach((imageId: string, rank: number) => {
+                lockedRankByImageId.set(imageId, rank);
+            });
+        }
+
+        const getLockedRank = (index: number): number | undefined =>
+            lockedRankByImageId.get(imagesData[index]?.id);
+
+        return (indexA: number, indexB: number): number => {
+            const lockedRankA = getLockedRank(indexA);
+            const lockedRankB = getLockedRank(indexB);
+
+            if (lockedRankA !== undefined && lockedRankB !== undefined) {
+                return lockedRankA !== lockedRankB
+                    ? lockedRankA - lockedRankB
+                    : indexA - indexB;
+            }
+            if (lockedRankA !== undefined) {
+                return -1;
+            }
+            if (lockedRankB !== undefined) {
+                return 1;
+            }
+
+            return ImageFilterUtil.compareImageIndices(imagesData, indexA, indexB, sortMode);
+        };
+    }
+
     public static sortImageIndices(
         imagesData: ImageData[],
         indices: number[],
-        sortMode: ImageSortMode = ImageSortMode.DEFAULT
+        sortMode: ImageSortMode = ImageSortMode.DEFAULT,
+        lockedImageSortOrderIds: string[] = []
     ): number[] {
         if (sortMode === ImageSortMode.DEFAULT) {
             return indices;
         }
 
-        return [...indices].sort((indexA: number, indexB: number) =>
-            ImageFilterUtil.compareImageIndices(imagesData, indexA, indexB, sortMode)
+        return [...indices].sort(
+            ImageFilterUtil.createImageOrderComparator(
+                imagesData,
+                sortMode,
+                lockedImageSortOrderIds
+            )
         );
     }
 
@@ -558,11 +602,33 @@ export class ImageFilterUtil {
         imagesData: ImageData[],
         orderedIndices: number[],
         referenceIndex: number,
-        sortMode: ImageSortMode = ImageSortMode.DEFAULT
+        sortMode: ImageSortMode = ImageSortMode.DEFAULT,
+        lockedImageSortOrderIds: string[] = []
     ): number {
-        return orderedIndices.findIndex((index: number) =>
-            ImageFilterUtil.compareImageIndices(imagesData, index, referenceIndex, sortMode) > 0
+        const compareImages = ImageFilterUtil.createImageOrderComparator(
+            imagesData,
+            sortMode,
+            lockedImageSortOrderIds
         );
+        return orderedIndices.findIndex((index: number) =>
+            compareImages(index, referenceIndex) > 0
+        );
+    }
+
+    // Snapshot of every image id in the order the active sort mode puts them in - taken over the
+    // whole list, not just the filtered one, so images coming back into the list later on still
+    // have a frozen rank.
+    public static getImageSortOrderSnapshot(
+        imagesData: ImageData[],
+        sortMode: ImageSortMode
+    ): string[] {
+        return ImageFilterUtil
+            .sortImageIndices(
+                imagesData,
+                imagesData.map((_: ImageData, index: number) => index),
+                sortMode
+            )
+            .map((index: number) => imagesData[index].id);
     }
 
     public static getFilteredImageIndices(
@@ -573,7 +639,8 @@ export class ImageFilterUtil {
         classCriteria: ImageClassCriteria[] = [],
         keepLabeledInUnlabeled: boolean = false,
         keptUnlabeledImageIds: string[] = [],
-        sortMode: ImageSortMode = ImageSortMode.DEFAULT
+        sortMode: ImageSortMode = ImageSortMode.DEFAULT,
+        lockedImageSortOrderIds: string[] = []
     ): number[] {
         const searchTerms = ImageFilterUtil.parseSearchTerms(searchText);
         const normalizedCriteria = ImageFilterUtil.normalizeImageClassCriteria(classCriteria);
@@ -618,6 +685,11 @@ export class ImageFilterUtil {
             })
             .map(({ index }) => index);
 
-        return ImageFilterUtil.sortImageIndices(imagesData, filteredIndices, sortMode);
+        return ImageFilterUtil.sortImageIndices(
+            imagesData,
+            filteredIndices,
+            sortMode,
+            lockedImageSortOrderIds
+        );
     }
 }

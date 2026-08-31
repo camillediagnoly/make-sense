@@ -90,6 +90,8 @@ export type GeneralState = {
     imageListFilterMode: ImageFilterMode;
     imageListSearchText: string;
     imageListSortMode: ImageSortMode;
+    imageListSortOrderLocked: boolean;
+    lockedImageSortOrderIds: string[];
     keepLabeledInUnlabeled: boolean;
     keptUnlabeledImageIds: string[];
     imageClassCriteria: ImageClassCriteria[];
@@ -245,6 +247,14 @@ interface UpdateImageListSortMode {
     };
 }
 
+interface UpdateImageListSortOrderLock {
+    type: typeof Action.UPDATE_IMAGE_LIST_SORT_ORDER_LOCK;
+    payload: {
+        imageListSortOrderLocked: boolean;
+        lockedImageSortOrderIds: string[];
+    };
+}
+
 interface UpdateKeepLabeledInUnlabeled {
     type: typeof Action.UPDATE_KEEP_LABELED_IN_UNLABELED;
     payload: {
@@ -335,6 +345,7 @@ export type GeneralActionTypes =
     | UpdateImageListFilterMode
     | UpdateImageListSearchText
     | UpdateImageListSortMode
+    | UpdateImageListSortOrderLock
     | UpdateKeepLabeledInUnlabeled
     | UpdateImageClassCriteria
     | UpdateClassSanityCheckSettings

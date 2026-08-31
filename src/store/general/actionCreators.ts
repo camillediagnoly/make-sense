@@ -234,6 +234,19 @@ export function updateImageListSortMode(
     };
 }
 
+export function updateImageListSortOrderLock(
+    imageListSortOrderLocked: boolean,
+    lockedImageSortOrderIds: string[] = []
+): GeneralActionTypes {
+    return {
+        type: Action.UPDATE_IMAGE_LIST_SORT_ORDER_LOCK,
+        payload: {
+            imageListSortOrderLocked,
+            lockedImageSortOrderIds,
+        },
+    };
+}
+
 export function updateKeepLabeledInUnlabeled(
     keepLabeledInUnlabeled: boolean,
     keptUnlabeledImageIds: string[] = []

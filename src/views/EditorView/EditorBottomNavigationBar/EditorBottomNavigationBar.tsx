@@ -25,6 +25,8 @@ interface IProps {
     filterMode: ImageFilterMode;
     searchText: string;
     sortMode: ImageSortMode;
+    sortOrderLocked: boolean;
+    lockedImageSortOrderIds: string[];
     keepLabeledInUnlabeled: boolean;
     keptUnlabeledImageIds: string[];
     imageClassCriteria: ImageClassCriteria[];
@@ -39,6 +41,8 @@ const EditorBottomNavigationBar: React.FC<IProps> = ({
     filterMode,
     searchText,
     sortMode,
+    sortOrderLocked,
+    lockedImageSortOrderIds,
     keepLabeledInUnlabeled,
     keptUnlabeledImageIds,
     imageClassCriteria
@@ -51,7 +55,8 @@ const EditorBottomNavigationBar: React.FC<IProps> = ({
         imageClassCriteria,
         keepLabeledInUnlabeled,
         keptUnlabeledImageIds,
-        sortMode
+        sortMode,
+        sortOrderLocked ? lockedImageSortOrderIds : []
     );
     const activeFilteredIndex = activeImageIndex === null
         ? -1
@@ -143,6 +148,8 @@ const mapStateToProps = (state: AppState) => ({
     filterMode: state.general.imageListFilterMode,
     searchText: state.general.imageListSearchText,
     sortMode: state.general.imageListSortMode,
+    sortOrderLocked: state.general.imageListSortOrderLocked,
+    lockedImageSortOrderIds: state.general.lockedImageSortOrderIds,
     keepLabeledInUnlabeled: state.general.keepLabeledInUnlabeled,
     keptUnlabeledImageIds: state.general.keptUnlabeledImageIds,
     imageClassCriteria: state.general.imageClassCriteria
