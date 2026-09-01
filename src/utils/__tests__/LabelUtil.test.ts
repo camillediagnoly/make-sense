@@ -1,6 +1,6 @@
 import { IRect } from '../../interfaces/IRect';
 import { LabelUtil } from '../LabelUtil';
-import {LabelPoint, LabelPolygon, LabelRect} from '../../store/labels/types';
+import {ImageData, LabelPoint, LabelPolygon, LabelRect} from '../../store/labels/types';
 import {LabelStatus} from '../../data/enums/LabelStatus';
 import {IPoint} from '../../interfaces/IPoint';
 
@@ -92,5 +92,137 @@ describe('LabelUtil createLabelPoint method', () => {
             suggestedLabel: null
         }
         expect(result).toEqual(expectedResult);
+    });
+});
+
+const createLabelRect = (id: string, labelId: string | null): LabelRect => ({
+    id,
+    labelId,
+    rect: { x: 0, y: 0, width: 10, height: 10 },
+    isVisible: true,
+    isCreatedByAI: false,
+    status: LabelStatus.ACCEPTED,
+    suggestedLabel: null
+});
+
+const createImageData = (id: string): ImageData => ({
+    id,
+    fileData: new File([''], `${id}.png`, { type: 'image/png' }),
+    loadStatus: true,
+    labelRects: [],
+    labelPoints: [],
+    labelLines: [],
+    labelPolygons: [],
+    labelNameIds: [],
+    imgWidth: 640,
+    imgHeight: 480,
+    isVisitedByYOLOObjectDetector: false,
+    isVisitedBySSDObjectDetector: false,
+    isVisitedByPoseDetector: false,
+    isVisitedByRoboflowAPI: false,
+});
+
+const imagesDataWithInstances = (): ImageData[] => [
+    {
+        ...createImageData('image-0'),
+        labelRects: [
+            createLabelRect('rect-0', 'label-A'),
+            createLabelRect('rect-1', 'label-B'),
+            createLabelRect('rect-2', null),
+        ],
+        labelPoints: [{
+            id: 'point-0',
+            labelId: 'label-A',
+            point: { x: 5, y: 5 },
+            isVisible: true,
+            isCreatedByAI: false,
+            status: LabelStatus.ACCEPTED,
+            suggestedLabel: null
+        }],
+        labelNameIds: ['label-A', 'label-B'],
+    },
+    {
+        ...createImageData('image-1'),
+        labelPolygons: [{
+            id: 'polygon-0',
+            labelId: 'label-A',
+            vertices: [{ x: 0, y: 0 }, { x: 5, y: 0 }, { x: 5, y: 5 }],
+            isVisible: true
+        }],
+        labelLines: [{
+            id: 'line-0',
+            labelId: 'label-B',
+            line: { start: { x: 0, y: 0 }, end: { x: 5, y: 5 } },
+            isVisible: true
+        }],
+    },
+];
+
+describe('LabelUtil removeLabelNamesFromImagesData method', () => {
+    it('should delete every instance of the removed label names', () => {
+        // when
+        const result = LabelUtil.removeLabelNamesFromImagesData(
+            imagesDataWithInstances(),
+            ['label-A']
+        );
+
+        // then
+        expect(result[0].labelRects.map((labelRect: LabelRect) => labelRect.id))
+            .toEqual(['rect-1', 'rect-2']);
+        expect(result[0].labelPoints).toEqual([]);
+        expect(result[0].labelNameIds).toEqual(['label-B']);
+        expect(result[1].labelPolygons).toEqual([]);
+        expect(result[1].labelLines.map((labelLine) => labelLine.id)).toEqual(['line-0']);
+    });
+
+    it('should keep annotations with no label assigned yet', () => {
+        // when
+        const result = LabelUtil.removeLabelNamesFromImagesData(
+            imagesDataWithInstances(),
+            ['label-A', 'label-B']
+        );
+
+        // then
+        expect(result[0].labelRects.map((labelRect: LabelRect) => labelRect.id)).toEqual(['rect-2']);
+        expect(result[0].labelNameIds).toEqual([]);
+        expect(result[1].labelPolygons).toEqual([]);
+        expect(result[1].labelLines).toEqual([]);
+    });
+
+    it('should leave images untouched when no label name is removed', () => {
+        // given
+        const imagesData = imagesDataWithInstances();
+
+        // when
+        const result = LabelUtil.removeLabelNamesFromImagesData(imagesData, []);
+
+        // then
+        expect(result).toEqual(imagesData);
+    });
+});
+
+describe('LabelUtil countLabelNamesInstances method', () => {
+    it('should count annotations and image tags of the given label names', () => {
+        // given
+        const imagesData = imagesDataWithInstances();
+
+        // then
+        expect(LabelUtil.countLabelNamesInstances(imagesData, ['label-A'])).toBe(4);
+        expect(LabelUtil.countLabelNamesInstances(imagesData, ['label-B'])).toBe(3);
+        expect(LabelUtil.countLabelNamesInstances(imagesData, ['label-A', 'label-B'])).toBe(7);
+        expect(LabelUtil.countLabelNamesInstances(imagesData, [])).toBe(0);
+        expect(LabelUtil.countLabelNamesInstances(imagesData, ['label-C'])).toBe(0);
+    });
+});
+
+describe('LabelUtil containsAnnotationId method', () => {
+    it('should look for the annotation id across every label type', () => {
+        // given
+        const imagesData = imagesDataWithInstances();
+
+        // then
+        expect(LabelUtil.containsAnnotationId(imagesData[0], 'point-0')).toBe(true);
+        expect(LabelUtil.containsAnnotationId(imagesData[1], 'line-0')).toBe(true);
+        expect(LabelUtil.containsAnnotationId(imagesData[1], 'point-0')).toBe(false);
     });
 });

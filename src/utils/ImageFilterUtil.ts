@@ -281,6 +281,36 @@ export class ImageFilterUtil {
         return ImageFilterUtil.convertLegacyCriteria(legacyCriteria);
     }
 
+    // Drops every criterion pointing at a deleted label. Removing one out of an expression can
+    // leave it incomplete (`A AND` once B is gone), in which case the whole filter is cleared
+    // rather than left in a state that silently stops filtering. Returns null when there is
+    // nothing to prune.
+    public static removeLabelsFromImageClassCriteria(
+        classCriteria: ImageClassCriteria[] = [],
+        removedLabelIds: string[] = []
+    ): ImageClassExpressionCriteria[] | null {
+        if (!removedLabelIds.length) {
+            return null;
+        }
+
+        const removedLabelIdSet = new Set<string>(removedLabelIds);
+        const normalizedCriteria = ImageFilterUtil.normalizeImageClassCriteria(classCriteria);
+        const isRemovedLabelCriteria = (criteria: ImageClassExpressionCriteria): boolean =>
+            criteria.type === "label" && removedLabelIdSet.has(criteria.labelId);
+
+        if (!normalizedCriteria.some(isRemovedLabelCriteria)) {
+            return null;
+        }
+
+        const remainingCriteria = normalizedCriteria.filter(
+            (criteria: ImageClassExpressionCriteria) => !isRemovedLabelCriteria(criteria)
+        );
+
+        return ImageFilterUtil.isImageClassCriteriaValid(remainingCriteria)
+            ? remainingCriteria
+            : [];
+    }
+
     private static parseImageClassCriteria(
         criteriaTokens: ImageClassExpressionCriteria[]
     ): CriteriaAstNode | null {

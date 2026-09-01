@@ -349,3 +349,41 @@ describe('ImageFilterUtil frozen sort order', () => {
         )).toEqual([0, 1, 2]);
     });
 });
+
+describe('ImageFilterUtil removeLabelsFromImageClassCriteria', () => {
+    it('should return null when nothing references a removed label', () => {
+        const criteria: ImageClassCriteria[] = [{ type: 'label', labelId: 'A' }];
+
+        expect(ImageFilterUtil.removeLabelsFromImageClassCriteria(criteria, ['B'])).toBeNull();
+        expect(ImageFilterUtil.removeLabelsFromImageClassCriteria(criteria, [])).toBeNull();
+    });
+
+    it('should clear a filter made of the removed label only', () => {
+        const criteria: ImageClassCriteria[] = [{ type: 'label', labelId: 'A' }];
+
+        expect(ImageFilterUtil.removeLabelsFromImageClassCriteria(criteria, ['A'])).toEqual([]);
+    });
+
+    it('should clear the whole filter when the remaining expression is incomplete', () => {
+        const criteria: ImageClassCriteria[] = [
+            { type: 'label', labelId: 'A' },
+            { type: 'operator', operator: 'AND' },
+            { type: 'label', labelId: 'B' },
+        ];
+
+        expect(ImageFilterUtil.removeLabelsFromImageClassCriteria(criteria, ['B'])).toEqual([]);
+    });
+
+    it('should leave a cleared filter in a valid state', () => {
+        const criteria: ImageClassCriteria[] = [
+            { type: 'label', labelId: 'A' },
+            { type: 'operator', operator: 'AND' },
+            { type: 'label', labelId: 'B' },
+        ];
+
+        // 'A AND' on its own would silently stop filtering anything.
+        expect(ImageFilterUtil.isImageClassCriteriaValid(
+            ImageFilterUtil.removeLabelsFromImageClassCriteria(criteria, ['A'])
+        )).toBe(true);
+    });
+});

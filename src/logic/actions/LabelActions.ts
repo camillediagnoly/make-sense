@@ -1,8 +1,18 @@
 import { LabelsSelector } from '../../store/selectors/LabelsSelector';
+import { GeneralSelector } from '../../store/selectors/GeneralSelector';
 import { ImageData, LabelLine, LabelName, LabelPoint, LabelPolygon, LabelRect } from '../../store/labels/types';
 import { filter } from 'lodash';
 import { store } from '../../index';
-import { updateImageData, updateImageDataById, updateLabelVisibility } from '../../store/labels/actionCreators';
+import {
+    updateActiveLabelId,
+    updateActiveLabelNameId,
+    updateImageData,
+    updateImageDataById,
+    updateLabelVisibility
+} from '../../store/labels/actionCreators';
+import { updateImageClassCriteria } from '../../store/general/actionCreators';
+import { ImageClassExpressionCriteria } from '../../store/general/types';
+import { ImageFilterUtil } from '../../utils/ImageFilterUtil';
 import { LabelType } from '../../data/enums/LabelType';
 import { LabelUtil } from '../../utils/LabelUtil';
 
@@ -116,11 +126,52 @@ export class LabelActions {
     }
 
     public static removeLabelNames(labelNamesIds: string[]) {
+        if (!labelNamesIds.length) {
+            return;
+        }
+
         const imagesData: ImageData[] = LabelsSelector.getImagesData();
-        const newImagesData: ImageData[] = imagesData.map((imageData: ImageData) => {
-            return LabelActions.removeLabelNamesFromImageData(imageData, labelNamesIds);
-        });
-        store.dispatch(updateImageData(newImagesData))
+        const newImagesData: ImageData[] = LabelUtil.removeLabelNamesFromImagesData(
+            imagesData,
+            labelNamesIds
+        );
+        store.dispatch(updateImageData(newImagesData));
+        LabelActions.clearRemovedLabelNamesReferences(newImagesData, labelNamesIds);
+    }
+
+    // Nothing may keep pointing at a label name, or at an annotation, that has just been deleted.
+    private static clearRemovedLabelNamesReferences(
+        newImagesData: ImageData[],
+        labelNamesIds: string[]
+    ) {
+        const removedLabelNamesIds = new Set<string>(labelNamesIds);
+
+        const activeLabelNameId: string = LabelsSelector.getActiveLabelNameId();
+        if (activeLabelNameId && removedLabelNamesIds.has(activeLabelNameId)) {
+            store.dispatch(updateActiveLabelNameId(null));
+        }
+
+        const activeLabelId: string | null = LabelsSelector.getActiveLabelId();
+        const activeImageIndex: number | null = LabelsSelector.getActiveImageIndex();
+        const activeImageData: ImageData | undefined = activeImageIndex !== null
+            ? newImagesData[activeImageIndex]
+            : undefined;
+        if (
+            activeLabelId &&
+            activeImageData &&
+            !LabelUtil.containsAnnotationId(activeImageData, activeLabelId)
+        ) {
+            store.dispatch(updateActiveLabelId(null));
+        }
+
+        const prunedCriteria: ImageClassExpressionCriteria[] | null = ImageFilterUtil
+            .removeLabelsFromImageClassCriteria(
+                GeneralSelector.getImageClassCriteria(),
+                labelNamesIds
+            );
+        if (prunedCriteria !== null) {
+            store.dispatch(updateImageClassCriteria(prunedCriteria));
+        }
     }
 
     public static setLabelVisibilityForLabelName(labelNameId: string, isVisible: boolean) {
@@ -187,45 +238,6 @@ export class LabelActions {
         if (!labelName) return;
         const nextVisibility = !(labelName.isVisible !== false);
         LabelActions.setLabelVisibilityForLabelName(labelNameId, nextVisibility);
-    }
-
-    private static removeLabelNamesFromImageData(imageData: ImageData, labelNamesIds: string[]): ImageData {
-        return {
-            ...imageData,
-            labelRects: imageData.labelRects.map((labelRect: LabelRect) => {
-                if (labelNamesIds.includes(labelRect.id)) {
-                    return {
-                        ...labelRect,
-                        id: null
-                    }
-                } else {
-                    return labelRect
-                }
-            }),
-            labelPoints: imageData.labelPoints.map((labelPoint: LabelPoint) => {
-                if (labelNamesIds.includes(labelPoint.id)) {
-                    return {
-                        ...labelPoint,
-                        id: null
-                    }
-                } else {
-                    return labelPoint
-                }
-            }),
-            labelPolygons: imageData.labelPolygons.map((labelPolygon: LabelPolygon) => {
-                if (labelNamesIds.includes(labelPolygon.id)) {
-                    return {
-                        ...labelPolygon,
-                        id: null
-                    }
-                } else {
-                    return labelPolygon
-                }
-            }),
-            labelNameIds: imageData.labelNameIds.filter((labelNameId: string) => {
-                return !labelNamesIds.includes(labelNameId)
-            })
-        }
     }
 
     public static labelExistsInLabelNames(label: string): boolean {

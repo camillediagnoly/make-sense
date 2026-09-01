@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import './InsertLabelNamesPopup.scss';
 import { GenericYesNoPopup } from '../GenericYesNoPopup/GenericYesNoPopup';
 import { PopupWindowType } from '../../../data/enums/PopupWindowType';
@@ -105,6 +105,29 @@ const InsertLabelNamesPopup: React.FC<IProps> = (
         });
         setLabelNames(newLabelNames);
     };
+
+    // Accepting the popup deletes every annotation carrying a label the user removed from the
+    // list, so the count is shown upfront - there is no undo.
+    const pendingRemoval = useMemo(
+        () => {
+            if (!isUpdate) {
+                return { labelNamesCount: 0, instancesCount: 0 };
+            }
+
+            const removedLabelNamesIds = LabelUtil.labelNamesIdsDiff(
+                LabelsSelector.getLabelNames(),
+                labelNames
+            );
+            return {
+                labelNamesCount: removedLabelNamesIds.length,
+                instancesCount: LabelUtil.countLabelNamesInstances(
+                    LabelsSelector.getImagesData(),
+                    removedLabelNamesIds
+                )
+            };
+        },
+        [isUpdate, labelNames]
+    );
 
     const hasLabels = labelNames.length > 0;
     const areAllLabelsVisible = hasLabels && labelNames.every((labelName: LabelName) => labelName.isVisible !== false);
@@ -258,6 +281,14 @@ const InsertLabelNamesPopup: React.FC<IProps> = (
                             'project. You can also choose to skip that part for now and define label names as you go.'
                     }
                 </div>
+                {pendingRemoval.instancesCount > 0 && <div className='RemovedInstancesWarning'>
+                    {`Accepting will also delete the ${pendingRemoval.instancesCount} `}
+                    {pendingRemoval.instancesCount === 1 ? 'annotation' : 'annotations'}
+                    {' already assigned to the '}
+                    {pendingRemoval.labelNamesCount === 1
+                        ? 'label you removed.'
+                        : `${pendingRemoval.labelNamesCount} labels you removed.`}
+                </div>}
                 <div className='LabelsContainer'>
                     {Object.keys(labelNames).length !== 0 ? <Scrollbars>
                         <div
