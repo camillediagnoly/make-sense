@@ -14,6 +14,13 @@
       flex: 1;
     }
 
+    .ImportOptions {
+      align-self: stretch;
+      flex-shrink: 0;
+      padding: 15px 40px;
+      border-top: solid 1px $darkThemeFirstColor;
+    }
+
     .DropZone {
       user-select: none;
       align-self: stretch;

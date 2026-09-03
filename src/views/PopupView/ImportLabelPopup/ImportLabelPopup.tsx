@@ -21,6 +21,9 @@ import { NotificationsDataMap } from '../../../data/info/NotificationsData';
 import { DocumentParsingError, PartialVOCImportError } from '../../../logic/import/voc/VOCImporter';
 import { Notification } from '../../../data/enums/Notification';
 import {LabelNamesNotUniqueError} from '../../../logic/import/yolo/YOLOErrors';
+import { LabelsSelector } from '../../../store/selectors/LabelsSelector';
+import { GeneralSelector } from '../../../store/selectors/GeneralSelector';
+import { AnnotationMergeUtil } from '../../../utils/AnnotationMergeUtil';
 import { ClipLoader } from 'react-spinners';
 
 interface IProps {
@@ -53,6 +56,7 @@ const ImportLabelPopup: React.FC<IProps> = (
     const [annotationsLoadedError, setAnnotationsLoadedError] = useState(null);
     const [failedAnnotationFiles, setFailedAnnotationFiles] = useState<string[]>([]);
     const [isImporting, setIsImporting] = useState(false);
+    const [keepCurrentAnnotations, setKeepCurrentAnnotations] = useState(false);
 
     const resolveNotification = (error: Error): Notification => {
         if (error instanceof DocumentParsingError) {
@@ -125,13 +129,30 @@ const ImportLabelPopup: React.FC<IProps> = (
     });
 
     const onAccept = (type: LabelType) => {
-        if (loadedLabelNames.length !== 0 && loadedImageData.length !== 0) {
+        if (loadedLabelNames.length === 0 || loadedImageData.length === 0) {
+            return;
+        }
+
+        if (keepCurrentAnnotations) {
+            const mergeResult = AnnotationMergeUtil.mergeImportedAnnotations(
+                LabelsSelector.getImagesData(),
+                LabelsSelector.getLabelNames(),
+                GeneralSelector.getMeasurementFunctionByName(),
+                loadedImageData,
+                loadedLabelNames,
+                loadedMeasurementFunctionByName
+            );
+            updateImageDataAction(mergeResult.imagesData);
+            updateLabelNamesAction(mergeResult.labelNames);
+            updateMeasurementFunctionsAction(mergeResult.measurementFunctionByName);
+        } else {
             updateImageDataAction(loadedImageData);
             updateLabelNamesAction(loadedLabelNames);
-            updateActiveLabelTypeAction(type);
             updateMeasurementFunctionsAction(loadedMeasurementFunctionByName);
-            PopupActions.close();
         }
+
+        updateActiveLabelTypeAction(type);
+        PopupActions.close();
     };
 
     const onReject = (_: LabelType) => {
@@ -186,8 +207,9 @@ const ImportLabelPopup: React.FC<IProps> = (
                     src={'ico/box-closed.png'}
                 />
                 <p className='extraBold'>Annotation ready for import</p>
-                After import you will lose
-                all your current annotations
+                {keepCurrentAnnotations ?
+                    'Imported annotations will be added to the ones already in your project' :
+                    'After import you will lose all your current annotations'}
                 {getFailedFilesContent()}
             </>;
         } else if (failedAnnotationFiles.length !== 0) {
@@ -239,6 +261,22 @@ const ImportLabelPopup: React.FC<IProps> = (
         });
     };
 
+    const renderImportOptions = () => {
+        return <div className='Options ImportOptions'>
+            <div
+                className='OptionsItem'
+                onClick={() => setKeepCurrentAnnotations(!keepCurrentAnnotations)}
+            >
+                <img
+                    draggable={false}
+                    src={keepCurrentAnnotations ? 'ico/checkbox-checked.png' : 'ico/checkbox-unchecked.png'}
+                    alt={keepCurrentAnnotations ? 'checked' : 'unchecked'}
+                />
+                Keep the annotations already in my project
+            </div>
+        </div>;
+    };
+
     const renderInternalContent = (type: LabelType) => {
         if (!formatType && ImportFormatData[type].length !== 0) {
             return <>
@@ -253,9 +291,12 @@ const ImportLabelPopup: React.FC<IProps> = (
         const importFormatData = ImportFormatData[type];
         return importFormatData.length === 0 ?
             <FeatureInProgress /> :
-            <div {...getRootProps({ className: 'DropZone' })}>
-                {getDropZoneContent()}
-            </div>;
+            <>
+                <div {...getRootProps({ className: 'DropZone' })}>
+                    {getDropZoneContent()}
+                </div>
+                {renderImportOptions()}
+            </>;
     };
 
     return (
