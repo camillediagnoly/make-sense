@@ -511,7 +511,7 @@ export class PolygonRenderEngine extends BaseRenderEngine {
                                                 data
                                             );
                                         if (
-                                            this.isMouseOverAnchor(
+                                            this.isMouseOverVertex(
                                                 data.mousePositionOnViewPortContent,
                                                 anchorOnCanvas
                                             )
@@ -702,17 +702,15 @@ export class PolygonRenderEngine extends BaseRenderEngine {
                             data.mousePositionOnViewPortContent,
                             this.suggestedAnchorPositionOnCanvas
                         );
-                    if (!!isMouseOverNewAnchor) {
+                    // order mirrors mouseDownHandler: grabbing an existing vertex
+                    // takes precedence over adding a new one on an edge
+                    if (this.isResizeInProgress() || !!anchorUnderMouse) {
+                        store.dispatch(
+                            updateCustomCursorStyle(CustomCursorStyle.MOVE)
+                        );
+                    } else if (!!isMouseOverNewAnchor) {
                         store.dispatch(
                             updateCustomCursorStyle(CustomCursorStyle.ADD)
-                        );
-                    } else if (this.isResizeInProgress()) {
-                        store.dispatch(
-                            updateCustomCursorStyle(CustomCursorStyle.MOVE)
-                        );
-                    } else if (!!anchorUnderMouse) {
-                        store.dispatch(
-                            updateCustomCursorStyle(CustomCursorStyle.MOVE)
                         );
                     } else {
                         RenderEngineUtil.wrapDefaultCursorStyleInCancel(data);
@@ -1784,6 +1782,17 @@ export class PolygonRenderEngine extends BaseRenderEngine {
         );
     }
 
+    // single source of truth for existing polygon vertices: the area which turns
+    // the cursor into a circle is exactly the area which grabs the vertex on click
+    private isMouseOverVertex(mouse: IPoint, vertexOnCanvas: IPoint): boolean {
+        if (!mouse || !vertexOnCanvas) return false;
+        return RenderEngineUtil.isMouseOverAnchor(
+            mouse,
+            vertexOnCanvas,
+            RenderEngineSettings.anchorHoverSize.width / 2
+        );
+    }
+
     // =================================================================================================================
     // GETTERS
     // =================================================================================================================
@@ -1825,8 +1834,6 @@ export class PolygonRenderEngine extends BaseRenderEngine {
             LabelsSelector.getActiveImageData().labelPolygons.filter(
                 (labelPolygon: LabelPolygon) => labelPolygon.isVisible
             );
-        const radius = RenderEngineSettings.anchorHoverSize.width / 2;
-
         for (const labelPolygon of labelPolygons) {
             const verticesOnCanvas =
                 RenderEngineUtil.transferPolygonFromImageToViewPortContent(
@@ -1834,13 +1841,7 @@ export class PolygonRenderEngine extends BaseRenderEngine {
                     data
                 );
             for (const vertexOnCanvas of verticesOnCanvas) {
-                if (
-                    RenderEngineUtil.isMouseOverAnchor(
-                        mouseOnCanvas,
-                        vertexOnCanvas,
-                        radius
-                    )
-                )
+                if (this.isMouseOverVertex(mouseOnCanvas, vertexOnCanvas))
                     return vertexOnCanvas;
             }
         }
