@@ -105,6 +105,12 @@ export class EditorContext extends BaseContext {
                 if (imageData) {
                     LabelActions.toggleAllLabelsVisibilityInImage(imageData.id);
                 }
+            },
+            'Hide or Restore Labels': (event: KeyboardEvent) => {
+                const imageData = LabelsSelector.getActiveImageData();
+                if (imageData) {
+                    LabelActions.toggleLabelsVisibilityWithRestoreInImage(imageData.id);
+                }
             }
         };
 

@@ -1,6 +1,6 @@
 import { LabelsSelector } from '../../store/selectors/LabelsSelector';
 import { GeneralSelector } from '../../store/selectors/GeneralSelector';
-import { ImageData, LabelLine, LabelName, LabelPoint, LabelPolygon, LabelRect } from '../../store/labels/types';
+import { Annotation, ImageData, LabelLine, LabelName, LabelPoint, LabelPolygon, LabelRect } from '../../store/labels/types';
 import { filter } from 'lodash';
 import { store } from '../../index';
 import {
@@ -17,6 +17,12 @@ import { LabelType } from '../../data/enums/LabelType';
 import { LabelUtil } from '../../utils/LabelUtil';
 
 export class LabelActions {
+    // Per image, the visibility every annotation had when labels were last hidden through
+    // "Hide or Restore Labels". Toggling back brings exactly that state back, instead of
+    // revealing every label the way "Toggle Labels Visibility" does. An image is absent
+    // from the map whenever it is not currently hidden through that shortcut.
+    private static visibilitySnapshots: Map<string, Map<string, boolean>> = new Map();
+
     public static deleteActiveLabel() {
         const activeImageData: ImageData = LabelsSelector.getActiveImageData();
         const activeLabelId: string = LabelsSelector.getActiveLabelId();
@@ -281,6 +287,65 @@ export class LabelActions {
     }
     
     store.dispatch(updateImageDataById(imageData.id, newImageData));
+
+    // the image is no longer hidden through the remembering shortcut, so the
+    // snapshot it would restore is stale
+    LabelActions.visibilitySnapshots.delete(imageData.id);
 }
 
+    public static toggleLabelsVisibilityWithRestoreInImage(imageId: string) {
+        const imageData: ImageData = LabelsSelector.getImageDataById(imageId);
+        if (!imageData) {
+            return;
+        }
+
+        const snapshot = LabelActions.visibilitySnapshots.get(imageId);
+        const newImageData: ImageData = !!snapshot
+            ? LabelActions.restoreRememberedVisibility(imageData, snapshot)
+            : LabelActions.hideAllLabelsRememberingVisibility(imageData);
+
+        store.dispatch(updateImageDataById(imageData.id, newImageData));
+    }
+
+    private static hideAllLabelsRememberingVisibility(imageData: ImageData): ImageData {
+        const snapshot: Map<string, boolean> = new Map();
+        const hide = <T extends Annotation>(annotations: T[]): T[] =>
+            annotations.map((annotation: T) => {
+                snapshot.set(annotation.id, annotation.isVisible !== false);
+                return { ...annotation, isVisible: false };
+            });
+
+        const newImageData: ImageData = {
+            ...imageData,
+            labelRects: hide(imageData.labelRects),
+            labelPoints: hide(imageData.labelPoints),
+            labelPolygons: hide(imageData.labelPolygons),
+            labelLines: hide(imageData.labelLines)
+        };
+        LabelActions.visibilitySnapshots.set(imageData.id, snapshot);
+        return newImageData;
+    }
+
+    private static restoreRememberedVisibility(
+        imageData: ImageData,
+        snapshot: Map<string, boolean>
+    ): ImageData {
+        // annotations missing from the snapshot were created while the labels were
+        // hidden, so they keep whatever visibility they have now
+        const restore = <T extends Annotation>(annotations: T[]): T[] =>
+            annotations.map((annotation: T) => snapshot.has(annotation.id)
+                ? { ...annotation, isVisible: snapshot.get(annotation.id) }
+                : annotation
+            );
+
+        const newImageData: ImageData = {
+            ...imageData,
+            labelRects: restore(imageData.labelRects),
+            labelPoints: restore(imageData.labelPoints),
+            labelPolygons: restore(imageData.labelPolygons),
+            labelLines: restore(imageData.labelLines)
+        };
+        LabelActions.visibilitySnapshots.delete(imageData.id);
+        return newImageData;
+    }
 }

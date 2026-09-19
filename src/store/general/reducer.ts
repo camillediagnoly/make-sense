@@ -30,6 +30,14 @@ const defaultKeyboardShortcuts = [
     description: "Shows or hides all labels in the current image",
   },
   {
+    id: "hide-or-restore-labels",
+    name: "Hide or Restore Labels",
+    keyCombo: ["h"],
+    defaultKeyCombo: ["h"],
+    description:
+      "Hides all labels in the current image; pressing it again brings back only the labels that were visible before",
+  },
+  {
     id: "previous-image",
     name: "Previous Image",
     keyCombo: PlatformUtil.isMac() ? ["Alt", "ArrowLeft"] : ["a"],

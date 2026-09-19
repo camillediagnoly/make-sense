@@ -13,4 +13,6 @@
 | Redo current-image action           | Editor   | <kbd>Ctrl</kbd> + <kbd>Y</kbd> | <kbd>Ctrl</kbd> + <kbd>Y</kbd> |
 | Move image                         | Editor   | <kbd>Up</kbd> / <kbd>Down</kbd> / <kbd>Left</kbd> / <kbd>Right</kbd> | <kbd>Up</kbd> / <kbd>Down</kbd> / <kbd>Left</kbd> / <kbd>Right</kbd> |
 | Select Label                       | Editor   | <kbd>⌥</kbd> + <kbd>0-9</kbd> | <kbd>Ctrl</kbd> + <kbd>0-9</kbd> |
+| Show or hide all labels            | Editor   | <kbd>⌥</kbd> + <kbd>Z</kbd> | <kbd>E</kbd> |
+| Hide labels, restoring them as they were | Editor   | <kbd>H</kbd> | <kbd>H</kbd> |
 | Exit popup                         | Popup    | <kbd>Escape</kbd> | <kbd>Escape</kbd> |
