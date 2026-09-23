@@ -15,6 +15,7 @@ import { LabelsSelector } from "../../store/selectors/LabelsSelector";
 import { store } from '../../index';
 import { ShortcutItem } from '../../store/general/types';
 import { ImageHistoryActions } from '../actions/ImageHistoryActions';
+import { ImageExportActions } from '../actions/ImageExportActions';
 
 export class EditorContext extends BaseContext {
     private static getShortcutByName(name: string): ShortcutItem | undefined {
@@ -110,6 +111,12 @@ export class EditorContext extends BaseContext {
                 const imageData = LabelsSelector.getActiveImageData();
                 if (imageData) {
                     LabelActions.toggleLabelsVisibilityWithRestoreInImage(imageData.id);
+                }
+            },
+            'Copy Image to Export Folder': (event: KeyboardEvent) => {
+                // holding the key down would otherwise copy again on every auto-repeat
+                if (!event.repeat) {
+                    ImageExportActions.copyActiveImageToExportFolder();
                 }
             }
         };

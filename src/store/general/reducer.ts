@@ -39,6 +39,14 @@ const defaultKeyboardShortcuts = [
       "Hides all labels in the current image; pressing it again brings back only the labels that were visible before",
   },
   {
+    id: "copy-image-to-export-folder",
+    name: "Copy Image to Export Folder",
+    keyCombo: ["c"],
+    defaultKeyCombo: ["c"],
+    description:
+      "Copies the current image file into an export folder, chosen on the first copy",
+  },
+  {
     id: "previous-image",
     name: "Previous Image",
     keyCombo: PlatformUtil.isMac() ? ["Alt", "ArrowLeft"] : ["a"],

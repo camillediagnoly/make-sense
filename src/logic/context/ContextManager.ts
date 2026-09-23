@@ -100,7 +100,11 @@ export class ContextManager {
     }
 
     private static removeFromCombo(keyCode: string): void {
-        const index: number = ContextManager.activeCombo.indexOf(keyCode);
+        // letting go of Shift before a letter releases that letter in the other case ("C" goes
+        // down, "c" comes up), which would otherwise leave it held and break every later combo
+        const index: number = ContextManager.activeCombo.findIndex((activeKeyCode: string) =>
+            activeKeyCode.toLowerCase() === keyCode.toLowerCase()
+        );
         if (index >= 0) {
             ContextManager.activeCombo.splice(index, 1);
         }

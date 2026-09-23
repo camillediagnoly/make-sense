@@ -13,6 +13,15 @@ export class NotificationUtil {
         }
     }
 
+    public static createSuccessNotification(content: NotificationContent): INotification {
+        return {
+            id: uuidv4(),
+            type: NotificationType.SUCCESS,
+            header: content.header,
+            description: content.description
+        }
+    }
+
     public static createMessageNotification(content: NotificationContent): INotification {
         return {
             id: uuidv4(),

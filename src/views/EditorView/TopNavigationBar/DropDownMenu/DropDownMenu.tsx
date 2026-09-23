@@ -18,6 +18,13 @@ const DropDownMenu: React.FC<IProps> = ({updatePreventCustomCursorStatusAction})
     const [activeDropDownAnchor, setDropDownAnchor] = useState(null);
 
     const onTabClick = (tabIdx: number, event) => {
+        // a tab without options is a plain button
+        if (!DropDownMenuData[tabIdx].children) {
+            setActiveTabIdx(null);
+            DropDownMenuData[tabIdx].onClick?.();
+            return;
+        }
+
         if (activeTabIdx === null) {
             document.addEventListener(EventType.MOUSE_DOWN, onMouseDownBeyondDropDown);
         }
@@ -48,7 +55,7 @@ const DropDownMenu: React.FC<IProps> = ({updatePreventCustomCursorStatusAction})
     }
 
     const onMouseEnterTab = (tabIdx: number, event) => {
-        if (activeTabIdx !== null && activeTabIdx !== tabIdx) {
+        if (activeTabIdx !== null && activeTabIdx !== tabIdx && DropDownMenuData[tabIdx].children) {
             setActiveTabIdx(tabIdx);
             setDropDownAnchor({x: event.target.offsetLeft, y: topAnchor});
         }

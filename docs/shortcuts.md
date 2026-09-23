@@ -15,4 +15,5 @@
 | Select Label                       | Editor   | <kbd>⌥</kbd> + <kbd>0-9</kbd> | <kbd>Ctrl</kbd> + <kbd>0-9</kbd> |
 | Show or hide all labels, keeping those hidden in Edit Labels hidden | Editor   | <kbd>⌥</kbd> + <kbd>Z</kbd> | <kbd>E</kbd> |
 | Hide labels, restoring them as they were | Editor   | <kbd>H</kbd> | <kbd>H</kbd> |
+| Copy image to the export folder, chosen on first use or with Export location | Editor   | <kbd>C</kbd> | <kbd>C</kbd> |
 | Exit popup                         | Popup    | <kbd>Escape</kbd> | <kbd>Escape</kbd> |

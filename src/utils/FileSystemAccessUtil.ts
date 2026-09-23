@@ -8,12 +8,18 @@ import {
 import { ImageData } from "../store/labels/types";
 import { LocalImageDirectoryRegistry } from "../logic/imageRepository/LocalImageDirectoryRegistry";
 
+export type DirectoryFileCopy = {
+    fileName: string;
+    isAlreadyPresent: boolean;
+};
+
 export class FileSystemAccessUtil {
     private static readonly DIRECTORY_HANDLES_DB_NAME = 'make-sense-file-system-access';
     private static readonly DIRECTORY_HANDLES_DB_VERSION = 1;
     private static readonly DIRECTORY_HANDLES_STORE_NAME = 'directory-handles';
     private static readonly IMAGE_DIRECTORY_HANDLES_KEY = 'image-directory-handles';
     private static readonly MAX_REMEMBERED_DIRECTORY_HANDLES = 10;
+    private static readonly EXPORT_DIRECTORY_PICKER_ID = 'make-sense-image-export';
 
     public static supportsFilePicker(): boolean {
         return typeof window !== 'undefined'
@@ -288,6 +294,42 @@ export class FileSystemAccessUtil {
         throw new Error('Local file deletion is unavailable for this image.');
     }
 
+    public static async showExportDirectoryPicker(): Promise<LocalFileSystemDirectoryHandle> {
+        // with an id, the browser opens the picker in the folder last chosen under that id
+        const directoryHandle = await (window as FileSystemAccessWindow).showDirectoryPicker({
+            id: FileSystemAccessUtil.EXPORT_DIRECTORY_PICKER_ID,
+            mode: 'readwrite',
+        });
+        await FileSystemAccessUtil.ensureReadWritePermission(directoryHandle);
+        return directoryHandle;
+    }
+
+    // Copies the file under its own name, or as "name (n).ext" when a different file already holds
+    // that name. Nothing is written when an identical file is already there.
+    public static async copyFileToDirectory(
+        file: File,
+        directoryHandle: LocalFileSystemDirectoryHandle
+    ): Promise<DirectoryFileCopy> {
+        await FileSystemAccessUtil.ensureReadWritePermission(directoryHandle);
+
+        for (let copyNumber = 0; ; copyNumber++) {
+            const fileName = FileSystemAccessUtil.getNumberedFileName(file.name, copyNumber);
+            const existingFile = await FileSystemAccessUtil.getFileFromDirectory(
+                directoryHandle,
+                fileName
+            );
+
+            if (!existingFile) {
+                await FileSystemAccessUtil.writeFileToDirectory(directoryHandle, fileName, file);
+                return { fileName, isAlreadyPresent: false };
+            }
+
+            if (await FileSystemAccessUtil.haveSameContent(existingFile, file)) {
+                return { fileName, isAlreadyPresent: true };
+            }
+        }
+    }
+
     private static async attachDirectoryHandleToSelections(
         selections: LocalFileSelection[],
         directoryHandle: LocalFileSystemDirectoryHandle,
@@ -382,6 +424,68 @@ export class FileSystemAccessUtil {
         }
 
         await directoryHandle.removeEntry(fileName);
+    }
+
+    private static async getFileFromDirectory(
+        directoryHandle: LocalFileSystemDirectoryHandle,
+        fileName: string
+    ): Promise<File | null> {
+        try {
+            const fileHandle = await directoryHandle.getFileHandle(fileName);
+            return await fileHandle.getFile();
+        } catch (error) {
+            if (FileSystemAccessUtil.isFileNotFoundError(error)) {
+                return null;
+            }
+            throw error;
+        }
+    }
+
+    private static async writeFileToDirectory(
+        directoryHandle: LocalFileSystemDirectoryHandle,
+        fileName: string,
+        file: File
+    ): Promise<void> {
+        const fileHandle = await directoryHandle.getFileHandle(fileName, { create: true });
+
+        try {
+            const writable = await fileHandle.createWritable();
+            await writable.write(file);
+            await writable.close();
+        } catch (error) {
+            // getFileHandle already created the file empty, and left behind it would pass for a
+            // different image holding that name
+            await directoryHandle.removeEntry?.(fileName).catch(() => undefined);
+            throw error;
+        }
+    }
+
+    private static getNumberedFileName(fileName: string, copyNumber: number): string {
+        if (copyNumber === 0) {
+            return fileName;
+        }
+
+        const extensionStart = fileName.lastIndexOf('.');
+        if (extensionStart <= 0) {
+            return `${fileName} (${copyNumber})`;
+        }
+
+        const baseName = fileName.slice(0, extensionStart);
+        return `${baseName} (${copyNumber})${fileName.slice(extensionStart)}`;
+    }
+
+    private static async haveSameContent(firstFile: File, secondFile: File): Promise<boolean> {
+        if (firstFile.size !== secondFile.size) {
+            return false;
+        }
+
+        const [firstBuffer, secondBuffer] = await Promise.all([
+            firstFile.arrayBuffer(),
+            secondFile.arrayBuffer(),
+        ]);
+        const firstBytes = new Uint8Array(firstBuffer);
+        const secondBytes = new Uint8Array(secondBuffer);
+        return firstBytes.every((byte: number, index: number) => byte === secondBytes[index]);
     }
 
     private static async getImageFilesFromDirectory(

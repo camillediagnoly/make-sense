@@ -1,6 +1,7 @@
 import {updateActivePopupType} from '../../store/general/actionCreators';
 import {PopupWindowType} from '../enums/PopupWindowType';
 import {store} from '../../index';
+import {ImageExportActions} from '../../logic/actions/ImageExportActions';
 
 export type DropDownMenuNode = {
     name: string
@@ -115,5 +116,13 @@ export const DropDownMenuData: DropDownMenuNode[] = [
                 onClick: () => window.open('https://github.com/SkalskiP/make-sense/issues', '_blank')
             }
         ]
+    },
+    {
+        name: 'Export location',
+        description: 'Choose the folder images are copied to',
+        imageSrc: 'ico/files.png',
+        imageAlt: 'export location',
+        disabled: false,
+        onClick: () => ImageExportActions.changeExportFolder()
     }
 ]

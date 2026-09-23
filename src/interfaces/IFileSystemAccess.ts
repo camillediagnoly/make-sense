@@ -4,10 +4,16 @@ export type LocalFileSystemPermissionDescriptor = {
     mode?: LocalFileSystemPermissionMode;
 };
 
+export type LocalFileSystemWritableFileStream = {
+    write: (data: Blob | BufferSource | string) => Promise<void>;
+    close: () => Promise<void>;
+};
+
 export type LocalFileSystemFileHandle = {
     kind: 'file';
     name: string;
     getFile: () => Promise<File>;
+    createWritable?: () => Promise<LocalFileSystemWritableFileStream>;
     isSameEntry?: (other: LocalFileSystemFileHandle | LocalFileSystemDirectoryHandle) => Promise<boolean>;
     queryPermission?: (descriptor?: LocalFileSystemPermissionDescriptor) => Promise<PermissionState>;
     requestPermission?: (descriptor?: LocalFileSystemPermissionDescriptor) => Promise<PermissionState>;
@@ -35,6 +41,7 @@ export type LocalFileSelection = {
 
 export type FileSystemAccessWindow = Window & {
     showDirectoryPicker?: (options?: {
+        id?: string;
         mode?: LocalFileSystemPermissionMode;
         startIn?: LocalFileSystemFileHandle | LocalFileSystemDirectoryHandle | string;
     }) => Promise<LocalFileSystemDirectoryHandle>;
