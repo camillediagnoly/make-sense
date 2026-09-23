@@ -254,44 +254,41 @@ export class LabelActions {
     }
 
 
-	public static toggleAllLabelsVisibilityInImage(imageId: string) {
-    const imageData: ImageData = LabelsSelector.getImageDataById(imageId);
-    
-    // Determine if we need to show or hide all labels
-    // If at least one label is visible, we'll hide all. Otherwise, show all.
-    const hasVisibleRects = imageData.labelRects.some((labelRect: LabelRect) => labelRect.isVisible);
-    const hasVisiblePoints = imageData.labelPoints.some((labelPoint: LabelPoint) => labelPoint.isVisible);
-    const hasVisiblePolygons = imageData.labelPolygons.some((labelPolygon: LabelPolygon) => labelPolygon.isVisible);
-    const hasVisibleLines = imageData.labelLines.some((labelLine: LabelLine) => labelLine.isVisible);
-    
-    const makeAllVisible = !(hasVisibleRects || hasVisiblePoints || hasVisiblePolygons || hasVisibleLines);
-    
-    const newImageData = {
-        ...imageData,
-        labelRects: imageData.labelRects.map((labelRect: LabelRect) => ({
-            ...labelRect,
-            isVisible: makeAllVisible
-        })),
-        labelPoints: imageData.labelPoints.map((labelPoint: LabelPoint) => ({
-            ...labelPoint,
-            isVisible: makeAllVisible
-        })),
-        labelPolygons: imageData.labelPolygons.map((labelPolygon: LabelPolygon) => ({
-            ...labelPolygon,
-            isVisible: makeAllVisible
-        })),
-        labelLines: imageData.labelLines.map((labelLine: LabelLine) => ({
-            ...labelLine,
-            isVisible: makeAllVisible
-        }))
-    }
-    
-    store.dispatch(updateImageDataById(imageData.id, newImageData));
+    public static toggleAllLabelsVisibilityInImage(imageId: string) {
+        const imageData: ImageData = LabelsSelector.getImageDataById(imageId);
 
-    // the image is no longer hidden through the remembering shortcut, so the
-    // snapshot it would restore is stale
-    LabelActions.visibilitySnapshots.delete(imageData.id);
-}
+        // If at least one label is visible, hide all. Otherwise show them again, except those whose
+        // label name is hidden in "Edit Labels", so that filter survives hiding and showing.
+        const hasVisibleLabels: boolean = [
+            ...imageData.labelRects,
+            ...imageData.labelPoints,
+            ...imageData.labelPolygons,
+            ...imageData.labelLines
+        ].some((annotation: Annotation) => annotation.isVisible !== false);
+        const hiddenLabelNameIds = new Set<string>(
+            LabelsSelector.getLabelNames()
+                .filter((labelName: LabelName) => labelName.isVisible === false)
+                .map((labelName: LabelName) => labelName.id)
+        );
+        const setVisibility = <T extends Annotation>(annotations: T[]): T[] =>
+            annotations.map((annotation: T) => ({
+                ...annotation,
+                isVisible: !hasVisibleLabels && !hiddenLabelNameIds.has(annotation.labelId)
+            }));
+
+        const newImageData: ImageData = {
+            ...imageData,
+            labelRects: setVisibility(imageData.labelRects),
+            labelPoints: setVisibility(imageData.labelPoints),
+            labelPolygons: setVisibility(imageData.labelPolygons),
+            labelLines: setVisibility(imageData.labelLines)
+        };
+        store.dispatch(updateImageDataById(imageData.id, newImageData));
+
+        // the image is no longer hidden through the remembering shortcut, so the
+        // snapshot it would restore is stale
+        LabelActions.visibilitySnapshots.delete(imageData.id);
+    }
 
     public static toggleLabelsVisibilityWithRestoreInImage(imageId: string) {
         const imageData: ImageData = LabelsSelector.getImageDataById(imageId);

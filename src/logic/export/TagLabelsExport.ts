@@ -40,7 +40,7 @@ export class TagLabelsExporter {
                     "image": imageData.fileData.name,
                     "annotations": TagLabelsExporter.wrapLabelNamesIntoJSON(imageData)
                 }})
-        const content: string = JSON.stringify(contentObjects);
+        const content: string = JSON.stringify(contentObjects, null, 2);
         const fileName: string = `${ExporterUtil.getExportFileName()}.json`;
         ExporterUtil.saveAs(content, fileName);
     }

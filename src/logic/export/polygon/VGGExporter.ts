@@ -9,7 +9,11 @@ export class VGGExporter {
     public static export(): void {
         const imagesData: ImageData[] = LabelsSelector.getImagesData();
         const labelNames: LabelName[] = LabelsSelector.getLabelNames();
-        const content: string = JSON.stringify(VGGExporter.mapImagesDataToVGGObject(imagesData, labelNames));
+        const content: string = JSON.stringify(
+            VGGExporter.mapImagesDataToVGGObject(imagesData, labelNames),
+            null,
+            2
+        );
         const fileName: string = `${ExporterUtil.getExportFileName()}.json`;
         ExporterUtil.saveAs(content, fileName);
     }

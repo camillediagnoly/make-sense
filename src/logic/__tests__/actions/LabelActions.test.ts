@@ -1,7 +1,13 @@
 import { LabelActions } from '../../actions/LabelActions';
 import { LabelsSelector } from '../../../store/selectors/LabelsSelector';
 import { store } from '../../../index';
-import { Annotation, ImageData, LabelPolygon, LabelRect } from '../../../store/labels/types';
+import {
+    Annotation,
+    ImageData,
+    LabelName,
+    LabelPolygon,
+    LabelRect
+} from '../../../store/labels/types';
 import { LabelStatus } from '../../../data/enums/LabelStatus';
 
 jest.mock('../../../index', () => ({
@@ -11,9 +17,9 @@ jest.mock('../../../index', () => ({
     }
 }));
 
-const rect = (id: string, isVisible: boolean): LabelRect => ({
+const rect = (id: string, isVisible: boolean, labelId: string = 'label_name_1'): LabelRect => ({
     id,
-    labelId: 'label_name_1',
+    labelId,
     isVisible,
     rect: { x: 0, y: 0, width: 10, height: 10 },
     isCreatedByAI: false,
@@ -21,9 +27,13 @@ const rect = (id: string, isVisible: boolean): LabelRect => ({
     suggestedLabel: null
 });
 
-const polygon = (id: string, isVisible: boolean): LabelPolygon => ({
+const polygon = (
+    id: string,
+    isVisible: boolean,
+    labelId: string = 'label_name_1'
+): LabelPolygon => ({
     id,
-    labelId: 'label_name_1',
+    labelId,
     isVisible,
     vertices: [{ x: 0, y: 0 }, { x: 10, y: 0 }, { x: 10, y: 10 }]
 });
@@ -55,9 +65,13 @@ const visibilityOf = (data: ImageData): Record<string, boolean> => [
 
 // Mimics the store: LabelActions reads the image through the selector and writes it back
 // through a dispatch, so each toggle has to see what the previous one produced.
-const setUpStore = (initialImageData: ImageData): { current: () => ImageData } => {
+const setUpStore = (
+    initialImageData: ImageData,
+    labelNames: LabelName[] = []
+): { current: () => ImageData } => {
     let current: ImageData = initialImageData;
     jest.spyOn(LabelsSelector, 'getImageDataById').mockImplementation(() => current);
+    jest.spyOn(LabelsSelector, 'getLabelNames').mockImplementation(() => labelNames);
     (store.dispatch as jest.Mock).mockImplementation((action: any) => {
         current = action.payload.newImageData;
         return action;
@@ -148,6 +162,76 @@ describe('LabelActions toggleLabelsVisibilityWithRestoreInImage method', () => {
         // THEN - the last toggle hides, it does not restore the stale snapshot
         expect(visibilityOf(state.current())).toEqual({
             rect_1: false,
+            rect_2: false
+        });
+    });
+});
+
+describe('LabelActions toggleAllLabelsVisibilityInImage method', () => {
+    beforeEach(() => {
+        jest.restoreAllMocks();
+        (store.dispatch as jest.Mock).mockReset();
+    });
+
+    const labelNames: LabelName[] = [
+        { id: 'label_name_shown', name: 'shown', isVisible: true },
+        { id: 'label_name_hidden', name: 'hidden', isVisible: false }
+    ];
+
+    it('should hide every label when at least one is visible', () => {
+        // GIVEN
+        const state = setUpStore(imageData(
+            'image_hide_all',
+            [rect('rect_1', true, 'label_name_shown'), rect('rect_2', false, 'label_name_hidden')],
+            [polygon('polygon_1', false, 'label_name_shown')]
+        ), labelNames);
+
+        // WHEN
+        LabelActions.toggleAllLabelsVisibilityInImage('image_hide_all');
+
+        // THEN
+        expect(visibilityOf(state.current())).toEqual({
+            rect_1: false,
+            rect_2: false,
+            polygon_1: false
+        });
+    });
+
+    it('should show again only the labels whose label name is not hidden', () => {
+        // GIVEN
+        const state = setUpStore(imageData(
+            'image_show_filtered',
+            [rect('rect_1', false, 'label_name_shown'), rect('rect_2', false, 'label_name_hidden')],
+            [polygon('polygon_1', false, 'label_name_hidden'), polygon('polygon_2', false, null)]
+        ), labelNames);
+
+        // WHEN
+        LabelActions.toggleAllLabelsVisibilityInImage('image_show_filtered');
+
+        // THEN
+        expect(visibilityOf(state.current())).toEqual({
+            rect_1: true,
+            rect_2: false,
+            polygon_1: false,
+            polygon_2: true
+        });
+    });
+
+    it('should bring back the label name filter after hiding and showing', () => {
+        // GIVEN
+        const state = setUpStore(imageData(
+            'image_hide_and_show',
+            [rect('rect_1', true, 'label_name_shown'), rect('rect_2', false, 'label_name_hidden')],
+            []
+        ), labelNames);
+
+        // WHEN
+        LabelActions.toggleAllLabelsVisibilityInImage('image_hide_and_show');
+        LabelActions.toggleAllLabelsVisibilityInImage('image_hide_and_show');
+
+        // THEN
+        expect(visibilityOf(state.current())).toEqual({
+            rect_1: true,
             rect_2: false
         });
     });

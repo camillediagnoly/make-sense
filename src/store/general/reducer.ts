@@ -27,7 +27,8 @@ const defaultKeyboardShortcuts = [
     name: "Toggle Labels Visibility",
     keyCombo: PlatformUtil.isMac() ? ["Option", "z"] : ["e"],
     defaultKeyCombo: PlatformUtil.isMac() ? ["Option", "z"] : ["e"],
-    description: "Shows or hides all labels in the current image",
+    description:
+      "Hides all labels in the current image, or shows them again except those hidden in Edit Labels",
   },
   {
     id: "hide-or-restore-labels",
