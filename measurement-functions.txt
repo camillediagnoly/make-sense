@@ -44,16 +44,22 @@ Compute the angle between line p1-p2 and line p3-p4.
 Use p5 to determine the sign of the angle.
 
 8. Ellipse Area Ratio
-Minimum keypoints: 6
+Minimum keypoints: 6 (7 with the thorax right rib)
 Computation:
+With 6 keypoints:
 Build ellipse A from p4, p5, p6.
 Build ellipse B from p1, p2, p3.
+With 7 keypoints, p4 is the thorax right rib and the heart moves to p5-p7:
+Build ellipse A from p5, p6, p7.
+Build ellipse B from p1, p2, p3, p4 (see "Ellipse from 4 keypoints" below). p4 is optional on each
+image: without it, B is built from p1, p2, p3.
 Return area(A) / area(B).
 
 9. Ellipse Split Ratio
-Minimum keypoints: 5
+Minimum keypoints: 5 (p6 is optional)
 Computation:
-Build an ellipse from p3, p4, p5.
+Build an ellipse from p3, p4, p5, or from p3, p4, p5, p6 if p6 exists (see "Ellipse from 4
+keypoints" below).
 Split the ellipse by line p1-p2.
 Return selected-side area / total ellipse area.
 
@@ -64,3 +70,16 @@ Use only p1, p2, and p3. Extra keypoints in the same measurement are ignored.
 Draw a line through p3 parallel to p1-p2.
 Project p1 onto that line.
 Return d(projected p1, p3) / d(p1, p2).
+
+Ellipse from 3 keypoints (a, b, c)
+a-b is an axis of the ellipse, and the ellipse passes through c.
+
+Ellipse from 4 keypoints (a, b, c, d), used for the thorax
+Keypoints: a = sternum, b = spine, c = left rib, d = right rib.
+One ellipse goes through a, b, c and d, with its axes parallel and perpendicular to a-b. In the
+frame centred on the middle of a-b, with x along a-b and h = d(a, b) / 2, it is
+x^2 + C y^2 + E y = h^2, which goes through a and b; C and E are solved from c and d.
+Area: pi * A * B, where A = sqrt(h^2 + E^2 / (4 C)) is the semi-axis along a-b and B = A / sqrt(C).
+The measurement is null when c and d are on the same side of a-b, or when C <= 0 (no such ellipse
+goes through the 4 points). When c and d mirror each other across a-b, this is the 3-point ellipse.
+Without d, the ellipse is built from a, b, c as before.

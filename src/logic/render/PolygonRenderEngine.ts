@@ -29,9 +29,11 @@ import { Settings } from "../../settings/Settings";
 import { LabelUtil } from "../../utils/LabelUtil";
 import { PolygonUtil } from "../../utils/PolygonUtil";
 import {
+    getMaximumKeypointCount,
     getMeasurementConnections,
     getMeasurementFunctionConfig,
-    getMinimumKeypointCount,
+    getMeasurementKeypointName,
+    getThoraxFourthPosition,
     inferMeasurementDefinitions,
     MeasurementConnection,
     MeasurementDefinition,
@@ -291,6 +293,14 @@ export class PolygonRenderEngine extends BaseRenderEngine {
             keypointCenterMap,
             connection.thirdPosition
         );
+        const fourthBySuffix =
+            connection.fourthPosition === undefined
+                ? null
+                : this.getRenderableKeypointsByPosition(
+                      measurementDefinition,
+                      keypointCenterMap,
+                      connection.fourthPosition
+                  );
 
         if (!firstBySuffix || !secondBySuffix || !thirdBySuffix) {
             return;
@@ -303,32 +313,37 @@ export class PolygonRenderEngine extends BaseRenderEngine {
                 return;
             }
 
-            const pointsOnCanvas =
-                RenderEngineUtil.transferPolygonFromImageToViewPortContent(
-                    [
-                        firstPointData.centroid,
-                        secondPointData.centroid,
-                        thirdPointData.centroid,
-                    ],
-                    data
-                );
-            const startPoint = RenderEngineUtil.setPointBetweenPixels(
-                pointsOnCanvas[0]
+            // The 4th keypoint is optional: without it the ellipse is drawn from the first 3
+            const fourthPointData = fourthBySuffix?.get(suffix);
+            const pointsOnCanvas = RenderEngineUtil.transferPolygonFromImageToViewPortContent(
+                [firstPointData, secondPointData, thirdPointData, fourthPointData]
+                    .filter((pointData) => !!pointData)
+                    .map((pointData) => pointData.centroid),
+                data
             );
-            const endPoint = RenderEngineUtil.setPointBetweenPixels(
-                pointsOnCanvas[1]
+            const [startPoint, endPoint, constrainPoint, fourthPoint] = pointsOnCanvas.map(
+                (point) => RenderEngineUtil.setPointBetweenPixels(point)
             );
-            const constrainPoint = RenderEngineUtil.setPointBetweenPixels(
-                pointsOnCanvas[2]
-            );
+            const color = this.resolveLineColorBySuffix(suffix);
 
-            this.surfaceAnnotator.drawEllipse(
-                this.canvas,
-                startPoint,
-                endPoint,
-                constrainPoint,
-                this.resolveLineColorBySuffix(suffix)
-            );
+            if (fourthPoint) {
+                this.surfaceAnnotator.drawFourPointEllipse(
+                    this.canvas,
+                    startPoint,
+                    endPoint,
+                    constrainPoint,
+                    fourthPoint,
+                    color
+                );
+            } else {
+                this.surfaceAnnotator.drawEllipse(
+                    this.canvas,
+                    startPoint,
+                    endPoint,
+                    constrainPoint,
+                    color
+                );
+            }
         });
     }
 
@@ -751,7 +766,8 @@ export class PolygonRenderEngine extends BaseRenderEngine {
             this.surfaceAnnotator.processAnnotation(
                 this.canvas,
                 data,
-                standardizedPoints
+                standardizedPoints,
+                standardizedPoints.length >= 3 && !!this.getFourPointEllipseLabelIds()
             );
     }
 
@@ -930,6 +946,12 @@ export class PolygonRenderEngine extends BaseRenderEngine {
                         this.addLabelAndFinishCreation(data);
                         return;
                     }
+                }
+            }
+            if (this.isDrawingEllipse) {
+                const maxPoints = this.getFourPointEllipseLabelIds() ? 4 : 3;
+                if (this.activePath.length >= maxPoints) {
+                    return;
                 }
             }
             const mousePositionSnapped: IPoint = RectUtil.snapPointToRect(
@@ -1381,6 +1403,20 @@ export class PolygonRenderEngine extends BaseRenderEngine {
                 constrainPoint
             );
             this.finishLabelCreation();
+        } else if (this.isCreationInProgress() && this.activePath.length == 4) {
+            const labelIds = this.getFourPointEllipseLabelIds();
+            if (!labelIds) {
+                return;
+            }
+            const polygonOnImage: IPoint[] =
+                RenderEngineUtil.transferPolygonFromViewPortContentToImage(this.activePath, data);
+            const radius = Math.min(...Object.values(data.realImageSize)) * this.scaleFactor;
+
+            this.addPolygonLabel4Keypoints(
+                polygonOnImage.map((point) => this.generatePolygonFromKeypoint(point, radius, 8)),
+                labelIds
+            );
+            this.finishLabelCreation();
         }
     }
 
@@ -1454,6 +1490,58 @@ export class PolygonRenderEngine extends BaseRenderEngine {
         return measurementDefinition
             ? measurementDefinition.keypointNames
             : null;
+    }
+
+    // Label ids, in click order, of an ellipse that starts at the active label and takes an
+    // optional 4th keypoint (the thorax right rib), or null when the active label starts none.
+    private getFourPointEllipseLabelIds(): string[] | null {
+        const labelNames: LabelName[] = LabelsSelector.getLabelNames();
+        const activeLabelId = LabelsSelector.getActiveLabelNameId();
+        const activeLabel = labelNames.find((label) => label.id === activeLabelId);
+        const parsedKeypointName = activeLabel ? parseKeypointName(activeLabel.name) : null;
+        if (!parsedKeypointName) {
+            return null;
+        }
+
+        const measurementDefinition = this.getMeasurementDefinitions().find(
+            (definition) => definition.measurementName === parsedKeypointName.measurementName
+        );
+        if (!measurementDefinition || !measurementDefinition.functionId) {
+            return null;
+        }
+
+        const { measurementName, keypointIndexes } = measurementDefinition;
+        const activePosition = keypointIndexes.indexOf(parsedKeypointName.keypointIndex);
+        const connection = getMeasurementConnections(
+            measurementDefinition.functionId,
+            keypointIndexes.length
+        ).find(
+            (candidate): candidate is Extract<MeasurementConnection, { type: "ellipse" }> =>
+                candidate.type === "ellipse" &&
+                candidate.firstPosition === activePosition &&
+                candidate.fourthPosition !== undefined
+        );
+        if (!connection) {
+            return null;
+        }
+
+        const labelIdByName = labelNames.reduce((map, label) => {
+            map[label.name] = label.id;
+            return map;
+        }, {} as Record<string, string>);
+        const labelIds = [
+            connection.firstPosition,
+            connection.secondPosition,
+            connection.thirdPosition,
+            connection.fourthPosition,
+        ].map(
+            (position) =>
+                labelIdByName[
+                    getMeasurementKeypointName(measurementName, keypointIndexes[position]) +
+                        parsedKeypointName.suffix
+                ]
+        );
+        return labelIds.every((labelId) => !!labelId) ? labelIds : null;
     }
 
     private addPolygonLabelNKeypoints(polygons: IPoint[][]): void {
@@ -1550,6 +1638,17 @@ export class PolygonRenderEngine extends BaseRenderEngine {
                 store.dispatch(updateActiveLabelId(labelPolygon0.id));
             }
         }
+    }
+
+    private addPolygonLabel4Keypoints(polygons: IPoint[][], labelIds: string[]): void {
+        const imageData: ImageData = LabelsSelector.getActiveImageData();
+        const labelPolygons: LabelPolygon[] = polygons.map((polygon, index) =>
+            LabelUtil.createLabelPolygon(labelIds[index], polygon)
+        );
+        imageData.labelPolygons.push(...labelPolygons);
+        store.dispatch(updateImageDataById(imageData.id, imageData));
+        store.dispatch(updateFirstLabelCreatedFlag(true));
+        store.dispatch(updateActiveLabelId(labelPolygons[0].id));
     }
 
     private generatePolygonFromKeypoint(
@@ -1863,6 +1962,10 @@ export class KeypointSurfaceAnnotation {
                 (if cannot find the satisfying ellipse, stop drawing)
         Click 3rd point: create the 3rd keypoint polygon 
             --> create a fixed ellipse if ellipse exists else keep the circle
+        Optional 4th point (thorax only, when allowFourthPoint is set):
+            --> the moving curve becomes the ellipse through points 1-3 and the tip of the mouse,
+                until the 4th point is clicked
+            --> if the tip of the mouse gives no valid 4-point ellipse, keep the 3-point ellipse
     */
     public activeAnchorPoints: IPoint[] = [];
     // public activeConstrainPoint: IPoint = {};
@@ -1870,7 +1973,8 @@ export class KeypointSurfaceAnnotation {
     public processAnnotation(
         canvas: HTMLCanvasElement,
         data: EditorData,
-        points: IPoint[]
+        points: IPoint[],
+        allowFourthPoint = false
     ) {
         if (points.length > 0) {
             this.activeAnchorPoints = points;
@@ -1878,7 +1982,7 @@ export class KeypointSurfaceAnnotation {
 
         if (
             this.activeAnchorPoints.length > 0 &&
-            this.activeAnchorPoints.length <= 3
+            this.activeAnchorPoints.length <= (allowFourthPoint ? 4 : 3)
         ) {
             let startPoint = this.activeAnchorPoints[0];
             let endPoint =
@@ -1905,15 +2009,40 @@ export class KeypointSurfaceAnnotation {
                     data.mousePositionOnViewPortContent
                 );
             } else if (this.activeAnchorPoints.length == 3) {
-                this.drawEllipse(
-                    canvas,
-                    startPoint,
-                    endPoint,
-                    this.activeAnchorPoints[2]
-                );
+                this.drawThreePointEllipseOrPreview(canvas, data, allowFourthPoint);
+            } else if (this.activeAnchorPoints.length == 4) {
+                const [sternum, spine, leftRib, rightRib] = this.activeAnchorPoints;
+                this.drawFourPointEllipse(canvas, sternum, spine, leftRib, rightRib);
             }
         } else {
             this.reset();
+        }
+    }
+
+    // With 3 points placed: preview the 4-point ellipse with the tip of the mouse as the 4th point
+    // when allowed and valid, else draw the 3-point ellipse.
+    private drawThreePointEllipseOrPreview(
+        canvas: HTMLCanvasElement,
+        data: EditorData,
+        allowFourthPoint: boolean
+    ) {
+        const [sternum, spine, leftRib] = this.activeAnchorPoints;
+        const mousePosition = RenderEngineUtil.setPointBetweenPixels(
+            data.mousePositionOnViewPortContent
+        );
+        const isPlacingFourthPoint =
+            allowFourthPoint && !this.arePointsEqual(leftRib, mousePosition);
+        if (
+            !isPlacingFourthPoint ||
+            !this.drawFourPointEllipse(
+                canvas,
+                sternum,
+                spine,
+                leftRib,
+                data.mousePositionOnViewPortContent
+            )
+        ) {
+            this.drawEllipse(canvas, sternum, spine, leftRib);
         }
     }
 
@@ -1953,31 +2082,93 @@ export class KeypointSurfaceAnnotation {
         const rotateAngle = Math.atan2(dy, dx);
         const rotateCosine = Math.cos(-rotateAngle);
         const rotateSine = Math.sin(-rotateAngle);
-        const constrainPointToCenter: IPoint = {
-            x: constrainPoint.x - center.x,
-            y: constrainPoint.y - center.y,
-        };
-        const mappedConstrainPoint: IPoint = {
-            x:
-                rotateCosine * constrainPointToCenter.x -
-                rotateSine * constrainPointToCenter.y,
-            y:
-                rotateSine * constrainPointToCenter.x +
-                rotateCosine * constrainPointToCenter.y,
-        };
+        const mappedConstrainPoint = KeypointSurfaceAnnotation.mapToAxisFrame(
+            constrainPoint,
+            center,
+            rotateCosine,
+            rotateSine
+        );
 
         // constrainPoint is on the ellipse with formula (x/a)^2 + (y/b)^2 = 1 --> compute b
-        const minorAxis =
-            Math.abs(mappedConstrainPoint.y) /
-            Math.sqrt(1 - (mappedConstrainPoint.x / majorAxis) ** 2);
+        const minorAxis = KeypointSurfaceAnnotation.computeSemiAxisThrough(
+            mappedConstrainPoint,
+            majorAxis
+        );
         const ellipseProperties = {
             center: center,
             majorAxis: majorAxis,
             minorAxis: minorAxis,
             rotateAngle: rotateAngle,
+            rotateCosine: rotateCosine,
+            rotateSine: rotateSine,
             mappedConstrainPoint: mappedConstrainPoint,
         };
         return ellipseProperties;
+    }
+
+    /*
+        Thorax ellipse from 4 keypoints: one ellipse through the sternum, spine, left and right rib,
+        with its axes along and across the sternum-spine line (majorAxis is the semi-axis along it,
+        as in computeEllipse). Returns null when the ribs are on the same side of that line, or
+        when no such ellipse goes through the 4 points.
+    */
+    public static computeFourPointEllipse(
+        sternum: IPoint,
+        spine: IPoint,
+        leftRib: IPoint,
+        rightRib: IPoint
+    ) {
+        // Frame centred on the sternum-spine midpoint, x along sternum-spine. The curve
+        // x^2 + C y^2 + E y = a^2 goes through the sternum and spine; C and E follow from the ribs.
+        const frame = KeypointSurfaceAnnotation.computeEllipse(sternum, spine, leftRib);
+        const { x: leftX, y: leftY } = frame.mappedConstrainPoint;
+        const { x: rightX, y: rightY } = KeypointSurfaceAnnotation.mapToAxisFrame(
+            rightRib,
+            frame.center,
+            frame.rotateCosine,
+            frame.rotateSine
+        );
+        if (leftY * rightY >= 0) {
+            return null;
+        }
+
+        const leftRest = frame.majorAxis ** 2 - leftX ** 2;
+        const rightRest = frame.majorAxis ** 2 - rightX ** 2;
+        const C = (leftRest * rightY - rightRest * leftY) / (leftY * rightY * (leftY - rightY));
+        if (!(C > 0)) {
+            return null;
+        }
+        const E = (leftRest - C * leftY ** 2) / leftY;
+        const centerShift = -E / (2 * C);
+        const majorAxis = Math.sqrt(frame.majorAxis ** 2 + C * centerShift ** 2);
+        return {
+            center: {
+                x: frame.center.x - Math.sin(frame.rotateAngle) * centerShift,
+                y: frame.center.y + Math.cos(frame.rotateAngle) * centerShift,
+            },
+            majorAxis: majorAxis,
+            minorAxis: majorAxis / Math.sqrt(C),
+            rotateAngle: frame.rotateAngle,
+        };
+    }
+
+    // point in the frame centred on center whose x axis is the ellipse axis
+    private static mapToAxisFrame(
+        point: IPoint,
+        center: IPoint,
+        rotateCosine: number,
+        rotateSine: number
+    ): IPoint {
+        const pointToCenter: IPoint = { x: point.x - center.x, y: point.y - center.y };
+        return {
+            x: rotateCosine * pointToCenter.x - rotateSine * pointToCenter.y,
+            y: rotateSine * pointToCenter.x + rotateCosine * pointToCenter.y,
+        };
+    }
+
+    // semi-axis b so that the mapped point is on (x/a)^2 + (y/b)^2 = 1
+    private static computeSemiAxisThrough(mappedPoint: IPoint, axis: number): number {
+        return Math.abs(mappedPoint.y) / Math.sqrt(1 - (mappedPoint.x / axis) ** 2);
     }
 
     public drawEllipse(
@@ -2004,6 +2195,39 @@ export class KeypointSurfaceAnnotation {
             1,
             color
         );
+    }
+
+    // Returns false, and draws nothing, when the 4 points give no valid ellipse.
+    public drawFourPointEllipse(
+        canvas: HTMLCanvasElement,
+        sternum: IPoint,
+        spine: IPoint,
+        leftRib: IPoint,
+        rightRib: IPoint,
+        color: string = "#ffffff"
+    ): boolean {
+        const ellipseProperties = KeypointSurfaceAnnotation.computeFourPointEllipse(
+            sternum,
+            spine,
+            leftRib,
+            rightRib
+        );
+        if (!ellipseProperties) {
+            return false;
+        }
+
+        DrawUtil.drawDashEllipse(
+            canvas,
+            ellipseProperties.center,
+            ellipseProperties.majorAxis,
+            ellipseProperties.minorAxis,
+            ellipseProperties.rotateAngle,
+            0,
+            360,
+            1,
+            color
+        );
+        return true;
     }
 
     private arePointsEqual(point1: IPoint, point2: IPoint) {
@@ -2176,30 +2400,29 @@ export class KeypointUtils {
             return first.localeCompare(second);
         });
 
-        const requiredKeypointIndexes = measurementDefinition.functionId
-            ? measurementDefinition.keypointIndexes.slice(
-                  0,
-                  getMinimumKeypointCount(
-                      getMeasurementFunctionConfig(
-                          measurementDefinition.functionId
-                      )
-                  )
-              )
-            : measurementDefinition.keypointIndexes;
+        const functionConfig = measurementDefinition.functionId
+            ? getMeasurementFunctionConfig(measurementDefinition.functionId)
+            : null;
+        const keypointIndexes = measurementDefinition.keypointIndexes.slice(
+            0,
+            functionConfig ? getMaximumKeypointCount(functionConfig) : undefined
+        );
+        // The thorax right rib is optional: undefined when missing
+        const optionalPosition = measurementDefinition.functionId
+            ? getThoraxFourthPosition(measurementDefinition.functionId, keypointIndexes.length)
+            : undefined;
 
         for (const suffix of suffixes) {
-            const orderedKeypoints = requiredKeypointIndexes.map(
-                (keypointIndex) =>
-                    measurementKeypoints.find(
-                        (keypoint) =>
-                            keypoint.keypointIndex === keypointIndex &&
-                            keypoint.suffix === suffix
-                    )
+            const orderedKeypoints = keypointIndexes.map((keypointIndex) =>
+                measurementKeypoints.find(
+                    (keypoint) =>
+                        keypoint.keypointIndex === keypointIndex && keypoint.suffix === suffix
+                )
             );
 
             if (
                 orderedKeypoints.every(
-                    (keypoint): keypoint is KeypointCenter => !!keypoint
+                    (keypoint, position) => !!keypoint || position === optionalPosition
                 )
             ) {
                 return orderedKeypoints;
@@ -2435,21 +2658,40 @@ export class KeypointUtils {
             return null;
         }
 
-        const [point1, point2, point3, point4, point5, point6] = keypoints;
+        // With a right rib label, the thorax is p1-p4 and the heart p5-p7
+        const rightRibPosition = getThoraxFourthPosition(
+            MeasurementFunctionId.SURFACE_ELLIPSE_AREA_RATIO,
+            keypoints.length
+        );
+        const [point1, point2, point3] = keypoints;
+        const [point4, point5, point6] = keypoints.slice(rightRibPosition === undefined ? 3 : 4);
+        const thoraxRightRib =
+            rightRibPosition === undefined ? undefined : keypoints[rightRibPosition];
         const propertiesEllipse1 = KeypointSurfaceAnnotation.computeEllipse(
             point4.centroid,
             point5.centroid,
             point6.centroid
         );
-        const propertiesEllipse2 = KeypointSurfaceAnnotation.computeEllipse(
-            point1.centroid,
-            point2.centroid,
-            point3.centroid
-        );
         const areaEllipse1 = this.computeEllipseArea(
             propertiesEllipse1.majorAxis,
             propertiesEllipse1.minorAxis
         );
+
+        const propertiesEllipse2 = thoraxRightRib
+            ? KeypointSurfaceAnnotation.computeFourPointEllipse(
+                  point1.centroid,
+                  point2.centroid,
+                  point3.centroid,
+                  thoraxRightRib.centroid
+              )
+            : KeypointSurfaceAnnotation.computeEllipse(
+                  point1.centroid,
+                  point2.centroid,
+                  point3.centroid
+              );
+        if (!propertiesEllipse2) {
+            return null;
+        }
         const areaEllipse2 = this.computeEllipseArea(
             propertiesEllipse2.majorAxis,
             propertiesEllipse2.minorAxis
@@ -2530,6 +2772,45 @@ export class KeypointUtils {
         return [ellipsePoints, majorAxis, minorAxis];
     }
 
+    // Same layout as findEllipseKeypoints: sternum, spine and left rib first (the split side is
+    // read from them), then the right rib and the sampled curve.
+    private findFourPointEllipseKeypoints(
+        sternum: IPoint,
+        spine: IPoint,
+        leftRib: IPoint,
+        rightRib: IPoint,
+        nbPoints: number
+    ): [number[][], number, number] | null {
+        const ellipseProperties = KeypointSurfaceAnnotation.computeFourPointEllipse(
+            sternum,
+            spine,
+            leftRib,
+            rightRib
+        );
+        if (!ellipseProperties) {
+            return null;
+        }
+
+        const { center, majorAxis, minorAxis, rotateAngle } = ellipseProperties;
+        const rotateCosine = Math.cos(rotateAngle);
+        const rotateSine = Math.sin(rotateAngle);
+        const ellipsePoints = [sternum, spine, leftRib, rightRib].map((point) => [
+            point.x,
+            point.y,
+        ]);
+        const step = (2 * Math.PI) / nbPoints;
+        for (let i = 0; i < nbPoints; i++) {
+            const x = majorAxis * Math.cos(i * step);
+            const y = minorAxis * Math.sin(i * step);
+            ellipsePoints.push([
+                center.x + rotateCosine * x - rotateSine * y,
+                center.y + rotateSine * x + rotateCosine * y,
+            ]);
+        }
+
+        return [ellipsePoints, majorAxis, minorAxis];
+    }
+
     private orderPointsCounterclockwise(points) {
         let cx = 0,
             cy = 0;
@@ -2585,16 +2866,24 @@ export class KeypointUtils {
         ellipseP1,
         ellipseP2,
         ellipseP3,
+        ellipseP4,
         linePoint1,
         linePoint2,
         nbApproxPointsEllipse
     ) {
-        const [ellipsePoints, majorAxis, minorAxis] = this.findEllipseKeypoints(
-            ellipseP1,
-            ellipseP2,
-            ellipseP3,
-            nbApproxPointsEllipse
-        );
+        const ellipse = ellipseP4
+            ? this.findFourPointEllipseKeypoints(
+                  ellipseP1,
+                  ellipseP2,
+                  ellipseP3,
+                  ellipseP4,
+                  nbApproxPointsEllipse
+              )
+            : this.findEllipseKeypoints(ellipseP1, ellipseP2, ellipseP3, nbApproxPointsEllipse);
+        if (!ellipse) {
+            return null;
+        }
+        const [ellipsePoints, majorAxis, minorAxis] = ellipse;
 
         const kp1 = ellipsePoints[0];
         const kp2 = ellipsePoints[1];
@@ -2626,10 +2915,15 @@ export class KeypointUtils {
         }
 
         const [point1, point2, point3, point4, point5] = keypoints;
+        const rightRibPosition = getThoraxFourthPosition(
+            MeasurementFunctionId.POSITION_ELLIPSE_SPLIT_RATIO,
+            keypoints.length
+        );
         return this.calculateEllipseRatioByPolygon(
             point3.centroid,
             point4.centroid,
             point5.centroid,
+            rightRibPosition === undefined ? undefined : keypoints[rightRibPosition]?.centroid,
             point1.centroid,
             point2.centroid,
             1000

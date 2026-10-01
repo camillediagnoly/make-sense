@@ -32,6 +32,10 @@ export function getMinimumKeypointCount(
     return Math.min(...config.compatibleKeypointCounts);
 }
 
+export function getMaximumKeypointCount(config: MeasurementFunctionConfig): number {
+    return Math.max(...config.compatibleKeypointCounts);
+}
+
 export type MeasurementConnection =
     | {
           type: "line";
@@ -43,6 +47,9 @@ export type MeasurementConnection =
           firstPosition: number;
           secondPosition: number;
           thirdPosition: number;
+          // With a 4th point, the curve is one ellipse through all 4 points, with its axes along
+          // and across the line from the 1st to the 2nd point.
+          fourthPosition?: number;
       };
 
 export type MeasurementDefinition = {
@@ -93,12 +100,12 @@ export const MEASUREMENT_FUNCTIONS: MeasurementFunctionConfig[] = [
     {
         id: MeasurementFunctionId.SURFACE_ELLIPSE_AREA_RATIO,
         name: "Ellipse Area Ratio",
-        compatibleKeypointCounts: [6],
+        compatibleKeypointCounts: [6, 7],
     },
     {
         id: MeasurementFunctionId.POSITION_ELLIPSE_SPLIT_RATIO,
         name: "Ellipse Split Ratio",
-        compatibleKeypointCounts: [5],
+        compatibleKeypointCounts: [5, 6],
     },
     {
         id: MeasurementFunctionId.PROJECTED_DISTANCE_RATIO,
@@ -183,6 +190,26 @@ export function formatMeasurementDisplayName(measurementName: string): string {
     return `${match[1].toUpperCase()}-${match[2]}`;
 }
 
+// Position of the optional 4th keypoint (right rib) of the thorax ellipse, or undefined when the
+// measurement has no label for it. It follows the other thorax keypoints: p4 in Ellipse Area Ratio,
+// where the heart then moves to p5-p7, and p6 in Ellipse Split Ratio.
+export function getThoraxFourthPosition(
+    functionId: MeasurementFunctionId,
+    keypointCount: number
+): number | undefined {
+    if (keypointCount < getMaximumKeypointCount(getMeasurementFunctionConfig(functionId))) {
+        return undefined;
+    }
+    switch (functionId) {
+        case MeasurementFunctionId.SURFACE_ELLIPSE_AREA_RATIO:
+            return 3;
+        case MeasurementFunctionId.POSITION_ELLIPSE_SPLIT_RATIO:
+            return 5;
+        default:
+            return undefined;
+    }
+}
+
 export function getMeasurementConnections(
     functionId: MeasurementFunctionId,
     keypointCount: number
@@ -215,22 +242,27 @@ export function getMeasurementConnections(
                 { type: "line", fromPosition: 0, toPosition: 1 },
                 { type: "line", fromPosition: 2, toPosition: 3 },
             ];
-        case MeasurementFunctionId.SURFACE_ELLIPSE_AREA_RATIO:
+        case MeasurementFunctionId.SURFACE_ELLIPSE_AREA_RATIO: {
+            const fourthPosition = getThoraxFourthPosition(functionId, keypointCount);
+            const heartPosition = fourthPosition === undefined ? 3 : 4;
             return [
                 {
                     type: "ellipse",
                     firstPosition: 0,
                     secondPosition: 1,
                     thirdPosition: 2,
+                    ...(fourthPosition === undefined ? {} : { fourthPosition }),
                 },
                 {
                     type: "ellipse",
-                    firstPosition: 3,
-                    secondPosition: 4,
-                    thirdPosition: 5,
+                    firstPosition: heartPosition,
+                    secondPosition: heartPosition + 1,
+                    thirdPosition: heartPosition + 2,
                 },
             ];
-        case MeasurementFunctionId.POSITION_ELLIPSE_SPLIT_RATIO:
+        }
+        case MeasurementFunctionId.POSITION_ELLIPSE_SPLIT_RATIO: {
+            const fourthPosition = getThoraxFourthPosition(functionId, keypointCount);
             return [
                 { type: "line", fromPosition: 0, toPosition: 1 },
                 {
@@ -238,8 +270,10 @@ export function getMeasurementConnections(
                     firstPosition: 2,
                     secondPosition: 3,
                     thirdPosition: 4,
+                    ...(fourthPosition === undefined ? {} : { fourthPosition }),
                 },
             ];
+        }
         case MeasurementFunctionId.PROJECTED_DISTANCE_RATIO:
             return [{ type: "line", fromPosition: 0, toPosition: 1 }];
         case MeasurementFunctionId.ANCHORED_DISTANCE_RATIO:
