@@ -95,6 +95,8 @@ export type GeneralState = {
     keepLabeledInUnlabeled: boolean;
     keptUnlabeledImageIds: string[];
     imageClassCriteria: ImageClassCriteria[];
+    imageClassCriteriaLocked: boolean;
+    lockedImageClassCriteriaImageIds: string[];
     classSanityCheckSettings: ClassSanityCheckSettings;
     classSanityCheckViolationImageIds: string[];
     classSanityCheckReviewMode: boolean;
@@ -270,6 +272,14 @@ interface UpdateImageClassCriteria {
     };
 }
 
+interface UpdateImageClassCriteriaLock {
+    type: typeof Action.UPDATE_IMAGE_CLASS_CRITERIA_LOCK;
+    payload: {
+        imageClassCriteriaLocked: boolean;
+        lockedImageClassCriteriaImageIds: string[];
+    };
+}
+
 interface UpdateClassSanityCheckSettings {
     type: typeof Action.UPDATE_CLASS_SANITY_CHECK_SETTINGS;
     payload: {
@@ -348,6 +358,7 @@ export type GeneralActionTypes =
     | UpdateImageListSortOrderLock
     | UpdateKeepLabeledInUnlabeled
     | UpdateImageClassCriteria
+    | UpdateImageClassCriteriaLock
     | UpdateClassSanityCheckSettings
     | UpdateClassSanityCheckViolationImageIds
     | UpdateClassSanityCheckReviewMode

@@ -34,13 +34,9 @@ const getFilteredIndices = (
     imagesData: ImageData[],
     criteria: ImageClassCriteria[]
 ): number[] =>
-    ImageFilterUtil.getFilteredImageIndices(
-        imagesData,
-        LabelType.RECT,
-        ImageFilterMode.ALL,
-        '',
-        criteria
-    );
+    ImageFilterUtil.getFilteredImageIndices(imagesData, LabelType.RECT, {
+        classCriteria: criteria,
+    });
 
 describe('ImageFilterUtil image list status filters', () => {
     it('should optionally keep labeled images visible in Unlabeled', () => {
@@ -66,23 +62,15 @@ describe('ImageFilterUtil image list status filters', () => {
             createImageData('image-2', []),
         ];
 
-        expect(ImageFilterUtil.getFilteredImageIndices(
-            images,
-            LabelType.RECT,
-            ImageFilterMode.UNLABELED,
-            '',
-            []
-        )).toEqual([0, 2]);
+        expect(ImageFilterUtil.getFilteredImageIndices(images, LabelType.RECT, {
+            filterMode: ImageFilterMode.UNLABELED,
+        })).toEqual([0, 2]);
 
-        expect(ImageFilterUtil.getFilteredImageIndices(
-            images,
-            LabelType.RECT,
-            ImageFilterMode.UNLABELED,
-            '',
-            [],
-            true,
-            ['image-0', 'image-1']
-        )).toEqual([0, 1]);
+        expect(ImageFilterUtil.getFilteredImageIndices(images, LabelType.RECT, {
+            filterMode: ImageFilterMode.UNLABELED,
+            keepLabeledInUnlabeled: true,
+            keptUnlabeledImageIds: ['image-0', 'image-1'],
+        })).toEqual([0, 1]);
     });
 });
 
@@ -203,12 +191,7 @@ describe('ImageFilterUtil filename search', () => {
     ];
 
     const searchFor = (searchText: string): number[] =>
-        ImageFilterUtil.getFilteredImageIndices(
-            images,
-            LabelType.RECT,
-            ImageFilterMode.ALL,
-            searchText
-        );
+        ImageFilterUtil.getFilteredImageIndices(images, LabelType.RECT, { searchText });
 
     it('should keep matching a single name', () => {
         expect(searchFor('beta')).toEqual([1]);
@@ -236,16 +219,7 @@ describe('ImageFilterUtil sorting by modified date', () => {
     ];
 
     const sortedIndices = (sortMode: ImageSortMode): number[] =>
-        ImageFilterUtil.getFilteredImageIndices(
-            images,
-            LabelType.RECT,
-            ImageFilterMode.ALL,
-            '',
-            [],
-            false,
-            [],
-            sortMode
-        );
+        ImageFilterUtil.getFilteredImageIndices(images, LabelType.RECT, { sortMode });
 
     it('should keep the import order by default', () => {
         expect(sortedIndices(ImageSortMode.DEFAULT)).toEqual([0, 1, 2]);
@@ -289,17 +263,10 @@ describe('ImageFilterUtil frozen sort order', () => {
         );
 
     const sortedIds = (images: ImageData[], lockedIds: string[]): string[] =>
-        ImageFilterUtil.getFilteredImageIndices(
-            images,
-            LabelType.RECT,
-            ImageFilterMode.ALL,
-            '',
-            [],
-            false,
-            [],
-            ImageSortMode.MODIFIED_DATE_ASC,
-            lockedIds
-        ).map((index: number) => images[index].id);
+        ImageFilterUtil.getFilteredImageIndices(images, LabelType.RECT, {
+            sortMode: ImageSortMode.MODIFIED_DATE_ASC,
+            lockedImageSortOrderIds: lockedIds,
+        }).map((index: number) => images[index].id);
 
     it('should snapshot the order of every image', () => {
         expect(ImageFilterUtil.getImageSortOrderSnapshot(
@@ -347,6 +314,83 @@ describe('ImageFilterUtil frozen sort order', () => {
             ImageSortMode.DEFAULT,
             ['image-2', 'image-1', 'image-0']
         )).toEqual([0, 1, 2]);
+    });
+});
+
+describe('ImageFilterUtil frozen class criteria', () => {
+    const criteria: ImageClassCriteria[] = [{ type: 'label', labelId: 'A' }];
+
+    const filteredIds = (
+        images: ImageData[],
+        lockedIds: string[],
+        searchText: string = ''
+    ): string[] =>
+        ImageFilterUtil.getFilteredImageIndices(images, LabelType.RECT, {
+            searchText,
+            classCriteria: criteria,
+            classCriteriaLocked: true,
+            lockedClassCriteriaImageIds: lockedIds,
+        }).map((index: number) => images[index].id);
+
+    it('should snapshot the images matching the expression', () => {
+        const images = [
+            createImageData('image-0', ['A']),
+            createImageData('image-1', ['B']),
+            createImageData('image-2', ['A', 'B']),
+        ];
+
+        expect(ImageFilterUtil.getImageClassCriteriaSnapshot(images, criteria))
+            .toEqual(['image-0', 'image-2']);
+    });
+
+    it('should keep a frozen image after its labels stop matching', () => {
+        const lockedIds = ImageFilterUtil.getImageClassCriteriaSnapshot(
+            [createImageData('image-0', ['A']), createImageData('image-1', ['B'])],
+            criteria
+        );
+        const relabeledImages = [createImageData('image-0', ['B']), createImageData('image-1', ['B'])];
+
+        expect(filteredIds(relabeledImages, lockedIds)).toEqual(['image-0']);
+    });
+
+    it('should not add an image that starts matching after the lock', () => {
+        const lockedIds = ImageFilterUtil.getImageClassCriteriaSnapshot(
+            [createImageData('image-0', ['A']), createImageData('image-1', ['B'])],
+            criteria
+        );
+        const relabeledImages = [createImageData('image-0', ['A']), createImageData('image-1', ['A'])];
+
+        expect(filteredIds(relabeledImages, lockedIds)).toEqual(['image-0']);
+    });
+
+    it('should keep applying the search and the status filter on top of the lock', () => {
+        const images = [
+            createImageData('alpha', ['A']),
+            createImageData('beta', ['A']),
+            {
+                ...createImageData('gamma', ['A']),
+                labelRects: [{
+                    id: 'rect-0',
+                    labelId: 'A',
+                    isVisible: true,
+                    rect: { x: 0, y: 0, width: 10, height: 10 },
+                    isCreatedByAI: false,
+                    status: LabelStatus.ACCEPTED,
+                    suggestedLabel: null,
+                }],
+            },
+        ];
+        const lockedIds = ImageFilterUtil.getImageClassCriteriaSnapshot(images, criteria);
+
+        // The snapshot itself ignores the search and the status filter.
+        expect(lockedIds).toEqual(['alpha', 'beta', 'gamma']);
+        expect(filteredIds(images, lockedIds, 'beta')).toEqual(['beta']);
+        expect(ImageFilterUtil.getFilteredImageIndices(images, LabelType.RECT, {
+            filterMode: ImageFilterMode.UNLABELED,
+            classCriteria: criteria,
+            classCriteriaLocked: true,
+            lockedClassCriteriaImageIds: lockedIds,
+        })).toEqual([0, 1]);
     });
 });
 

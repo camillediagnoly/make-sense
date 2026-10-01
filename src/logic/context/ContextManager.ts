@@ -8,6 +8,11 @@ import {PopupContext} from "./PopupContext";
 import {GeneralSelector} from "../../store/selectors/GeneralSelector";
 import {EventType} from "../../data/enums/EventType";
 
+// Input types that do not take typed text, so shortcuts keep working while they have the focus.
+const NON_TEXT_INPUT_TYPES: string[] = [
+    'button', 'checkbox', 'color', 'file', 'image', 'radio', 'range', 'reset', 'submit'
+];
+
 export class ContextManager {
     private static activeCombo: string[] = [];
     private static actions: HotKeyAction[] = [];
@@ -69,6 +74,11 @@ export class ContextManager {
     }
 
     private static execute(event: KeyboardEvent): void {
+        // Keys typed into a text field (e.g. the project name) are text, not shortcuts - an "a" in
+        // a name must not move to the previous image. Escape still goes through to close popups.
+        if (ContextManager.isTypingInTextField(event) && event.key !== 'Escape') {
+            return;
+        }
         for (let i = 0; i < ContextManager.actions.length; i++) {
             const hotKey: HotKeyAction = ContextManager.actions[i];
             if (ContextManager.matchCombo(ContextManager.activeCombo, hotKey.keyCombo)) {
@@ -89,6 +99,18 @@ export class ContextManager {
                 hotKey.onRelease(event);
             }
         }
+    }
+
+    private static isTypingInTextField(event: KeyboardEvent): boolean {
+        const target = event.target;
+        if (!(target instanceof HTMLElement)) {
+            return false;
+        }
+        if (target.isContentEditable || target instanceof HTMLTextAreaElement) {
+            return true;
+        }
+        return target instanceof HTMLInputElement &&
+            !NON_TEXT_INPUT_TYPES.includes(target.type.toLowerCase());
     }
 
     private static isInCombo(keyCode: string): boolean {

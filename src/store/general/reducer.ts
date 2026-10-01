@@ -28,13 +28,21 @@ const defaultKeyboardShortcuts = [
     keyCombo: PlatformUtil.isMac() ? ["Option", "z"] : ["e"],
     defaultKeyCombo: PlatformUtil.isMac() ? ["Option", "z"] : ["e"],
     description:
-      "Hides all labels in the current image, or shows them again except those hidden in Edit Labels",
+      "Shows the labels of the current image as set in Edit Labels; pressing it again hides them",
+  },
+  {
+    id: "show-or-hide-all-labels",
+    name: "Show or Hide All Labels",
+    keyCombo: ["r"],
+    defaultKeyCombo: ["r"],
+    description:
+      "Shows every label in the current image, including those hidden in Edit Labels; hides them all once they are all shown",
   },
   {
     id: "hide-or-restore-labels",
     name: "Hide or Restore Labels",
-    keyCombo: ["h"],
-    defaultKeyCombo: ["h"],
+    keyCombo: ["t"],
+    defaultKeyCombo: ["t"],
     description:
       "Hides all labels in the current image; pressing it again brings back only the labels that were visible before",
   },
@@ -203,6 +211,8 @@ const initialState: GeneralState = {
   keepLabeledInUnlabeled: false,
   keptUnlabeledImageIds: [],
   imageClassCriteria: [],
+  imageClassCriteriaLocked: false,
+  lockedImageClassCriteriaImageIds: [],
   classSanityCheckSettings: BrowserSettingsStorage.loadClassSanityCheckSettings(),
   classSanityCheckViolationImageIds: [],
   classSanityCheckReviewMode: false,
@@ -363,9 +373,19 @@ export function generalReducer(
       };
     }
     case Action.UPDATE_IMAGE_CLASS_CRITERIA: {
+      // A frozen result is a snapshot of one specific expression, so any other one releases it.
       return {
         ...state,
         imageClassCriteria: action.payload.imageClassCriteria,
+        imageClassCriteriaLocked: false,
+        lockedImageClassCriteriaImageIds: [],
+      };
+    }
+    case Action.UPDATE_IMAGE_CLASS_CRITERIA_LOCK: {
+      return {
+        ...state,
+        imageClassCriteriaLocked: action.payload.imageClassCriteriaLocked,
+        lockedImageClassCriteriaImageIds: action.payload.lockedImageClassCriteriaImageIds,
       };
     }
 

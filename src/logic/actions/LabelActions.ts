@@ -254,27 +254,62 @@ export class LabelActions {
     }
 
 
+    // Toggles between the label name visibility set in "Edit Labels" and everything hidden. Any
+    // other state (e.g. some labels shown or hidden by hand) is brought back to "Edit Labels" first.
     public static toggleAllLabelsVisibilityInImage(imageId: string) {
         const imageData: ImageData = LabelsSelector.getImageDataById(imageId);
+        if (!imageData) {
+            return;
+        }
 
-        // If at least one label is visible, hide all. Otherwise show them again, except those whose
-        // label name is hidden in "Edit Labels", so that filter survives hiding and showing.
-        const hasVisibleLabels: boolean = [
-            ...imageData.labelRects,
-            ...imageData.labelPoints,
-            ...imageData.labelPolygons,
-            ...imageData.labelLines
-        ].some((annotation: Annotation) => annotation.isVisible !== false);
         const hiddenLabelNameIds = new Set<string>(
             LabelsSelector.getLabelNames()
                 .filter((labelName: LabelName) => labelName.isVisible === false)
                 .map((labelName: LabelName) => labelName.id)
         );
+        const isShownByLabelName = (annotation: Annotation): boolean =>
+            !hiddenLabelNameIds.has(annotation.labelId);
+        const matchesLabelNameVisibility: boolean = LabelActions.getAnnotations(imageData)
+            .every((annotation: Annotation) =>
+                (annotation.isVisible !== false) === isShownByLabelName(annotation)
+            );
+
+        LabelActions.setAnnotationsVisibilityInImage(
+            imageData,
+            (annotation: Annotation) => !matchesLabelNameVisibility && isShownByLabelName(annotation)
+        );
+    }
+
+    // Shows every label of the image, including those whose label name is hidden in "Edit Labels"
+    // - only for this image, the label names stay hidden everywhere else. Hides them all once
+    // everything is already shown.
+    public static toggleShowAllLabelsInImage(imageId: string) {
+        const imageData: ImageData = LabelsSelector.getImageDataById(imageId);
+        if (!imageData) {
+            return;
+        }
+
+        const areAllLabelsVisible: boolean = LabelActions.getAnnotations(imageData)
+            .every((annotation: Annotation) => annotation.isVisible !== false);
+
+        LabelActions.setAnnotationsVisibilityInImage(imageData, () => !areAllLabelsVisible);
+    }
+
+    private static getAnnotations(imageData: ImageData): Annotation[] {
+        return [
+            ...imageData.labelRects,
+            ...imageData.labelPoints,
+            ...imageData.labelPolygons,
+            ...imageData.labelLines
+        ];
+    }
+
+    private static setAnnotationsVisibilityInImage(
+        imageData: ImageData,
+        isVisible: (annotation: Annotation) => boolean
+    ) {
         const setVisibility = <T extends Annotation>(annotations: T[]): T[] =>
-            annotations.map((annotation: T) => ({
-                ...annotation,
-                isVisible: !hasVisibleLabels && !hiddenLabelNameIds.has(annotation.labelId)
-            }));
+            annotations.map((annotation: T) => ({ ...annotation, isVisible: isVisible(annotation) }));
 
         const newImageData: ImageData = {
             ...imageData,

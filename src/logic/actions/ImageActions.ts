@@ -64,24 +64,26 @@ export class ImageActions {
     const activeLabelType = LabelsSelector.getActiveLabelType();
     const filterMode: ImageFilterMode = GeneralSelector.getImageListFilterMode();
     const searchText: string = GeneralSelector.getImageListSearchText();
-    const imageClassCriteria: ImageClassCriteria[] = GeneralSelector.getImageClassCriteria();
+    const classCriteria: ImageClassCriteria[] = GeneralSelector.getImageClassCriteria();
+    const classCriteriaLocked: boolean = GeneralSelector.getImageClassCriteriaLocked();
+    const lockedClassCriteriaImageIds: string[] = GeneralSelector.getLockedImageClassCriteriaImageIds();
     const keepLabeledInUnlabeled: boolean = GeneralSelector.getKeepLabeledInUnlabeled();
     const keptUnlabeledImageIds: string[] = GeneralSelector.getKeptUnlabeledImageIds();
     const sortMode: ImageSortMode = GeneralSelector.getImageListSortMode();
     const lockedImageSortOrderIds: string[] = GeneralSelector.getImageListSortOrderLocked()
       ? GeneralSelector.getLockedImageSortOrderIds()
       : [];
-    return ImageFilterUtil.getFilteredImageIndices(
-      imagesData,
-      activeLabelType,
+    return ImageFilterUtil.getFilteredImageIndices(imagesData, activeLabelType, {
       filterMode,
       searchText,
-      imageClassCriteria,
+      classCriteria,
+      classCriteriaLocked,
+      lockedClassCriteriaImageIds,
       keepLabeledInUnlabeled,
       keptUnlabeledImageIds,
       sortMode,
-      lockedImageSortOrderIds
-    );
+      lockedImageSortOrderIds,
+    });
   }
 
   public static syncActiveImageWithFilters(): void {

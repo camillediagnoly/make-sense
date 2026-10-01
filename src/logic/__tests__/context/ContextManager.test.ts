@@ -12,6 +12,10 @@ const dispatchKey = (type: 'keydown' | 'keyup', key: string): void => {
     window.dispatchEvent(new KeyboardEvent(type, { key }));
 };
 
+const dispatchKeyFrom = (target: HTMLElement, type: 'keydown' | 'keyup', key: string): void => {
+    target.dispatchEvent(new KeyboardEvent(type, { key, bubbles: true }));
+};
+
 const setActions = (actions: HotKeyAction[]): void => {
     (ContextManager as unknown as { actions: HotKeyAction[] }).actions = actions;
 };
@@ -45,5 +49,76 @@ describe('ContextManager key combos', () => {
         dispatchKey('keyup', 'c');
 
         expect(copy).toHaveBeenCalledTimes(1);
+    });
+
+    describe('while typing in a text field', () => {
+        let previousImage: jest.Mock;
+        let closePopup: jest.Mock;
+
+        beforeEach(() => {
+            previousImage = jest.fn();
+            closePopup = jest.fn();
+            setActions([
+                { keyCombo: ['a'], action: previousImage },
+                { keyCombo: ['Escape'], action: closePopup },
+            ]);
+        });
+
+        afterEach(() => {
+            document.body.innerHTML = '';
+        });
+
+        const createField = (html: string): HTMLElement => {
+            document.body.innerHTML = html;
+            return document.body.firstElementChild as HTMLElement;
+        };
+
+        it('ignores shortcuts typed into a text input', () => {
+            const input = createField('<input type="text" />');
+
+            dispatchKeyFrom(input, 'keydown', 'a');
+            dispatchKeyFrom(input, 'keyup', 'a');
+
+            expect(previousImage).not.toHaveBeenCalled();
+            expect(ContextManager.getActiveCombo()).toEqual([]);
+        });
+
+        it('ignores shortcuts typed into a textarea', () => {
+            const textarea = createField('<textarea></textarea>');
+
+            dispatchKeyFrom(textarea, 'keydown', 'a');
+            dispatchKeyFrom(textarea, 'keyup', 'a');
+
+            expect(previousImage).not.toHaveBeenCalled();
+        });
+
+        it('still lets Escape through to close a popup', () => {
+            const input = createField('<input type="text" />');
+
+            dispatchKeyFrom(input, 'keydown', 'Escape');
+            dispatchKeyFrom(input, 'keyup', 'Escape');
+
+            expect(closePopup).toHaveBeenCalledTimes(1);
+        });
+
+        it('keeps shortcuts working on inputs that do not take text', () => {
+            const checkbox = createField('<input type="checkbox" />');
+
+            dispatchKeyFrom(checkbox, 'keydown', 'a');
+            dispatchKeyFrom(checkbox, 'keyup', 'a');
+
+            expect(previousImage).toHaveBeenCalledTimes(1);
+        });
+
+        it('fires shortcuts again once the key comes from outside the field', () => {
+            const input = createField('<input type="text" />');
+
+            dispatchKeyFrom(input, 'keydown', 'a');
+            dispatchKeyFrom(input, 'keyup', 'a');
+            dispatchKey('keydown', 'a');
+            dispatchKey('keyup', 'a');
+
+            expect(previousImage).toHaveBeenCalledTimes(1);
+        });
     });
 });

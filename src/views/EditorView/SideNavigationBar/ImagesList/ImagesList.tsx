@@ -35,6 +35,8 @@ interface IProps {
     keepLabeledInUnlabeled: boolean;
     keptUnlabeledImageIds: string[];
     imageClassCriteria: ImageClassCriteria[];
+    imageClassCriteriaLocked: boolean;
+    lockedImageClassCriteriaImageIds: string[];
     classSanityCheckViolationImageIds: string[];
     classSanityCheckReviewMode: boolean;
     updateImageListFilterModeAction: (filterMode: ImageFilterMode) => any;
@@ -113,21 +115,23 @@ class ImagesList extends React.Component<IProps, IState> {
             keepLabeledInUnlabeled,
             keptUnlabeledImageIds,
             imageClassCriteria,
+            imageClassCriteriaLocked,
+            lockedImageClassCriteriaImageIds,
             classSanityCheckViolationImageIds,
             classSanityCheckReviewMode,
         } = props;
 
-        const filteredIndices = ImageFilterUtil.getFilteredImageIndices(
-            imagesData,
-            activeLabelType,
+        const filteredIndices = ImageFilterUtil.getFilteredImageIndices(imagesData, activeLabelType, {
             filterMode,
             searchText,
-            imageClassCriteria,
+            classCriteria: imageClassCriteria,
+            classCriteriaLocked: imageClassCriteriaLocked,
+            lockedClassCriteriaImageIds: lockedImageClassCriteriaImageIds,
             keepLabeledInUnlabeled,
             keptUnlabeledImageIds,
             sortMode,
-            sortOrderLocked ? lockedImageSortOrderIds : []
-        );
+            lockedImageSortOrderIds: sortOrderLocked ? lockedImageSortOrderIds : [],
+        });
 
         if (!classSanityCheckReviewMode || classSanityCheckViolationImageIds.length === 0) {
             return filteredIndices;
@@ -192,7 +196,9 @@ class ImagesList extends React.Component<IProps, IState> {
             prevProps.filterMode !== this.props.filterMode ||
             prevProps.keepLabeledInUnlabeled !== this.props.keepLabeledInUnlabeled ||
             prevProps.keptUnlabeledImageIds !== this.props.keptUnlabeledImageIds ||
-            prevProps.imageClassCriteria !== this.props.imageClassCriteria;
+            prevProps.imageClassCriteria !== this.props.imageClassCriteria ||
+            prevProps.imageClassCriteriaLocked !== this.props.imageClassCriteriaLocked ||
+            prevProps.lockedImageClassCriteriaImageIds !== this.props.lockedImageClassCriteriaImageIds;
 
         const currentFilteredIndices = this.getFilteredImages();
         const filteredImagesChanged =
@@ -261,13 +267,19 @@ class ImagesList extends React.Component<IProps, IState> {
             activeLabelType,
             searchText,
             imageClassCriteria,
+            imageClassCriteriaLocked,
+            lockedImageClassCriteriaImageIds,
         } = this.props;
         const keptUnlabeledImageIds: string[] = ImageFilterUtil.getFilteredImageIndices(
             imagesData,
             activeLabelType,
-            ImageFilterMode.UNLABELED,
-            searchText,
-            imageClassCriteria
+            {
+                filterMode: ImageFilterMode.UNLABELED,
+                searchText,
+                classCriteria: imageClassCriteria,
+                classCriteriaLocked: imageClassCriteriaLocked,
+                lockedClassCriteriaImageIds: lockedImageClassCriteriaImageIds,
+            }
         ).map((index: number) => imagesData[index].id);
 
         this.props.updateKeepLabeledInUnlabeledAction(true, keptUnlabeledImageIds);
@@ -412,6 +424,8 @@ const mapStateToProps = (state: AppState) => ({
     keepLabeledInUnlabeled: state.general.keepLabeledInUnlabeled,
     keptUnlabeledImageIds: state.general.keptUnlabeledImageIds,
     imageClassCriteria: state.general.imageClassCriteria,
+    imageClassCriteriaLocked: state.general.imageClassCriteriaLocked,
+    lockedImageClassCriteriaImageIds: state.general.lockedImageClassCriteriaImageIds,
     classSanityCheckViolationImageIds: state.general.classSanityCheckViolationImageIds,
     classSanityCheckReviewMode: state.general.classSanityCheckReviewMode,
 });

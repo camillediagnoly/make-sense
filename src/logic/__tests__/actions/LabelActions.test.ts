@@ -178,12 +178,12 @@ describe('LabelActions toggleAllLabelsVisibilityInImage method', () => {
         { id: 'label_name_hidden', name: 'hidden', isVisible: false }
     ];
 
-    it('should hide every label when at least one is visible', () => {
+    it('should hide every label when they are shown as set in Edit Labels', () => {
         // GIVEN
         const state = setUpStore(imageData(
             'image_hide_all',
             [rect('rect_1', true, 'label_name_shown'), rect('rect_2', false, 'label_name_hidden')],
-            [polygon('polygon_1', false, 'label_name_shown')]
+            [polygon('polygon_1', true, 'label_name_shown')]
         ), labelNames);
 
         // WHEN
@@ -194,6 +194,44 @@ describe('LabelActions toggleAllLabelsVisibilityInImage method', () => {
             rect_1: false,
             rect_2: false,
             polygon_1: false
+        });
+    });
+
+    it('should show the labels as set in Edit Labels when some of them are hidden by hand', () => {
+        // GIVEN
+        const state = setUpStore(imageData(
+            'image_partially_hidden',
+            [rect('rect_1', true, 'label_name_shown'), rect('rect_2', false, 'label_name_hidden')],
+            [polygon('polygon_1', false, 'label_name_shown')]
+        ), labelNames);
+
+        // WHEN
+        LabelActions.toggleAllLabelsVisibilityInImage('image_partially_hidden');
+
+        // THEN
+        expect(visibilityOf(state.current())).toEqual({
+            rect_1: true,
+            rect_2: false,
+            polygon_1: true
+        });
+    });
+
+    it('should bring back the Edit Labels visibility after every label got shown', () => {
+        // GIVEN
+        const state = setUpStore(imageData(
+            'image_after_show_all',
+            [rect('rect_1', false, 'label_name_shown'), rect('rect_2', false, 'label_name_hidden')],
+            []
+        ), labelNames);
+
+        // WHEN
+        LabelActions.toggleShowAllLabelsInImage('image_after_show_all');
+        LabelActions.toggleAllLabelsVisibilityInImage('image_after_show_all');
+
+        // THEN - the label hidden in Edit Labels gets hidden again, instead of everything
+        expect(visibilityOf(state.current())).toEqual({
+            rect_1: true,
+            rect_2: false
         });
     });
 
@@ -232,6 +270,72 @@ describe('LabelActions toggleAllLabelsVisibilityInImage method', () => {
         // THEN
         expect(visibilityOf(state.current())).toEqual({
             rect_1: true,
+            rect_2: false
+        });
+    });
+});
+
+describe('LabelActions toggleShowAllLabelsInImage method', () => {
+    beforeEach(() => {
+        jest.restoreAllMocks();
+        (store.dispatch as jest.Mock).mockReset();
+    });
+
+    const labelNames: LabelName[] = [
+        { id: 'label_name_shown', name: 'shown', isVisible: true },
+        { id: 'label_name_hidden', name: 'hidden', isVisible: false }
+    ];
+
+    it('should show every label, including those whose label name is hidden', () => {
+        // GIVEN
+        const state = setUpStore(imageData(
+            'image_show_all',
+            [rect('rect_1', false, 'label_name_shown'), rect('rect_2', false, 'label_name_hidden')],
+            [polygon('polygon_1', true, 'label_name_hidden'), polygon('polygon_2', false, null)]
+        ), labelNames);
+
+        // WHEN
+        LabelActions.toggleShowAllLabelsInImage('image_show_all');
+
+        // THEN
+        expect(visibilityOf(state.current())).toEqual({
+            rect_1: true,
+            rect_2: true,
+            polygon_1: true,
+            polygon_2: true
+        });
+    });
+
+    it('should hide every label once they are all shown', () => {
+        // GIVEN
+        const state = setUpStore(imageData(
+            'image_all_shown',
+            [rect('rect_1', true, 'label_name_shown'), rect('rect_2', true, 'label_name_hidden')],
+            []
+        ), labelNames);
+
+        // WHEN
+        LabelActions.toggleShowAllLabelsInImage('image_all_shown');
+
+        // THEN
+        expect(visibilityOf(state.current())).toEqual({
+            rect_1: false,
+            rect_2: false
+        });
+    });
+
+    it('should forget the remembered visibility of the hide or restore shortcut', () => {
+        // GIVEN
+        const state = setUpStore(imageData('image_show_all_snapshot', [rect('rect_1', true), rect('rect_2', false)], []));
+
+        // WHEN
+        LabelActions.toggleLabelsVisibilityWithRestoreInImage('image_show_all_snapshot');
+        LabelActions.toggleShowAllLabelsInImage('image_show_all_snapshot');
+        LabelActions.toggleLabelsVisibilityWithRestoreInImage('image_show_all_snapshot');
+
+        // THEN - the last toggle hides, it does not restore the stale snapshot
+        expect(visibilityOf(state.current())).toEqual({
+            rect_1: false,
             rect_2: false
         });
     });

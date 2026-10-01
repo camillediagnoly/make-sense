@@ -121,6 +121,14 @@ export class GeneralSelector {
         return store.getState().general.imageClassCriteria;
     }
 
+    public static getImageClassCriteriaLocked(): boolean {
+        return store.getState().general.imageClassCriteriaLocked;
+    }
+
+    public static getLockedImageClassCriteriaImageIds(): string[] {
+        return store.getState().general.lockedImageClassCriteriaImageIds;
+    }
+
     public static getClassSanityCheckSettings(): ClassSanityCheckSettings {
         return store.getState().general.classSanityCheckSettings;
     }

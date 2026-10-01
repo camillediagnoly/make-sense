@@ -17,6 +17,20 @@ import {
 } from "../store/general/types";
 import { ImageGroupUtil } from "./ImageGroupUtil";
 
+export type ImageListFilterOptions = {
+    filterMode?: ImageFilterMode;
+    searchText?: string;
+    classCriteria?: ImageClassCriteria[];
+    // When locked, the class criteria are not evaluated anymore: images are matched against the
+    // ids that matched the expression when the lock got closed.
+    classCriteriaLocked?: boolean;
+    lockedClassCriteriaImageIds?: string[];
+    keepLabeledInUnlabeled?: boolean;
+    keptUnlabeledImageIds?: string[];
+    sortMode?: ImageSortMode;
+    lockedImageSortOrderIds?: string[];
+};
+
 type CriteriaAstNode =
     | {
         type: "label";
@@ -661,16 +675,32 @@ export class ImageFilterUtil {
             .map((index: number) => imagesData[index].id);
     }
 
+    // Snapshot of the ids of every image matching the class criteria expression, taken over the
+    // whole list and ignoring the search text and the status filter - those keep applying live on
+    // top of a frozen result, so they must not be baked into it.
+    public static getImageClassCriteriaSnapshot(
+        imagesData: ImageData[],
+        classCriteria: ImageClassCriteria[]
+    ): string[] {
+        return ImageFilterUtil
+            .getFilteredImageIndices(imagesData, LabelType.RECT, { classCriteria })
+            .map((index: number) => imagesData[index].id);
+    }
+
     public static getFilteredImageIndices(
         imagesData: ImageData[],
         labelType: LabelType,
-        filterMode: ImageFilterMode,
-        searchText: string,
-        classCriteria: ImageClassCriteria[] = [],
-        keepLabeledInUnlabeled: boolean = false,
-        keptUnlabeledImageIds: string[] = [],
-        sortMode: ImageSortMode = ImageSortMode.DEFAULT,
-        lockedImageSortOrderIds: string[] = []
+        {
+            filterMode = ImageFilterMode.ALL,
+            searchText = "",
+            classCriteria = [],
+            classCriteriaLocked = false,
+            lockedClassCriteriaImageIds = [],
+            keepLabeledInUnlabeled = false,
+            keptUnlabeledImageIds = [],
+            sortMode = ImageSortMode.DEFAULT,
+            lockedImageSortOrderIds = [],
+        }: ImageListFilterOptions = {}
     ): number[] {
         const searchTerms = ImageFilterUtil.parseSearchTerms(searchText);
         const normalizedCriteria = ImageFilterUtil.normalizeImageClassCriteria(classCriteria);
@@ -680,6 +710,7 @@ export class ImageFilterUtil {
         const referencedClassLabelIds = ImageFilterUtil.getReferencedClassLabelIds(normalizedCriteria);
         const hasValidCriteria = normalizedCriteria.length === 0 || !!criteriaAst;
         const keptUnlabeledImageIdSet = new Set<string>(keptUnlabeledImageIds);
+        const lockedClassCriteriaImageIdSet = new Set<string>(lockedClassCriteriaImageIds);
 
         const filteredIndices = imagesData
             .map((image, index) => ({ image, index }))
@@ -702,7 +733,9 @@ export class ImageFilterUtil {
                 const assignedClassLabelIds = ImageFilterUtil.getImageAssignedClassLabelIds(image);
 
                 let criteriaResult = true;
-                if (criteriaAst && hasValidCriteria) {
+                if (classCriteriaLocked) {
+                    criteriaResult = lockedClassCriteriaImageIdSet.has(image.id);
+                } else if (criteriaAst && hasValidCriteria) {
                     criteriaResult = ImageFilterUtil.evaluateImageClassCriteria(
                         criteriaAst,
                         assignedLabelIds,

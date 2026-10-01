@@ -271,6 +271,19 @@ export function updateImageClassCriteria(
     };
 }
 
+export function updateImageClassCriteriaLock(
+    imageClassCriteriaLocked: boolean,
+    lockedImageClassCriteriaImageIds: string[] = []
+): GeneralActionTypes {
+    return {
+        type: Action.UPDATE_IMAGE_CLASS_CRITERIA_LOCK,
+        payload: {
+            imageClassCriteriaLocked,
+            lockedImageClassCriteriaImageIds,
+        },
+    };
+}
+
 export function updateClassSanityCheckSettings(
     classSanityCheckSettings: ClassSanityCheckSettings
 ): GeneralActionTypes {

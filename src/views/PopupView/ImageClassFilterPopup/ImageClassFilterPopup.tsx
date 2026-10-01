@@ -12,6 +12,7 @@ import {
 import {
     updateActivePopupType,
     updateImageClassCriteria,
+    updateImageClassCriteriaLock,
 } from '../../../store/general/actionCreators';
 import { ImageFilterMode } from '../../../data/enums/ImageFilterMode';
 import { LabelType } from '../../../data/enums/LabelType';
@@ -53,8 +54,14 @@ interface IProps {
     keepLabeledInUnlabeled: boolean;
     keptUnlabeledImageIds: string[];
     imageClassCriteria: ImageClassCriteria[];
+    imageClassCriteriaLocked: boolean;
+    lockedImageClassCriteriaImageIds: string[];
     updateActivePopupTypeAction: (activePopupType: PopupWindowType) => any;
     updateImageClassCriteriaAction: (criteria: ImageClassCriteria[]) => any;
+    updateImageClassCriteriaLockAction: (
+        imageClassCriteriaLocked: boolean,
+        lockedImageClassCriteriaImageIds?: string[]
+    ) => any;
 }
 
 let tokenIdCounter = 0;
@@ -113,18 +120,26 @@ const ImageClassFilterPopup: React.FC<IProps> = (
         keepLabeledInUnlabeled,
         keptUnlabeledImageIds,
         imageClassCriteria,
+        imageClassCriteriaLocked,
+        lockedImageClassCriteriaImageIds,
         updateActivePopupTypeAction,
         updateImageClassCriteriaAction,
+        updateImageClassCriteriaLockAction,
     }
 ) => {
     const [canvasTokens, setCanvasTokens] = useState<CanvasToken[]>(
         toCanvasTokens(imageClassCriteria)
     );
     const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
+    const [isDraftLocked, setIsDraftLocked] = useState<boolean>(imageClassCriteriaLocked);
 
     useEffect(() => {
         setCanvasTokens(toCanvasTokens(imageClassCriteria));
     }, [imageClassCriteria]);
+
+    useEffect(() => {
+        setIsDraftLocked(imageClassCriteriaLocked);
+    }, [imageClassCriteriaLocked]);
 
     const filterableGroupNames = useMemo(
         () => ImageGroupUtil.getFilterableGroupNames(imagesData),
@@ -161,6 +176,22 @@ const ImageClassFilterPopup: React.FC<IProps> = (
         [draftCriteria]
     );
 
+    const isDraftCriteriaUnchanged = useMemo(
+        () =>
+            JSON.stringify(draftCriteria) ===
+            JSON.stringify(ImageFilterUtil.normalizeImageClassCriteria(imageClassCriteria)),
+        [draftCriteria, imageClassCriteria]
+    );
+
+    // Freezing only makes sense for an expression that actually filters something.
+    const canLockDraft = draftCriteria.length > 0 && isExpressionValid;
+    const isDraftLockEffective = isDraftLocked && canLockDraft;
+
+    // Re-applying the same frozen expression keeps the existing snapshot - taking a new one would
+    // silently drop the images whose labels changed since the lock got closed.
+    const keepsExistingLockSnapshot =
+        isDraftLockEffective && imageClassCriteriaLocked && isDraftCriteriaUnchanged;
+
     const usedFilterItemIds = useMemo(() => {
         const ids = new Set<string>();
         canvasTokens.forEach((token: CanvasToken) => {
@@ -190,21 +221,23 @@ const ImageClassFilterPopup: React.FC<IProps> = (
 
     const filteredImagesCount = useMemo(
         () =>
-            ImageFilterUtil.getFilteredImageIndices(
-                imagesData,
-                activeLabelType,
+            ImageFilterUtil.getFilteredImageIndices(imagesData, activeLabelType, {
                 filterMode,
                 searchText,
-                draftCriteria,
+                classCriteria: draftCriteria,
+                classCriteriaLocked: keepsExistingLockSnapshot,
+                lockedClassCriteriaImageIds: lockedImageClassCriteriaImageIds,
                 keepLabeledInUnlabeled,
-                keptUnlabeledImageIds
-            ).length,
+                keptUnlabeledImageIds,
+            }).length,
         [
             imagesData,
             activeLabelType,
             filterMode,
             searchText,
             draftCriteria,
+            keepsExistingLockSnapshot,
+            lockedImageClassCriteriaImageIds,
             keepLabeledInUnlabeled,
             keptUnlabeledImageIds,
         ]
@@ -354,7 +387,21 @@ const ImageClassFilterPopup: React.FC<IProps> = (
             return;
         }
 
-        updateImageClassCriteriaAction(draftCriteria);
+        if (!isDraftCriteriaUnchanged) {
+            updateImageClassCriteriaAction(draftCriteria);
+        }
+
+        if (isDraftLockEffective) {
+            if (!keepsExistingLockSnapshot) {
+                updateImageClassCriteriaLockAction(
+                    true,
+                    ImageFilterUtil.getImageClassCriteriaSnapshot(imagesData, draftCriteria)
+                );
+            }
+        } else if (imageClassCriteriaLocked) {
+            updateImageClassCriteriaLockAction(false);
+        }
+
         updateActivePopupTypeAction(null);
     };
 
@@ -535,9 +582,33 @@ const ImageClassFilterPopup: React.FC<IProps> = (
                         {isExpressionValid ? 'Expression valid' : 'Expression invalid'}
                     </span>
                 </div>
-                <button className='ClearButton' type='button' onClick={onClear}>
-                    Clear all
-                </button>
+                <div className='ToolbarActions'>
+                    <button
+                        type='button'
+                        className={`FreezeCriteriaButton ${isDraftLockEffective ? 'locked' : 'unlocked'}`}
+                        title={
+                            !canLockDraft
+                                ? 'Build a valid expression to freeze its result'
+                                : isDraftLockEffective
+                                    ? 'Unfreeze filtered images - the expression is evaluated live again'
+                                    : 'Freeze filtered images - images keep showing even when their labels change'
+                        }
+                        aria-label={isDraftLockEffective ? 'Unfreeze filtered images' : 'Freeze filtered images'}
+                        aria-pressed={isDraftLockEffective}
+                        disabled={!canLockDraft}
+                        onClick={() => setIsDraftLocked(!isDraftLocked)}
+                    >
+                        <img
+                            className='FreezeCriteriaIcon'
+                            src={isDraftLockEffective ? 'ico/lock-closed.svg' : 'ico/lock-open.svg'}
+                            alt=''
+                            aria-hidden='true'
+                        />
+                    </button>
+                    <button className='ClearButton' type='button' onClick={onClear}>
+                        Clear all
+                    </button>
+                </div>
             </div>
 
             <div className='ConditionCanvas'>
@@ -656,11 +727,14 @@ const mapStateToProps = (state: AppState) => ({
     keepLabeledInUnlabeled: state.general.keepLabeledInUnlabeled,
     keptUnlabeledImageIds: state.general.keptUnlabeledImageIds,
     imageClassCriteria: state.general.imageClassCriteria,
+    imageClassCriteriaLocked: state.general.imageClassCriteriaLocked,
+    lockedImageClassCriteriaImageIds: state.general.lockedImageClassCriteriaImageIds,
 });
 
 const mapDispatchToProps = {
     updateActivePopupTypeAction: updateActivePopupType,
     updateImageClassCriteriaAction: updateImageClassCriteria,
+    updateImageClassCriteriaLockAction: updateImageClassCriteriaLock,
 };
 
 export default connect(

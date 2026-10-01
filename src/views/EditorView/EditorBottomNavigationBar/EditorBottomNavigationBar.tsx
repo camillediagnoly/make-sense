@@ -30,6 +30,8 @@ interface IProps {
     keepLabeledInUnlabeled: boolean;
     keptUnlabeledImageIds: string[];
     imageClassCriteria: ImageClassCriteria[];
+    imageClassCriteriaLocked: boolean;
+    lockedImageClassCriteriaImageIds: string[];
 }
 
 const EditorBottomNavigationBar: React.FC<IProps> = ({
@@ -45,19 +47,21 @@ const EditorBottomNavigationBar: React.FC<IProps> = ({
     lockedImageSortOrderIds,
     keepLabeledInUnlabeled,
     keptUnlabeledImageIds,
-    imageClassCriteria
+    imageClassCriteria,
+    imageClassCriteriaLocked,
+    lockedImageClassCriteriaImageIds
 }) => {
-    const filteredIndices = ImageFilterUtil.getFilteredImageIndices(
-        imagesData,
-        activeLabelType,
+    const filteredIndices = ImageFilterUtil.getFilteredImageIndices(imagesData, activeLabelType, {
         filterMode,
         searchText,
-        imageClassCriteria,
+        classCriteria: imageClassCriteria,
+        classCriteriaLocked: imageClassCriteriaLocked,
+        lockedClassCriteriaImageIds: lockedImageClassCriteriaImageIds,
         keepLabeledInUnlabeled,
         keptUnlabeledImageIds,
         sortMode,
-        sortOrderLocked ? lockedImageSortOrderIds : []
-    );
+        lockedImageSortOrderIds: sortOrderLocked ? lockedImageSortOrderIds : [],
+    });
     const activeFilteredIndex = activeImageIndex === null
         ? -1
         : filteredIndices.indexOf(activeImageIndex);
@@ -152,7 +156,9 @@ const mapStateToProps = (state: AppState) => ({
     lockedImageSortOrderIds: state.general.lockedImageSortOrderIds,
     keepLabeledInUnlabeled: state.general.keepLabeledInUnlabeled,
     keptUnlabeledImageIds: state.general.keptUnlabeledImageIds,
-    imageClassCriteria: state.general.imageClassCriteria
+    imageClassCriteria: state.general.imageClassCriteria,
+    imageClassCriteriaLocked: state.general.imageClassCriteriaLocked,
+    lockedImageClassCriteriaImageIds: state.general.lockedImageClassCriteriaImageIds
 });
 
 export default connect(

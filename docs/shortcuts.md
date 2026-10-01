@@ -13,7 +13,8 @@
 | Redo current-image action           | Editor   | <kbd>Ctrl</kbd> + <kbd>Y</kbd> | <kbd>Ctrl</kbd> + <kbd>Y</kbd> |
 | Move image                         | Editor   | <kbd>Up</kbd> / <kbd>Down</kbd> / <kbd>Left</kbd> / <kbd>Right</kbd> | <kbd>Up</kbd> / <kbd>Down</kbd> / <kbd>Left</kbd> / <kbd>Right</kbd> |
 | Select Label                       | Editor   | <kbd>⌥</kbd> + <kbd>0-9</kbd> | <kbd>Ctrl</kbd> + <kbd>0-9</kbd> |
-| Show or hide all labels, keeping those hidden in Edit Labels hidden | Editor   | <kbd>⌥</kbd> + <kbd>Z</kbd> | <kbd>E</kbd> |
-| Hide labels, restoring them as they were | Editor   | <kbd>H</kbd> | <kbd>H</kbd> |
+| Show labels as set in Edit Labels, or hide them | Editor   | <kbd>⌥</kbd> + <kbd>Z</kbd> | <kbd>E</kbd> |
+| Show all labels, including those hidden in Edit Labels, or hide them all | Editor   | <kbd>R</kbd> | <kbd>R</kbd> |
+| Hide labels, restoring them as they were | Editor   | <kbd>T</kbd> | <kbd>T</kbd> |
 | Copy image to the export folder, chosen on first use or with Export location | Editor   | <kbd>C</kbd> | <kbd>C</kbd> |
 | Exit popup                         | Popup    | <kbd>Escape</kbd> | <kbd>Escape</kbd> |
