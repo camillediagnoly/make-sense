@@ -211,6 +211,12 @@
       fill: #5bd6ff;
     }
 
+    .DiagramPoint.optional {
+      fill: $darkThemeFirstColor;
+      stroke: #ffffff;
+      stroke-dasharray: 2 1.5;
+    }
+
     .DiagramPointLabel {
       fill: rgba(255, 255, 255, 0.9);
       stroke: $darkThemeSecondColor;

@@ -2553,8 +2553,10 @@ export class KeypointUtils {
         };
     }
 
+    // Angle between p1-p2 and p3-p4. p5, when the measurement has it, gives the sign; without it the
+    // angle is unsigned, from 0 to 180 degrees.
     private computeAngle(keypoints: KeypointCenter[]): number | null {
-        if (keypoints.length < 5) {
+        if (keypoints.length < 4) {
             return null;
         }
 
@@ -2568,6 +2570,9 @@ export class KeypointUtils {
             ) *
                 180) /
             Math.PI;
+        if (!point5) {
+            return Math.abs(angle);
+        }
 
         const vect3 = this.computeVector(point5.centroid, point4.centroid);
         const sign = Math.sign(vect2.x * vect3.y - vect2.y * vect3.x);

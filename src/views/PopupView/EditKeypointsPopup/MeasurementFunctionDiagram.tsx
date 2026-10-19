@@ -7,6 +7,8 @@ type DiagramPoint = {
     label: string;
     labelDx?: number;
     labelDy?: number;
+    // Drawn hollow, with this text as a hover tooltip
+    optionalHint?: string;
 };
 
 interface IProps {
@@ -28,7 +30,13 @@ const Line = ({
 
 const Point = ({ point }: { point: DiagramPoint }) => (
     <g>
-        <circle className="DiagramPoint" cx={point.x} cy={point.y} r="3.4" />
+        {point.optionalHint && <title>{point.optionalHint}</title>}
+        <circle
+            className={point.optionalHint ? "DiagramPoint optional" : "DiagramPoint"}
+            cx={point.x}
+            cy={point.y}
+            r="3.4"
+        />
         <text
             className="DiagramPointLabel"
             x={point.x + (point.labelDx || 0)}
@@ -152,6 +160,14 @@ const renderDiagram = (functionId: MeasurementFunctionId) => {
             const p2 = { x: 60, y: 60, label: "p2", labelDy: 8 };
             const p3 = { x: 28, y: 21, label: "p3", labelDx: -8, labelDy: -5 };
             const p4 = { x: 86, y: 48, label: "p4", labelDx: 8, labelDy: 6 };
+            const p5 = {
+                x: 100,
+                y: 24,
+                label: "p5",
+                labelDx: 9,
+                labelDy: 0,
+                optionalHint: "p5 is optional: it gives the angle a sign",
+            };
             return (
                 <>
                     <Line
@@ -164,7 +180,7 @@ const renderDiagram = (functionId: MeasurementFunctionId) => {
                         className="DiagramArc"
                         d="M 60 22 A 19 19 0 0 0 45 29"
                     />
-                    <Points points={[p1, p2, p3, p4]} />
+                    <Points points={[p1, p2, p3, p4, p5]} />
                 </>
             );
         }

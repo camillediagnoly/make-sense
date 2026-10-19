@@ -37,11 +37,12 @@ Minimum keypoints: 4
 Computation: d(p1, p2) / d(p3, p4)
 
 7. Angle
-Minimum keypoints: 5
+Minimum keypoints: 4 (p5 is optional)
 Computation:
 Use only p1, p2, p3, p4, and p5. Extra keypoints in the same measurement are ignored.
 Compute the angle between line p1-p2 and line p3-p4.
-Use p5 to determine the sign of the angle.
+With p5, use it to determine the sign of the angle. Without it, return the unsigned angle, from 0
+to 180 degrees.
 
 8. Ellipse Area Ratio
 Minimum keypoints: 6 (7 with the thorax right rib)

@@ -95,7 +95,7 @@ export const MEASUREMENT_FUNCTIONS: MeasurementFunctionConfig[] = [
     {
         id: MeasurementFunctionId.ANGLE,
         name: "Angle",
-        compatibleKeypointCounts: [5],
+        compatibleKeypointCounts: [4, 5],
     },
     {
         id: MeasurementFunctionId.SURFACE_ELLIPSE_AREA_RATIO,
