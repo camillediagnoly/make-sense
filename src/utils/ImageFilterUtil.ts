@@ -16,6 +16,7 @@ import {
     LegacyImageClassCriteria,
 } from "../store/general/types";
 import { ImageGroupUtil } from "./ImageGroupUtil";
+import { TagUtil } from "./TagUtil";
 
 export type ImageListFilterOptions = {
     filterMode?: ImageFilterMode;
@@ -78,6 +79,9 @@ export class ImageFilterUtil {
                 ImageGroupUtil.getImageGroupName(imageData)
             )
         );
+        TagUtil.getImageTags(imageData).forEach((tagName: string) => {
+            assignedLabelIds.add(TagUtil.getTagFilterTokenId(tagName));
+        });
 
         imageData.labelRects
             .filter(
@@ -307,21 +311,47 @@ export class ImageFilterUtil {
             return null;
         }
 
-        const removedLabelIdSet = new Set<string>(removedLabelIds);
-        const normalizedCriteria = ImageFilterUtil.normalizeImageClassCriteria(classCriteria);
-        const isRemovedLabelCriteria = (criteria: ImageClassExpressionCriteria): boolean =>
-            criteria.type === "label" && removedLabelIdSet.has(criteria.labelId);
+        return ImageFilterUtil.remapLabelsInImageClassCriteria(
+            classCriteria,
+            new Map<string, string | null>(
+                removedLabelIds.map((labelId: string): [string, null] => [labelId, null])
+            )
+        );
+    }
 
-        if (!normalizedCriteria.some(isRemovedLabelCriteria)) {
+    // Points every criterion at the new id of its label (e.g. a renamed tag), and drops the ones
+    // remapped to null like removeLabelsFromImageClassCriteria does. Everything is remapped in a
+    // single pass, so swapped ids cannot get mixed up. Returns null when no criterion is affected.
+    public static remapLabelsInImageClassCriteria(
+        classCriteria: ImageClassCriteria[] = [],
+        labelIdRemap: Map<string, string | null> = new Map()
+    ): ImageClassExpressionCriteria[] | null {
+        const normalizedCriteria = ImageFilterUtil.normalizeImageClassCriteria(classCriteria);
+        const isRemappedLabelCriteria = (criteria: ImageClassExpressionCriteria): boolean =>
+            criteria.type === "label" && labelIdRemap.has(criteria.labelId);
+
+        if (!normalizedCriteria.some(isRemappedLabelCriteria)) {
             return null;
         }
 
-        const remainingCriteria = normalizedCriteria.filter(
-            (criteria: ImageClassExpressionCriteria) => !isRemovedLabelCriteria(criteria)
-        );
+        const remappedCriteria: ImageClassExpressionCriteria[] = [];
+        normalizedCriteria.forEach((criteria: ImageClassExpressionCriteria) => {
+            if (criteria.type !== "label" || !labelIdRemap.has(criteria.labelId)) {
+                remappedCriteria.push(criteria);
+                return;
+            }
 
-        return ImageFilterUtil.isImageClassCriteriaValid(remainingCriteria)
-            ? remainingCriteria
+            const labelId = labelIdRemap.get(criteria.labelId);
+            if (labelId !== null) {
+                remappedCriteria.push({
+                    type: "label",
+                    labelId,
+                });
+            }
+        });
+
+        return ImageFilterUtil.isImageClassCriteriaValid(remappedCriteria)
+            ? remappedCriteria
             : [];
     }
 

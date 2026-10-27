@@ -10,6 +10,7 @@ export type COCOImage = {
     width: number;
     height: number;
     file_name: string;
+    tags?: string[];
 }
 
 export type COCOCategory = {
@@ -29,10 +30,17 @@ export type COCOAnnotation = {
 
 export type COCOMeasurementConfig = { [functionId: string]: number[] }
 
+export type COCOTagGroup = {
+    name: string;
+    tags: string[];
+}
+
 export type COCOObject = {
     info: COCOInfo,
     images: COCOImage[],
     annotations: COCOAnnotation[],
     categories: COCOCategory[],
-    meas_config?: COCOMeasurementConfig
+    meas_config?: COCOMeasurementConfig,
+    tag_names?: string[],
+    tag_groups?: COCOTagGroup[]
 }

@@ -44,6 +44,19 @@ export type LabelName = {
     isVisible?: boolean;
 }
 
+export type TagName = {
+    name: string;
+    color: string;
+    groupName?: string;
+}
+
+// The project tags, ordered group by group (in the order of groupNames), the ones without group last.
+// A group can exist without any tag.
+export type TagConfig = {
+    tags: TagName[];
+    groupNames: string[];
+}
+
 export type ImageData = {
     id: string;
     fileData: File;
@@ -57,6 +70,8 @@ export type ImageData = {
     labelLines: LabelLine[];
     labelPolygons: LabelPolygon[];
     labelNameIds: string[];
+    // Image-level tags, by name. Kept apart from the label names so they never become COCO categories.
+    tags?: string[];
     imgWidth?: number;
     imgHeight?: number;
 
@@ -89,6 +104,7 @@ export type LabelsState = {
     imageDataHistory: ImageDataHistory;
     firstLabelCreatedFlag: boolean;
     labels: LabelName[];
+    tagConfig: TagConfig;
 }
 
 interface UpdateActiveImageIndex {
@@ -162,6 +178,13 @@ interface UpdateLabelNames {
     }
 }
 
+interface UpdateTagConfig {
+    type: typeof Action.UPDATE_TAG_CONFIG;
+    payload: {
+        tagConfig: TagConfig;
+    }
+}
+
 interface UpdateFirstLabelCreatedFlag {
     type: typeof Action.UPDATE_FIRST_LABEL_CREATED_FLAG;
     payload: {
@@ -193,6 +216,7 @@ export type LabelsActionTypes = UpdateActiveImageIndex
     | UpdateImageData
     | DeleteImageDataById
     | UpdateLabelNames
+    | UpdateTagConfig
     | UpdateActiveLabelId
     | UpdateHighlightedLabelId
     | UpdateFirstLabelCreatedFlag

@@ -57,5 +57,15 @@ export const NotificationsDataMap: ExportFormatDataMap = {
         header: 'Roboflow connection failed',
         description: 'Looks like we ware unable to connect to your Roboflow model. Please, make sure that the model ' +
             'specification and Roboflow API key, are correct.'
+    },
+    [Notification.EMPTY_TAG_NAME_ERROR]: {
+        header: 'Empty tag or group name',
+        description: "Looks like you didn't assign name to one of your tags or tag groups. Every tag and every " +
+            'group needs a unique name. Insert correct name or delete the empty one and try again.'
+    },
+    [Notification.NON_UNIQUE_TAG_NAMES_ERROR]: {
+        header: 'Non unique tag or group names',
+        description: 'Looks like some of your tags, or some of your tag groups, share the same name. They are ' +
+            'saved by name, so every name must be used only once. Make your names unique and try again.'
     }
 }

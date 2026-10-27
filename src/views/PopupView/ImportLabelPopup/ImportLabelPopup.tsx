@@ -8,8 +8,8 @@ import { FeatureInProgress } from '../../EditorView/FeatureInProgress/FeatureInP
 import { AppState } from '../../../store';
 import { connect } from 'react-redux';
 import { useDropzone } from 'react-dropzone';
-import { ImageData, LabelName } from '../../../store/labels/types';
-import { updateActiveLabelType, updateImageData, updateLabelNames } from '../../../store/labels/actionCreators';
+import { ImageData, LabelName, TagConfig } from '../../../store/labels/types';
+import { updateActiveLabelType, updateImageData, updateLabelNames, updateTagConfig } from '../../../store/labels/actionCreators';
 import { updateMeasurementFunctions } from '../../../store/general/actionCreators';
 import { MeasurementFunctionByName } from '../../../data/measurements/MeasurementFunctionData';
 import { ImporterSpecData } from '../../../data/ImporterSpecData';
@@ -24,12 +24,14 @@ import {LabelNamesNotUniqueError} from '../../../logic/import/yolo/YOLOErrors';
 import { LabelsSelector } from '../../../store/selectors/LabelsSelector';
 import { GeneralSelector } from '../../../store/selectors/GeneralSelector';
 import { AnnotationMergeUtil } from '../../../utils/AnnotationMergeUtil';
+import { TagUtil } from '../../../utils/TagUtil';
 import { ClipLoader } from 'react-spinners';
 
 interface IProps {
     activeLabelType: LabelType,
     updateImageDataAction: (imageData: ImageData[]) => any,
     updateLabelNamesAction: (labels: LabelName[]) => any,
+    updateTagConfigAction: (tagConfig: TagConfig) => any,
     updateActiveLabelTypeAction: (activeLabelType: LabelType) => any;
     updateMeasurementFunctionsAction: typeof updateMeasurementFunctions;
 }
@@ -39,6 +41,7 @@ const ImportLabelPopup: React.FC<IProps> = (
         activeLabelType,
         updateImageDataAction,
         updateLabelNamesAction,
+        updateTagConfigAction,
         updateActiveLabelTypeAction,
         updateMeasurementFunctionsAction
     }) => {
@@ -53,6 +56,9 @@ const ImportLabelPopup: React.FC<IProps> = (
     const [loadedImageData, setLoadedImageData] = useState([]);
     const [loadedMeasurementFunctionByName, setLoadedMeasurementFunctionByName] =
         useState<MeasurementFunctionByName>({});
+    // null when the importer does not know about tags (only COCO does): the project tags are then
+    // left as they are, since the images keep their tags too.
+    const [loadedTagConfig, setLoadedTagConfig] = useState<TagConfig | null>(null);
     const [annotationsLoadedError, setAnnotationsLoadedError] = useState(null);
     const [failedAnnotationFiles, setFailedAnnotationFiles] = useState<string[]>([]);
     const [isImporting, setIsImporting] = useState(false);
@@ -74,6 +80,7 @@ const ImportLabelPopup: React.FC<IProps> = (
         setLoadedLabelNames([]);
         setLoadedImageData([]);
         setLoadedMeasurementFunctionByName({});
+        setLoadedTagConfig(null);
         setAnnotationsLoadedError(null);
         setFailedAnnotationFiles([]);
         setIsImporting(false);
@@ -83,10 +90,12 @@ const ImportLabelPopup: React.FC<IProps> = (
         imagesData: ImageData[],
         labelNames: LabelName[],
         measurementFunctionByName: MeasurementFunctionByName = {},
+        tagConfig?: TagConfig,
     ) => {
         setLoadedLabelNames(labelNames);
         setLoadedImageData(imagesData);
         setLoadedMeasurementFunctionByName(measurementFunctionByName);
+        setLoadedTagConfig(tagConfig ?? null);
         setAnnotationsLoadedError(null);
         setFailedAnnotationFiles([]);
         setIsImporting(false);
@@ -97,6 +106,7 @@ const ImportLabelPopup: React.FC<IProps> = (
             setLoadedLabelNames(error.labelNames);
             setLoadedImageData(error.imagesData);
             setLoadedMeasurementFunctionByName({});
+            setLoadedTagConfig(null);
             setAnnotationsLoadedError(null);
             setFailedAnnotationFiles(error.fileNames);
             setIsImporting(false);
@@ -106,6 +116,7 @@ const ImportLabelPopup: React.FC<IProps> = (
         setLoadedLabelNames([]);
         setLoadedImageData([]);
         setLoadedMeasurementFunctionByName({});
+        setLoadedTagConfig(null);
         setAnnotationsLoadedError(error);
         setFailedAnnotationFiles([]);
         setIsImporting(false);
@@ -145,10 +156,16 @@ const ImportLabelPopup: React.FC<IProps> = (
             updateImageDataAction(mergeResult.imagesData);
             updateLabelNamesAction(mergeResult.labelNames);
             updateMeasurementFunctionsAction(mergeResult.measurementFunctionByName);
+            if (loadedTagConfig !== null) {
+                updateTagConfigAction(TagUtil.mergeTagConfigs(LabelsSelector.getTagConfig(), loadedTagConfig));
+            }
         } else {
             updateImageDataAction(loadedImageData);
             updateLabelNamesAction(loadedLabelNames);
             updateMeasurementFunctionsAction(loadedMeasurementFunctionByName);
+            if (loadedTagConfig !== null) {
+                updateTagConfigAction(loadedTagConfig);
+            }
         }
 
         updateActiveLabelTypeAction(type);
@@ -318,6 +335,7 @@ const ImportLabelPopup: React.FC<IProps> = (
 const mapDispatchToProps = {
     updateImageDataAction: updateImageData,
     updateLabelNamesAction: updateLabelNames,
+    updateTagConfigAction: updateTagConfig,
     updateActiveLabelTypeAction: updateActiveLabelType,
     updateMeasurementFunctionsAction: updateMeasurementFunctions
 };

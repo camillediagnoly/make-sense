@@ -16,6 +16,7 @@ import { store } from '../../index';
 import { ShortcutItem } from '../../store/general/types';
 import { ImageHistoryActions } from '../actions/ImageHistoryActions';
 import { ImageExportActions } from '../actions/ImageExportActions';
+import { TagActions } from '../actions/TagActions';
 
 export class EditorContext extends BaseContext {
     private static getShortcutByName(name: string): ShortcutItem | undefined {
@@ -132,6 +133,16 @@ export class EditorContext extends BaseContext {
             actionHandlers[`Select Label ${i}`] = (event: KeyboardEvent) => {
                 ImageActions.setActiveLabelOnActiveImage(i);
                 EditorActions.fullRender();
+            };
+        }
+
+        // Add tag toggling actions (1-9)
+        for (let i = 1; i <= 9; i++) {
+            actionHandlers[`Toggle Tag ${i}`] = (event: KeyboardEvent) => {
+                // holding the keys down would otherwise add and remove the tag on every auto-repeat
+                if (!event.repeat) {
+                    TagActions.toggleTagByIndexOnActiveImage(i - 1);
+                }
             };
         }
 

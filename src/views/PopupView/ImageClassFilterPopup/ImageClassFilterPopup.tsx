@@ -4,7 +4,7 @@ import { GenericYesNoPopup } from '../GenericYesNoPopup/GenericYesNoPopup';
 import { PopupWindowType } from '../../../data/enums/PopupWindowType';
 import { connect } from 'react-redux';
 import { AppState } from '../../../store';
-import { ImageData, LabelName } from '../../../store/labels/types';
+import { ImageData, LabelName, TagConfig, TagName } from '../../../store/labels/types';
 import {
     ImageClassCriteria,
     ImageClassExpressionCriteria,
@@ -19,6 +19,7 @@ import { LabelType } from '../../../data/enums/LabelType';
 import { ImageFilterUtil } from '../../../utils/ImageFilterUtil';
 import Scrollbars from 'react-custom-scrollbars-2';
 import { ImageGroupUtil } from '../../../utils/ImageGroupUtil';
+import { TagGroup, TagUtil } from '../../../utils/TagUtil';
 
 const DRAG_DATA_TYPE = 'application/x-image-filter-criteria-token';
 
@@ -47,6 +48,7 @@ type DragPayload =
 
 interface IProps {
     labels: LabelName[];
+    tagConfig: TagConfig;
     imagesData: ImageData[];
     activeLabelType: LabelType;
     filterMode: ImageFilterMode;
@@ -113,6 +115,7 @@ const parseDragPayload = (rawPayload: string | null): DragPayload | null => {
 const ImageClassFilterPopup: React.FC<IProps> = (
     {
         labels,
+        tagConfig,
         imagesData,
         activeLabelType,
         filterMode,
@@ -146,6 +149,18 @@ const ImageClassFilterPopup: React.FC<IProps> = (
         [imagesData]
     );
 
+    const tagNames = useMemo(
+        () => TagUtil.getTagNames(tagConfig),
+        [tagConfig]
+    );
+
+    const tagColorByTokenId = useMemo(
+        () => new Map<string, string>(
+            tagConfig.tags.map((tag: TagName): [string, string] => [TagUtil.getTagFilterTokenId(tag.name), tag.color])
+        ),
+        [tagConfig]
+    );
+
     const filterItemNameById = useMemo(
         () => {
             const itemNames = new Map<string, string>();
@@ -161,9 +176,13 @@ const ImageClassFilterPopup: React.FC<IProps> = (
                 );
             });
 
+            tagNames.forEach((tagName: string) => {
+                itemNames.set(TagUtil.getTagFilterTokenId(tagName), tagName);
+            });
+
             return itemNames;
         },
-        [labels, filterableGroupNames]
+        [labels, filterableGroupNames, tagNames]
     );
 
     const draftCriteria = useMemo(
@@ -217,6 +236,15 @@ const ImageClassFilterPopup: React.FC<IProps> = (
         () =>
             labels.filter((label: LabelName) => !usedFilterItemIds.has(label.id)),
         [labels, usedFilterItemIds]
+    );
+
+    const availableTagNames = useMemo(
+        () =>
+            tagNames.filter(
+                (tagName: string) =>
+                    !usedFilterItemIds.has(TagUtil.getTagFilterTokenId(tagName))
+            ),
+        [tagNames, usedFilterItemIds]
     );
 
     const filteredImagesCount = useMemo(
@@ -436,8 +464,12 @@ const ImageClassFilterPopup: React.FC<IProps> = (
         }
 
         if (token.type === 'label') {
-            return ImageGroupUtil.isGroupFilterTokenId(token.labelId)
-                ? 'CanvasToken group'
+            if (ImageGroupUtil.isGroupFilterTokenId(token.labelId)) {
+                return 'CanvasToken group';
+            }
+
+            return TagUtil.isTagFilterTokenId(token.labelId)
+                ? 'CanvasToken tag'
                 : 'CanvasToken label';
         }
 
@@ -448,9 +480,67 @@ const ImageClassFilterPopup: React.FC<IProps> = (
         return 'CanvasToken parenthesis';
     };
 
+    const renderTagTokens = (tags: TagName[]) => (
+        <div className='TokenBank'>
+            {tags.map((tag: TagName) => {
+                const tagToken = {
+                    type: 'label' as const,
+                    labelId: TagUtil.getTagFilterTokenId(tag.name),
+                };
+
+                return (
+                    <button
+                        key={tag.name}
+                        type='button'
+                        className='LibraryToken tag'
+                        title={`Tag: ${tag.name}`}
+                        onClick={() => appendToken(tagToken)}
+                        draggable={true}
+                        onDragStart={(event: React.DragEvent) =>
+                            onDragStart(event, {
+                                source: 'palette',
+                                token: tagToken,
+                            })
+                        }
+                    >
+                        <span className='TagColorDot' style={{ backgroundColor: tag.color }}/>
+                        {tag.name}
+                    </button>
+                );
+            })}
+        </div>
+    );
+
+    // Tags are listed group by group once groups exist, the tags without group last
+    const renderTagLibrary = () => {
+        const availableTags: TagName[] = tagConfig.tags
+            .filter((tag: TagName) => availableTagNames.includes(tag.name));
+
+        if (availableTags.length === 0) {
+            return <div className='EmptyState'>All tags are already used in the condition.</div>;
+        }
+
+        if (tagConfig.groupNames.length === 0) {
+            return renderTagTokens(availableTags);
+        }
+
+        return TagUtil.getTagGroups(tagConfig)
+            .map((tagGroup: TagGroup) => ({
+                ...tagGroup,
+                tags: tagGroup.tags.filter((tag: TagName) => availableTags.includes(tag)),
+            }))
+            .filter((tagGroup: TagGroup) => tagGroup.tags.length > 0)
+            .map((tagGroup: TagGroup) => (
+                <div className='TagGroupTokens' key={tagGroup.groupName ?? ''}>
+                    <div className='TagGroupLabel'>{tagGroup.groupName ?? 'Other tags'}</div>
+                    {renderTagTokens(tagGroup.tags)}
+                </div>
+            ));
+    };
+
     const renderFilterItemLibrary = () => {
-        if (labels.length === 0 && filterableGroupNames.length === 0) {
-            return <div className='EmptyState'>No labels or groups found yet.</div>;
+        if (labels.length === 0 && filterableGroupNames.length === 0 && tagNames.length === 0) {
+            return <div className='EmptyState'>No labels, tags or groups found yet.</div>;
         }
 
         return (
@@ -531,6 +621,13 @@ const ImageClassFilterPopup: React.FC<IProps> = (
                             </div>
                         )}
                     </div>
+
+                    {tagNames.length > 0 && (
+                        <div className='LibrarySection'>
+                            <div className='SectionLabel'>Tags</div>
+                            {renderTagLibrary()}
+                        </div>
+                    )}
                 </div>
             </Scrollbars>
         );
@@ -569,6 +666,12 @@ const ImageClassFilterPopup: React.FC<IProps> = (
             }
             title='Click to remove'
         >
+            {token.type === 'label' && tagColorByTokenId.has(token.labelId) && (
+                <span
+                    className='TagColorDot'
+                    style={{ backgroundColor: tagColorByTokenId.get(token.labelId) }}
+                />
+            )}
             <span>{getTokenLabel(token)}</span>
         </div>
     );
@@ -664,7 +767,7 @@ const ImageClassFilterPopup: React.FC<IProps> = (
                         }}
                         onDrop={(event: React.DragEvent) => onDropAtIndex(event, 0)}
                     >
-                        Drag classes/operators here, or click below to append.
+                        Drag classes/tags/operators here, or click below to append.
                     </div>
                 )}
             </div>
@@ -720,6 +823,7 @@ const ImageClassFilterPopup: React.FC<IProps> = (
 
 const mapStateToProps = (state: AppState) => ({
     labels: state.labels.labels,
+    tagConfig: state.labels.tagConfig,
     imagesData: state.labels.imagesData,
     activeLabelType: state.labels.activeLabelType,
     filterMode: state.general.imageListFilterMode,

@@ -5,7 +5,7 @@ import {ImageDataUtil} from '../../utils/ImageDataUtil';
 
 type UndoableImageData = Pick<
     ImageData,
-    'labelRects' | 'labelPoints' | 'labelLines' | 'labelPolygons' | 'labelNameIds'
+    'labelRects' | 'labelPoints' | 'labelLines' | 'labelPolygons' | 'labelNameIds' | 'tags'
 >;
 
 const createEmptyImageDataHistory = (): ImageDataHistory => ({
@@ -23,7 +23,11 @@ const initialState: LabelsState = {
     imagesData: [],
     imageDataHistory: createEmptyImageDataHistory(),
     firstLabelCreatedFlag: false,
-    labels: []
+    labels: [],
+    tagConfig: {
+        tags: [],
+        groupNames: []
+    }
 };
 
 const getActiveImageData = (state: LabelsState): ImageData | null => {
@@ -79,6 +83,7 @@ const getUndoableImageData = (imageData: ImageData): UndoableImageData => ({
     labelLines: imageData.labelLines,
     labelPolygons: imageData.labelPolygons,
     labelNameIds: imageData.labelNameIds,
+    tags: imageData.tags || [],
 });
 
 const hasUndoableImageDataChange = (
@@ -234,6 +239,12 @@ export function labelsReducer(
             return {
                 ...state,
                 labels: action.payload.labels
+            }
+        }
+        case Action.UPDATE_TAG_CONFIG: {
+            return {
+                ...state,
+                tagConfig: action.payload.tagConfig
             }
         }
         case Action.UPDATE_LABEL_VISIBILITY: {

@@ -179,6 +179,11 @@
       background: rgba(63, 138, 109, 0.25);
     }
 
+    &.tag {
+      border-color: #b2357f;
+      background: rgba(178, 53, 127, 0.25);
+    }
+
     &.operator.and {
       border-color: #2f7db3;
       background: rgba(47, 125, 179, 0.28);
@@ -328,6 +333,11 @@
       background: rgba(78, 125, 105, 0.25);
     }
 
+    &.tag {
+      border-color: #8f4370;
+      background: rgba(143, 67, 112, 0.25);
+    }
+
     &.operator {
       border-color: #5d5d5d;
       width: 100%;
@@ -337,6 +347,28 @@
       background: #2f2f2f;
       font-weight: 700;
     }
+  }
+
+  .TagColorDot {
+    display: inline-block;
+    flex-shrink: 0;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+  }
+
+  .LibraryToken.tag .TagColorDot {
+    margin-right: 6px;
+  }
+
+  .TagGroupTokens {
+    margin-bottom: 6px;
+  }
+
+  .TagGroupLabel {
+    margin: 4px 0;
+    color: #c0c8cf;
+    font-size: 11px;
   }
 
   .EmptyState {

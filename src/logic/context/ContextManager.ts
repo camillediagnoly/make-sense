@@ -15,6 +15,11 @@ const NON_TEXT_INPUT_TYPES: string[] = [
 
 export class ContextManager {
     private static activeCombo: string[] = [];
+    // The keys each physical key (event.code) produced while held down. Letting go of Shift first
+    // makes a key come up as another character than the one that went down ("1" goes down, "&"
+    // comes up on an AZERTY keyboard), and that key would otherwise stay held, breaking every
+    // later combo.
+    private static keysByCode: Map<string, Set<string>> = new Map();
     private static actions: HotKeyAction[] = [];
     private static contextHistory: ContextType[] = [];
 
@@ -60,17 +65,40 @@ export class ContextManager {
         if (!ContextManager.isInCombo(keyCode)) {
             ContextManager.addToCombo(keyCode);
         }
+        ContextManager.rememberKeyOfCode(event.code, keyCode);
         ContextManager.execute(event);
     }
 
     private static onUp(event: KeyboardEvent): void {
         const keyCode: string = ContextManager.getKeyCodeFromEvent(event);
-        ContextManager.executeRelease(keyCode, event);
-        ContextManager.removeFromCombo(keyCode);
+        ContextManager.getReleasedKeyCodes(event.code, keyCode).forEach((releasedKeyCode: string) => {
+            ContextManager.executeRelease(releasedKeyCode, event);
+            ContextManager.removeFromCombo(releasedKeyCode);
+        });
     }
 
     public static onFocus() {
         ContextManager.activeCombo = [];
+        ContextManager.keysByCode.clear();
+    }
+
+    private static rememberKeyOfCode(code: string, keyCode: string): void {
+        if (!code) {
+            return;
+        }
+        const keyCodes: Set<string> = ContextManager.keysByCode.get(code) || new Set<string>();
+        keyCodes.add(keyCode);
+        ContextManager.keysByCode.set(code, keyCodes);
+    }
+
+    // The released key, plus every key its physical key produced since it went down
+    private static getReleasedKeyCodes(code: string, keyCode: string): string[] {
+        const keyCodes = new Set<string>(code ? ContextManager.keysByCode.get(code) : undefined);
+        if (code) {
+            ContextManager.keysByCode.delete(code);
+        }
+        keyCodes.add(keyCode);
+        return Array.from(keyCodes);
     }
 
     private static execute(event: KeyboardEvent): void {

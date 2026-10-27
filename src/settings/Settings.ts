@@ -39,6 +39,7 @@ export class Settings {
         PopupWindowType.EXIT_PROJECT,
         PopupWindowType.DELETE_IMAGE,
         PopupWindowType.UPDATE_LABEL,
+        PopupWindowType.EDIT_TAGS,
         PopupWindowType.LOAD_AI_MODEL,
         PopupWindowType.LOAD_YOLO_V5_MODEL
     ];

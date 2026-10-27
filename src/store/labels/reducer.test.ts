@@ -7,6 +7,7 @@ import {
     undoActiveImageAction,
     updateActiveImageIndex,
     updateImageDataById,
+    updateTagConfig,
 } from './actionCreators';
 import { labelsReducer } from './reducer';
 import { ImageData } from './types';
@@ -110,5 +111,59 @@ describe('labelsReducer image deletion', () => {
 
         expect(nextState.imagesData).toHaveLength(0);
         expect(nextState.activeImageIndex).toBeNull();
+    });
+});
+
+describe('labelsReducer image tags', () => {
+    it('undoes and redoes tag changes on the active image', () => {
+        const imageData = createImageData('image-1');
+        const state = initializeState([imageData]);
+
+        const taggedState = labelsReducer(state, updateImageDataById(imageData.id, { ...imageData, tags: ['Patho'] }));
+        const undoneState = labelsReducer(taggedState, undoActiveImageAction());
+        const redoneState = labelsReducer(undoneState, redoActiveImageAction());
+
+        expect(taggedState.imageDataHistory.past).toHaveLength(1);
+        expect(undoneState.imagesData[0].tags).toEqual([]);
+        expect(redoneState.imagesData[0].tags).toEqual(['Patho']);
+    });
+
+    it('keeps the tags added before a polygon change that gets undone', () => {
+        const imageData = createImageData('image-1');
+        const state = initializeState([imageData]);
+        const taggedImageData = { ...imageData, tags: ['Patho'] };
+        const imageDataWithPolygon = {
+            ...taggedImageData,
+            labelPolygons: [LabelUtil.createLabelPolygon('label-id', [{ x: 0, y: 0 }, { x: 1, y: 0 }, { x: 1, y: 1 }])],
+        };
+
+        const taggedState = labelsReducer(state, updateImageDataById(imageData.id, taggedImageData));
+        const editedState = labelsReducer(taggedState, updateImageDataById(imageData.id, imageDataWithPolygon));
+        const undoneState = labelsReducer(editedState, undoActiveImageAction());
+
+        expect(undoneState.imagesData[0].labelPolygons).toHaveLength(0);
+        expect(undoneState.imagesData[0].tags).toEqual(['Patho']);
+    });
+
+    it('does not record an image without tags getting an empty tag list as an undoable action', () => {
+        const imageData = { ...createImageData('image-1'), tags: undefined };
+        const state = initializeState([imageData]);
+
+        const nextState = labelsReducer(state, updateImageDataById(imageData.id, { ...imageData, tags: [] }));
+
+        expect(nextState.imageDataHistory.past).toHaveLength(0);
+    });
+
+    it('updates the project tags and tag groups', () => {
+        const state = initializeState([createImageData('image-1')]);
+        const tagConfig = {
+            tags: [{ name: 'Physio', color: '#ff3838', groupName: 'Diagnostic' }, { name: 'TGA', color: '#ff701f' }],
+            groupNames: ['Diagnostic'],
+        };
+
+        const nextState = labelsReducer(state, updateTagConfig(tagConfig));
+
+        expect(state.tagConfig).toEqual({ tags: [], groupNames: [] });
+        expect(nextState.tagConfig).toEqual(tagConfig);
     });
 });

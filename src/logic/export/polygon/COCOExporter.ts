@@ -1,4 +1,4 @@
-import {ImageData, LabelName, LabelPolygon} from "../../../store/labels/types";
+import {ImageData, LabelName, LabelPolygon, TagConfig, TagName} from "../../../store/labels/types";
 import {LabelsSelector} from "../../../store/selectors/LabelsSelector";
 import {GeneralSelector} from "../../../store/selectors/GeneralSelector";
 import {ImageRepository} from "../../imageRepository/ImageRepository";
@@ -10,11 +10,13 @@ import {
     COCOInfo,
     COCOMeasurementConfig,
     COCOObject,
-    COCOSegmentation
+    COCOSegmentation,
+    COCOTagGroup
 } from "../../../data/labels/COCO";
 import {flatten} from "lodash";
 import {IPoint} from "../../../interfaces/IPoint";
 import { parseKeypointName } from "../../../data/measurements/MeasurementFunctionData";
+import { TagGroup, TagUtil } from "../../../utils/TagUtil";
 
 export type LabelDataMap = { [key: string]: number; }
 
@@ -23,7 +25,8 @@ export class COCOExporter {
         const imagesData: ImageData[] = LabelsSelector.getImagesData();
         const labelNames: LabelName[] = LabelsSelector.getLabelNames();
         const projectName: string = GeneralSelector.getProjectName();
-        const COCOObject: COCOObject = COCOExporter.mapImagesDataToCOCOObject(imagesData, labelNames, projectName);
+        const tagConfig: TagConfig = LabelsSelector.getTagConfig();
+        const COCOObject: COCOObject = COCOExporter.mapImagesDataToCOCOObject(imagesData, labelNames, projectName, tagConfig);
         const content: string = JSON.stringify(COCOObject, null, 2);
         const fileName: string = `${ExporterUtil.getExportFileName()}.json`;
         ExporterUtil.saveAs(content, fileName);
@@ -36,18 +39,21 @@ export class COCOExporter {
         const imagesData: ImageData[] = LabelsSelector.getImagesData();
         const labelNames: LabelName[] = LabelsSelector.getLabelNames();
         const projectName: string = GeneralSelector.getProjectName();
-        const COCOObject: COCOObject = COCOExporter.mapImagesDataToCOCOObject(imagesData, labelNames, projectName);
+        const tagConfig: TagConfig = LabelsSelector.getTagConfig();
+        const COCOObject: COCOObject = COCOExporter.mapImagesDataToCOCOObject(imagesData, labelNames, projectName, tagConfig);
         return JSON.stringify(COCOObject, null, 2);
     }
 
     public static mapImagesDataToCOCOObject(
         imagesData: ImageData[],
         labelNames: LabelName[],
-        projectName: string
+        projectName: string,
+        tagConfig: TagConfig = { tags: [], groupNames: [] }
     ): COCOObject {
+        const tagNames: string[] = TagUtil.getTagNames(tagConfig);
         const cocoObject: COCOObject = {
             "info": COCOExporter.getInfoComponent(projectName),
-            "images": COCOExporter.getImagesComponent(imagesData),
+            "images": COCOExporter.getImagesComponent(imagesData, tagNames),
             "annotations": COCOExporter.getAnnotationsComponent(imagesData, labelNames),
             "categories": COCOExporter.getCategoriesComponent(labelNames)
         };
@@ -55,7 +61,26 @@ export class COCOExporter {
         if (Object.keys(measConfig).length !== 0) {
             cocoObject.meas_config = measConfig;
         }
+        // Like meas_config, the tag keys only show up once tags are used, so a project without any
+        // tag exports exactly the same file as before tags existed.
+        if (tagNames.length !== 0) {
+            cocoObject.tag_names = tagNames;
+        }
+        if (tagConfig.groupNames.length !== 0) {
+            cocoObject.tag_groups = COCOExporter.getTagGroupsComponent(tagConfig);
+        }
         return cocoObject;
+    }
+
+    // Only the group membership is saved: like the label colors, the tag colors are given again in
+    // order on import.
+    public static getTagGroupsComponent(tagConfig: TagConfig): COCOTagGroup[] {
+        return TagUtil.getTagGroups(tagConfig)
+            .filter((tagGroup: TagGroup) => tagGroup.groupName !== null)
+            .map((tagGroup: TagGroup) => ({
+                "name": tagGroup.groupName,
+                "tags": tagGroup.tags.map((tag: TagName) => tag.name)
+            }));
     }
 
     public static getInfoComponent(description: string): COCOInfo {
@@ -96,18 +121,23 @@ export class COCOExporter {
         }, {});
     }
 
-    public static getImagesComponent(imagesData: ImageData[]): COCOImage[] {
+    public static getImagesComponent(imagesData: ImageData[], tagNames: string[] = []): COCOImage[] {
         return imagesData
             // .filter((imagesData: ImageData) => imagesData.loadStatus) // this was removed to allow export of all annotations
             .filter((imagesData: ImageData) => imagesData.labelPolygons.length !== 0)
             .map((imageData: ImageData, index: number) => {
                 const image: HTMLImageElement = ImageRepository.getById(imageData.id);
-                return {
+                const cocoImage: COCOImage = {
                     "id": index + 1,
                     "width": image ? image.width : imageData.imgWidth ?  imageData.imgWidth : -1,
                     "height": image ? image.height : imageData.imgHeight ?  imageData.imgHeight : -1,
                     "file_name": imageData.fileData.name
+                };
+                const tags: string[] = TagUtil.getActiveTagNames(imageData, tagNames);
+                if (tags.length !== 0) {
+                    cocoImage.tags = tags;
                 }
+                return cocoImage;
             })
     }
 

@@ -6,11 +6,12 @@ import {
     updateActiveLabelNameId as storeUpdateActiveLabelNameId,
     updateFirstLabelCreatedFlag as storeUpdateFirstLabelCreatedFlag,
     updateImageData as storeUpdateImageData,
-    updateLabelNames as storeUpdateLabelNames
+    updateLabelNames as storeUpdateLabelNames,
+    updateTagConfig as storeUpdateTagConfig
 } from "../../../store/labels/actionCreators";
 import { AppState } from "../../../store";
 import { connect } from "react-redux";
-import { ImageData, LabelName } from "../../../store/labels/types";
+import { ImageData, LabelName, TagConfig } from "../../../store/labels/types";
 import { PopupActions } from "../../../logic/actions/PopupActions";
 import { ProjectData } from "../../../store/general/types";
 import { updateProjectData as storeUpdateProjectData } from "../../../store/general/actionCreators";
@@ -21,6 +22,7 @@ interface IProps {
     updateActiveImageIndex: (activeImageIndex: number | null) => any;
     updateActiveLabelNameId: (activeLabelId: string) => any;
     updateLabelNames: (labelNames: LabelName[]) => any;
+    updateTagConfig: (tagConfig: TagConfig) => any;
     updateImageData: (imageData: ImageData[]) => any;
     updateFirstLabelCreatedFlag: (firstLabelCreatedFlag: boolean) => any;
     updateProjectData: (projectData: ProjectData) => any;
@@ -29,6 +31,7 @@ interface IProps {
 const ExitProjectPopup: React.FC<IProps> = ({
     updateActiveLabelNameId,
     updateLabelNames,
+    updateTagConfig,
     updateActiveImageIndex,
     updateImageData,
     updateFirstLabelCreatedFlag,
@@ -49,6 +52,7 @@ const ExitProjectPopup: React.FC<IProps> = ({
     const onAccept = () => {
         updateActiveLabelNameId(null);
         updateLabelNames([]);
+        updateTagConfig({ tags: [], groupNames: [] });
         updateProjectData({ type: null, name: "my-project-name" });
         updateActiveImageIndex(null);
         updateImageData([]);
@@ -76,6 +80,7 @@ const ExitProjectPopup: React.FC<IProps> = ({
 const mapDispatchToProps = {
     updateActiveLabelNameId: storeUpdateActiveLabelNameId,
     updateLabelNames: storeUpdateLabelNames,
+    updateTagConfig: storeUpdateTagConfig,
     updateProjectData: storeUpdateProjectData,
     updateActiveImageIndex: storeUpdateActiveImageIndex,
     updateImageData: storeUpdateImageData,
