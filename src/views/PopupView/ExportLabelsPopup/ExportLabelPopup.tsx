@@ -15,12 +15,13 @@ import { ExportFormatData } from "../../../data/ExportFormatData";
 import { LabelToolkitData } from "../../../data/info/LabelToolkitData";
 import { AppState } from "../../../store";
 import { ClassSanityCheckSettings } from "../../../store/general/types";
-import { ImageData, LabelName } from "../../../store/labels/types";
+import { ImageData, LabelName, TagConfig } from "../../../store/labels/types";
 import { connect } from "react-redux";
 import { BackupManager } from "../../../logic/backup/BackupManager";
 import { BackupTimerService } from "../../../logic/backup/BackupTimerService";
 import { BrowserDetection } from "../../../utils/BrowserDetection";
 import { ClassSanityCheckUtil } from "../../../utils/ClassSanityCheckUtil";
+import { TagUtil } from "../../../utils/TagUtil";
 import { IndexedDBStorage } from "../../../logic/backup/IndexedDBStorage";
 import {
     updateBackupEnabled,
@@ -41,6 +42,7 @@ interface IProps {
     projectName: string;
     imagesData: ImageData[];
     labels: LabelName[];
+    tagConfig: TagConfig;
     classSanityCheckSettings: ClassSanityCheckSettings;
     classSanityCheckReviewMode: boolean;
     updateClassSanityCheckViolationImageIds: (imageIds: string[]) => void;
@@ -59,6 +61,7 @@ const ExportLabelPopup: React.FC<IProps> = ({
     projectName,
     imagesData,
     labels,
+    tagConfig,
     classSanityCheckSettings,
     classSanityCheckReviewMode,
     updateClassSanityCheckViolationImageIds,
@@ -135,6 +138,14 @@ const ExportLabelPopup: React.FC<IProps> = ({
     const unlabeledImageCount = useMemo(() => {
         return imagesData.length - getLabeledImageCount(labelType);
     }, [imagesData, labelType]);
+    // COCO only exports the images that have polygons, so the tags of the other ones are lost.
+    const taggedImageWithoutPolygonCount = useMemo(() => {
+        const tagNames: string[] = TagUtil.getTagNames(tagConfig);
+        return imagesData.filter((imageData: ImageData) =>
+            imageData.labelPolygons.length === 0 &&
+            TagUtil.getActiveTagNames(imageData, tagNames).length > 0
+        ).length;
+    }, [imagesData, tagConfig]);
 
     const exportLabels = (type: LabelType) => {
         switch (type) {
@@ -482,6 +493,14 @@ const ExportLabelPopup: React.FC<IProps> = ({
                             {labelType.toLowerCase()} labels.
                         </div>
                     )}
+                    {labelType === LabelType.POLYGON &&
+                        exportFormatType === AnnotationFormatType.COCO &&
+                        taggedImageWithoutPolygonCount > 0 && (
+                        <div className="SanityCheckExportCount hasMissingLabels">
+                            ({taggedImageWithoutPolygonCount}) images have tags but no
+                            polygons: their tags will not be exported.
+                        </div>
+                    )}
                 </div>
             </>
         );
@@ -584,6 +603,7 @@ const mapStateToProps = (state: AppState) => ({
     projectName: state.general.projectData.name,
     imagesData: state.labels.imagesData,
     labels: state.labels.labels,
+    tagConfig: state.labels.tagConfig,
     classSanityCheckSettings: state.general.classSanityCheckSettings,
     classSanityCheckReviewMode: state.general.classSanityCheckReviewMode,
 });

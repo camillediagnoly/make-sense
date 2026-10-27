@@ -6,6 +6,7 @@ import { ImageClassCriteria } from '../../store/general/types';
 import { ImageData } from '../../store/labels/types';
 import { ImageFilterUtil } from '../ImageFilterUtil';
 import { ImageGroupUtil } from '../ImageGroupUtil';
+import { TagUtil } from '../TagUtil';
 
 const createImageData = (
     id: string,
@@ -429,5 +430,94 @@ describe('ImageFilterUtil removeLabelsFromImageClassCriteria', () => {
         expect(ImageFilterUtil.isImageClassCriteriaValid(
             ImageFilterUtil.removeLabelsFromImageClassCriteria(criteria, ['A'])
         )).toBe(true);
+    });
+});
+
+describe('ImageFilterUtil tag criteria', () => {
+    const tagCriteria = (tagName: string): ImageClassCriteria => ({
+        type: 'label',
+        labelId: TagUtil.getTagFilterTokenId(tagName),
+    });
+
+    const withTags = (imageData: ImageData, tags: string[]): ImageData => ({ ...imageData, tags });
+
+    const images = [
+        withTags(createImageData('image-0', ['A']), ['Patho']),
+        withTags(createImageData('image-1', ['A']), ['Physio']),
+        withTags(createImageData('image-2', []), ['Patho', 'TGA']),
+        createImageData('image-3', ['B']),
+    ];
+
+    it('should filter by a tag on its own', () => {
+        expect(getFilteredIndices(images, [tagCriteria('Patho')])).toEqual([0, 2]);
+    });
+
+    it('should combine classes and tags', () => {
+        expect(getFilteredIndices(images, [
+            { type: 'label', labelId: 'A' },
+            { type: 'operator', operator: 'AND' },
+            tagCriteria('Patho'),
+        ])).toEqual([0]);
+
+        expect(getFilteredIndices(images, [
+            { type: 'operator', operator: 'NOT' },
+            tagCriteria('Patho'),
+        ])).toEqual([1, 3]);
+    });
+
+    it('should keep a class and a tag sharing a name apart', () => {
+        const imagesSharingName = [
+            createImageData('image-0', ['Patho']),
+            withTags(createImageData('image-1', []), ['Patho']),
+        ];
+
+        expect(getFilteredIndices(imagesSharingName, [{ type: 'label', labelId: 'Patho' }])).toEqual([0]);
+        expect(getFilteredIndices(imagesSharingName, [tagCriteria('Patho')])).toEqual([1]);
+    });
+
+    it('should not count tags as other classes', () => {
+        expect(getFilteredIndices(images, [
+            { type: 'label', labelId: 'A' },
+            { type: 'operator', operator: 'AND' },
+            { type: 'operator', operator: 'NOT' },
+            { type: 'otherLabels' },
+        ])).toEqual([0, 1]);
+    });
+
+    it('should not consider an image with only tags as labeled', () => {
+        const taggedImage = withTags(createImageData('image-0', []), ['Patho']);
+
+        expect(ImageFilterUtil.isImageLabeled(taggedImage, LabelType.POLYGON)).toBe(false);
+        expect(ImageFilterUtil.isImageLabeled(taggedImage, LabelType.IMAGE_RECOGNITION)).toBe(false);
+    });
+
+    it('should freeze the images matching a tag', () => {
+        expect(ImageFilterUtil.getImageClassCriteriaSnapshot(images, [tagCriteria('TGA')])).toEqual(['image-2']);
+    });
+
+    it('should rename and drop tag criteria in a single pass', () => {
+        const criteria: ImageClassCriteria[] = [
+            tagCriteria('A'),
+            { type: 'operator', operator: 'OR' },
+            tagCriteria('B'),
+        ];
+        const swappedIds = new Map<string, string | null>([
+            [TagUtil.getTagFilterTokenId('A'), TagUtil.getTagFilterTokenId('B')],
+            [TagUtil.getTagFilterTokenId('B'), TagUtil.getTagFilterTokenId('A')],
+        ]);
+        const renamedOverDeletedIds = new Map<string, string | null>([
+            [TagUtil.getTagFilterTokenId('A'), TagUtil.getTagFilterTokenId('B')],
+            [TagUtil.getTagFilterTokenId('B'), null],
+        ]);
+
+        expect(ImageFilterUtil.remapLabelsInImageClassCriteria(criteria, swappedIds)).toEqual([
+            tagCriteria('B'),
+            { type: 'operator', operator: 'OR' },
+            tagCriteria('A'),
+        ]);
+        expect(ImageFilterUtil.remapLabelsInImageClassCriteria([tagCriteria('A')], renamedOverDeletedIds))
+            .toEqual([tagCriteria('B')]);
+        expect(ImageFilterUtil.remapLabelsInImageClassCriteria(criteria, new Map([['C', null]])))
+            .toBeNull();
     });
 });

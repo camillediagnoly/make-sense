@@ -87,9 +87,10 @@ docker logs make-sense
 | Redo current-image action           | Editor   | <kbd>Ctrl</kbd> + <kbd>Y</kbd> | <kbd>Ctrl</kbd> + <kbd>Y</kbd> |
 | Move image                         | Editor   | <kbd>Up</kbd> / <kbd>Down</kbd> / <kbd>Left</kbd> / <kbd>Right</kbd> | <kbd>Up</kbd> / <kbd>Down</kbd> / <kbd>Left</kbd> / <kbd>Right</kbd> |
 | Select Label                       | Editor   | <kbd>⌥</kbd> + <kbd>0-9</kbd> | <kbd>Ctrl</kbd> + <kbd>0-9</kbd> |
+| Add / remove tag 1-9 on the image  | Editor   | <kbd>Shift</kbd> + <kbd>1-9</kbd> | <kbd>Shift</kbd> + <kbd>1-9</kbd> |
 | Exit popup                         | Popup    | <kbd>Escape</kbd> | <kbd>Escape</kbd> |
 
-**Table 1.** Supported keyboard shortcuts
+**Table 1.** Supported keyboard shortcuts. The tag shortcuts are set for AZERTY keyboards, where <kbd>Shift</kbd> types the digits: on a QWERTY keyboard, record them again in Edit Shortcuts.
 
 ## ⬆️ Export Formats
 

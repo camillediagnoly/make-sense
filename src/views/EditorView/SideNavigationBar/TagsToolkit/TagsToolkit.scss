@@ -1,0 +1,246 @@
+@import '../../../../settings/Settings';
+
+.TagsToolkit {
+  align-self: stretch;
+  flex: 1;
+  overflow: hidden;
+
+  display: flex;
+  flex-direction: column;
+  flex-wrap: nowrap;
+  justify-content: flex-start;
+  align-items: center;
+  align-content: flex-start;
+
+  .TagsToolkitBody {
+    position: relative;
+    align-self: stretch;
+    flex: 1 1 auto;
+    min-height: 0;
+  }
+
+  .Header {
+    position: relative;
+    align-self: stretch;
+    box-sizing: border-box;
+    padding: 0 25px;
+    color: white;
+    font-size: 14px;
+    user-select: none;
+
+    display: flex;
+    flex-direction: row;
+    flex-wrap: nowrap;
+    justify-content: space-between;
+    align-items: center;
+    align-content: space-between;
+
+    .HeaderGroupWrapper {
+      align-self: stretch;
+
+      display: flex;
+      flex-direction: row;
+      flex-wrap: nowrap;
+      justify-content: center;
+      align-items: center;
+      align-content: center;
+    }
+
+    .Marker {
+      position: absolute;
+      height: calc(100% - 4px);
+      width: 5px;
+      top: 2px;
+      left: 0;
+      background-color: $darkThemeThirdColor;
+    }
+  }
+
+  .TagsSection {
+    &.active .Header {
+      background-color: rgba(0, 0, 0, 0.1);
+
+      .Marker {
+        background-color: $secondaryColor; // fallback if new css variables are not supported by browser
+        background-color: var(--leading-color);
+      }
+    }
+  }
+
+  .TagsSectionContent {
+    box-sizing: border-box;
+    padding: 10px 10px 0 10px;
+
+    display: flex;
+    flex-direction: row;
+    flex-wrap: wrap;
+    justify-content: flex-start;
+    align-items: center;
+    align-content: flex-start;
+  }
+
+  .TagGroup {
+    .TagsSectionContent {
+      padding: 6px 10px 0 25px;
+    }
+  }
+
+  .TagGroupHeader {
+    box-sizing: border-box;
+    padding: 6px 15px 6px 25px;
+    color: rgba(255, 255, 255, 0.8);
+    font-size: 13px;
+    cursor: pointer;
+    user-select: none;
+
+    display: flex;
+    flex-direction: row;
+    flex-wrap: nowrap;
+    align-items: center;
+
+    .Arrow {
+      max-width: 10px;
+      max-height: 10px;
+      margin-right: 10px;
+      filter: brightness(0) invert(1);
+      transform: rotate(180deg);
+      transition: transform 0.3s;
+    }
+
+    &.collapsed .Arrow {
+      transform: none;
+    }
+
+    &:hover {
+      background-color: rgba(0, 0, 0, 0.1);
+    }
+  }
+
+  // --tag-color and --tag-active-background are set inline from the color of each tag
+  .TagItem {
+    margin-right: 10px;
+    margin-bottom: 10px;
+    padding: 4px 12px;
+    border: 1px solid transparent;
+    border-radius: 3px;
+    background-color: rgba(0, 0, 0, 0.2);
+    font-size: 14px;
+    font-weight: 700;
+    cursor: pointer;
+    user-select: none;
+    color: white;
+
+    display: flex;
+    flex-direction: row;
+    flex-wrap: nowrap;
+    align-items: center;
+
+    .TagColorDot {
+      flex-shrink: 0;
+      width: 8px;
+      height: 8px;
+      margin-right: 8px;
+      border-radius: 50%;
+      background-color: var(--tag-color);
+    }
+
+    .TagIndex {
+      margin-right: 8px;
+      font-size: 11px;
+      opacity: 0.6;
+    }
+
+    &:hover {
+      background-color: rgba(0, 0, 0, 0.4);
+    }
+
+    &.active {
+      border-color: var(--tag-color);
+      background-color: var(--tag-active-background);
+
+      &:hover {
+        filter: brightness(1.2);
+      }
+    }
+  }
+
+  .EmptyTagsMessage {
+    margin-bottom: 10px;
+    color: rgba(255, 255, 255, 0.5);
+    font-size: 13px;
+    user-select: none;
+  }
+
+  .TagsNotSavedWarning {
+    box-sizing: border-box;
+    margin: 0 10px 10px 10px;
+    padding: 8px 10px;
+    border-radius: 3px;
+    background-color: rgba(255, 177, 74, 0.15);
+    color: #ffb14a;
+    font-size: 12px;
+    user-select: none;
+  }
+
+  .EditTagsButton {
+    align-self: stretch;
+    box-sizing: border-box;
+    padding: 0 25px;
+    border-top: solid 1px $darkThemeFirstColor;
+    color: white;
+    font-size: 14px;
+    cursor: pointer;
+    user-select: none;
+
+    display: flex;
+    flex-direction: row;
+    flex-wrap: nowrap;
+    justify-content: flex-start;
+    align-items: center;
+
+    img {
+      max-width: 20px;
+      max-height: 20px;
+      margin-right: 20px;
+      filter: brightness(0) invert(1);
+    }
+
+    &:hover {
+      background-color: rgba(0, 0, 0, 0.2);
+    }
+  }
+
+  .EmptyTagList {
+    margin: auto 0;
+    width: 180px;
+    color: white;
+    font-size: 14px;
+    text-align: center;
+    cursor: pointer;
+    user-select: none;
+
+    display: flex;
+    flex-direction: column;
+    flex-wrap: nowrap;
+    justify-content: center;
+    align-items: center;
+    align-content: center;
+
+    > img {
+      filter: brightness(0) invert(1);
+      max-width: 80px;
+      max-height: 80px;
+      margin-bottom: 20px;
+      user-select: none;
+    }
+
+    > p {
+      margin: 0 0 5px 0;
+
+      &.extraBold {
+        font-size: 16px;
+        font-weight: 600;
+      }
+    }
+  }
+}

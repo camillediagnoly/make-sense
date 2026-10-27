@@ -29,6 +29,14 @@ export const DropDownMenuData: DropDownMenuNode[] = [
                 onClick: () => store.dispatch(updateActivePopupType(PopupWindowType.UPDATE_LABEL))
             },
             {
+                name: 'Edit Tags',
+                description: 'Modify image tags list',
+                imageSrc: 'ico/labels.png',
+                imageAlt: 'tags',
+                disabled: false,
+                onClick: () => store.dispatch(updateActivePopupType(PopupWindowType.EDIT_TAGS))
+            },
+            {
                 name: 'Edit Shortcuts',
                 imageSrc: 'ico/keyboard.png',
                 imageAlt: 'keyboard',

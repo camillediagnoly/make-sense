@@ -29,6 +29,7 @@ export class ImageDataUtil {
             labelLines: [],
             labelPolygons: [],
             labelNameIds: [],
+            tags: [],
             isVisitedByYOLOObjectDetector: false,
             isVisitedBySSDObjectDetector: false,
             isVisitedByPoseDetector: false,
@@ -63,6 +64,7 @@ export class ImageDataUtil {
                 vertices: labelPolygon.vertices.map((vertex) => ({ ...vertex })),
             })),
             labelNameIds: [...imageData.labelNameIds],
+            tags: [...(imageData.tags || [])],
         };
     }
 

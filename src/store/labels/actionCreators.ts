@@ -1,4 +1,4 @@
-import {LabelsActionTypes, ImageData, LabelName} from './types';
+import {LabelsActionTypes, ImageData, LabelName, TagConfig} from './types';
 import {Action} from '../Actions';
 import {LabelType} from '../../data/enums/LabelType';
 
@@ -89,6 +89,15 @@ export function updateLabelNames(labels: LabelName[]): LabelsActionTypes {
         type: Action.UPDATE_LABEL_NAMES,
         payload: {
             labels
+        }
+    }
+}
+
+export function updateTagConfig(tagConfig: TagConfig): LabelsActionTypes {
+    return {
+        type: Action.UPDATE_TAG_CONFIG,
+        payload: {
+            tagConfig
         }
     }
 }

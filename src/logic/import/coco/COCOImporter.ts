@@ -1,6 +1,6 @@
-import {ImageData, LabelName} from '../../../store/labels/types';
+import {ImageData, LabelName, TagConfig, TagName} from '../../../store/labels/types';
 import {LabelsSelector} from '../../../store/selectors/LabelsSelector';
-import {COCOCategory, COCOImage, COCOMeasurementConfig, COCOObject} from '../../../data/labels/COCO';
+import {COCOCategory, COCOImage, COCOMeasurementConfig, COCOObject, COCOTagGroup} from '../../../data/labels/COCO';
 import { v4 as uuidv4 } from 'uuid';
 import {ArrayUtil, PartitionResult} from '../../../utils/ArrayUtil';
 import {ImageDataUtil} from '../../../utils/ImageDataUtil';
@@ -15,6 +15,7 @@ import {LabelType} from '../../../data/enums/LabelType';
 import {AnnotationImporter, ImportResult} from '../AnnotationImporter';
 import {COCOUtils} from './COCOUtils';
 import {Settings} from "../../../settings/Settings";
+import {TagUtil} from '../../../utils/TagUtil';
 import {
     MeasurementFunctionByName,
     isMeasurementFunctionId,
@@ -34,6 +35,7 @@ export class COCOImporter extends AnnotationImporter {
             imagesData: ImageData[],
             labelNames: LabelName[],
             measurementFunctionByName?: MeasurementFunctionByName,
+            tagConfig?: TagConfig,
         ) => any,
         onFailure: (error?:Error) => any
     ): void {
@@ -50,9 +52,10 @@ export class COCOImporter extends AnnotationImporter {
                 const {
                     imagesData,
                     labelNames,
-                    measurementFunctionByName
+                    measurementFunctionByName,
+                    tagConfig
                 } = this.applyLabels(inputImagesData, annotations);
-                onSuccess(imagesData, labelNames, measurementFunctionByName);
+                onSuccess(imagesData, labelNames, measurementFunctionByName, tagConfig);
             } catch (error) {
                 onFailure(error as Error);
             }
@@ -76,9 +79,19 @@ export class COCOImporter extends AnnotationImporter {
             annotationsObject.meas_config,
             labelNameMap,
         );
-        const cleanImageData: ImageData[] = imageData.map((item: ImageData) => ImageDataUtil.cleanAnnotations(item));
+        // The imported file replaces the tags of every image, the same way it replaces their annotations.
+        const cleanImageData: ImageData[] = imageData.map((item: ImageData) => ({
+            ...ImageDataUtil.cleanAnnotations(item),
+            tags: []
+        }));
         const imageDataPartition: PartitionResult<ImageData> = COCOImporter.partitionImageData(cleanImageData, images);
         const imageDataMap: ImageDataMap = COCOImporter.mapImageData(imageDataPartition.pass, images);
+        const tagConfig: TagConfig = COCOImporter.mapTagConfig(
+            images,
+            imageDataMap,
+            annotationsObject.tag_names,
+            annotationsObject.tag_groups
+        );
 
         for (const annotation of annotations) {
             if (!imageDataMap[annotation.image_id] || annotation.iscrowd === 1)
@@ -106,8 +119,67 @@ export class COCOImporter extends AnnotationImporter {
         return {
             imagesData: ImageDataUtil.arrange(resultImageData, imageData.map((item: ImageData) => item.id)),
             labelNames: Object.values(labelNameMap),
-            measurementFunctionByName
+            measurementFunctionByName,
+            tagConfig
         }
+    }
+
+    // Sets the tags of every loaded image the file describes and returns the project tag config. The
+    // tag list keeps the order of tag_names, followed by any tag only found in a group or on an image
+    // (e.g. in a file merged by a script that does not know about tag_names). Like the label names,
+    // the tags get the colors of the label palette in their order.
+    protected static mapTagConfig(
+        images: COCOImage[],
+        imageDataMap: ImageDataMap,
+        tagNames: unknown,
+        tagGroups: unknown
+    ): TagConfig {
+        const imagesTags: string[][] = images
+            .filter((image: COCOImage) => !!imageDataMap[image.id])
+            .map((image: COCOImage) => {
+                const tags: string[] = TagUtil.normalizeTagNames(image.tags);
+                imageDataMap[image.id].tags = tags;
+                return tags;
+            });
+
+        const groupNames: string[] = [];
+        const groupNameByTagName = new Map<string, string>();
+        (Array.isArray(tagGroups) ? tagGroups : [])
+            .filter((tagGroup: unknown) => !!tagGroup && typeof tagGroup === 'object')
+            .forEach((tagGroup: COCOTagGroup) => {
+                const [groupName] = TagUtil.normalizeTagNames([tagGroup.name]);
+                if (!groupName) {
+                    return;
+                }
+                if (!groupNames.includes(groupName)) {
+                    groupNames.push(groupName);
+                }
+                // A tag listed in several groups stays in the first one
+                TagUtil.normalizeTagNames(tagGroup.tags)
+                    .filter((tagName: string) => !groupNameByTagName.has(tagName))
+                    .forEach((tagName: string) => groupNameByTagName.set(tagName, groupName));
+            });
+
+        const tags: TagName[] = TagUtil
+            .mergeTagNames(
+                TagUtil.normalizeTagNames(tagNames),
+                Array.from(groupNameByTagName.keys()),
+                ...imagesTags
+            )
+            .map((tagName: string) => ({
+                name: tagName,
+                color: null,
+                groupName: groupNameByTagName.get(tagName)
+            }));
+        const tagConfig: TagConfig = TagUtil.createTagConfig(tags, groupNames);
+
+        return {
+            ...tagConfig,
+            tags: tagConfig.tags.map((tag: TagName, index: number) => ({
+                ...tag,
+                color: ArrayUtil.getByInfiniteIndex(Settings.LABEL_COLORS_PALETTE, index)
+            }))
+        };
     }
 
     protected static mapMeasurementConfig(

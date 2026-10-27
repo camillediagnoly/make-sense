@@ -9,6 +9,7 @@ import {
 } from '../store/labels/types';
 import { MeasurementFunctionByName } from '../data/measurements/MeasurementFunctionData';
 import { uniq } from 'lodash';
+import { TagUtil } from './TagUtil';
 
 export type AnnotationMergeResult = {
     imagesData: ImageData[];
@@ -127,7 +128,11 @@ export class AnnotationMergeUtil {
                     ...importedImageData.labelNameIds.map((labelNameId: string) =>
                         AnnotationMergeUtil.remapLabelId(labelNameId, labelIdRemap)
                     )
-                ])
+                ]),
+                tags: TagUtil.mergeTagNames(
+                    TagUtil.getImageTags(currentImageData),
+                    TagUtil.getImageTags(importedImageData)
+                )
             };
         });
 

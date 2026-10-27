@@ -12,6 +12,10 @@ const dispatchKey = (type: 'keydown' | 'keyup', key: string): void => {
     window.dispatchEvent(new KeyboardEvent(type, { key }));
 };
 
+const dispatchPhysicalKey = (type: 'keydown' | 'keyup', key: string, code: string, repeat = false): void => {
+    window.dispatchEvent(new KeyboardEvent(type, { key, code, repeat }));
+};
+
 const dispatchKeyFrom = (target: HTMLElement, type: 'keydown' | 'keyup', key: string): void => {
     target.dispatchEvent(new KeyboardEvent(type, { key, bubbles: true }));
 };
@@ -49,6 +53,41 @@ describe('ContextManager key combos', () => {
         dispatchKey('keyup', 'c');
 
         expect(copy).toHaveBeenCalledTimes(1);
+    });
+
+    it('releases a digit typed with Shift once Shift was let go first', () => {
+        const toggleTag = jest.fn();
+        const previousImage = jest.fn();
+        setActions([
+            { keyCombo: ['Shift', '1'], action: toggleTag },
+            { keyCombo: ['a'], action: previousImage },
+        ]);
+
+        // On an AZERTY keyboard Shift + & types "1", and the key comes up as "&" without Shift
+        dispatchPhysicalKey('keydown', 'Shift', 'ShiftLeft');
+        dispatchPhysicalKey('keydown', '1', 'Digit1');
+        dispatchPhysicalKey('keyup', 'Shift', 'ShiftLeft');
+        dispatchPhysicalKey('keyup', '&', 'Digit1');
+
+        expect(toggleTag).toHaveBeenCalledTimes(1);
+        expect(ContextManager.getActiveCombo()).toEqual([]);
+
+        dispatchPhysicalKey('keydown', 'a', 'KeyQ');
+        dispatchPhysicalKey('keyup', 'a', 'KeyQ');
+
+        expect(previousImage).toHaveBeenCalledTimes(1);
+    });
+
+    it('releases every character a held key typed while Shift changed', () => {
+        setActions([]);
+
+        dispatchPhysicalKey('keydown', 'Shift', 'ShiftLeft');
+        dispatchPhysicalKey('keydown', '1', 'Digit1');
+        dispatchPhysicalKey('keyup', 'Shift', 'ShiftLeft');
+        dispatchPhysicalKey('keydown', '&', 'Digit1', true);
+        dispatchPhysicalKey('keyup', '&', 'Digit1');
+
+        expect(ContextManager.getActiveCombo()).toEqual([]);
     });
 
     describe('while typing in a text field', () => {

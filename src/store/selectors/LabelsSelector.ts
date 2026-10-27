@@ -1,5 +1,5 @@
 import {store} from '../..';
-import {ImageData, LabelLine, LabelName, LabelPoint, LabelPolygon, LabelRect} from '../labels/types';
+import {ImageData, LabelLine, LabelName, LabelPoint, LabelPolygon, LabelRect, TagConfig, TagName} from '../labels/types';
 import {find} from 'lodash';
 import {LabelType} from '../../data/enums/LabelType';
 import {ImageDataUtil} from '../../utils/ImageDataUtil';
@@ -7,6 +7,14 @@ import {ImageDataUtil} from '../../utils/ImageDataUtil';
 export class LabelsSelector {
     public static getLabelNames(): LabelName[] {
         return store.getState().labels.labels;
+    }
+
+    public static getTagConfig(): TagConfig {
+        return store.getState().labels.tagConfig;
+    }
+
+    public static getTagNames(): string[] {
+        return LabelsSelector.getTagConfig().tags.map((tag: TagName) => tag.name);
     }
 
     public static getLabelNameById(id: string): LabelName | undefined {

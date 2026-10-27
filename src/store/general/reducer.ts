@@ -179,6 +179,15 @@ const defaultKeyboardShortcuts = [
       : ["Control", i.toString()],
     description: `Selects label at index ${i}`,
   })),
+
+  // Tag toggling shortcuts (1-9)
+  ...Array.from({ length: 9 }, (_, i) => ({
+    id: `toggle-tag-${i + 1}`,
+    name: `Toggle Tag ${i + 1}`,
+    keyCombo: ["Shift", (i + 1).toString()],
+    defaultKeyCombo: ["Shift", (i + 1).toString()],
+    description: `Adds or removes the tag at position ${i + 1} of the tag list on the current image`,
+  })),
 ] as GeneralState["keyboardShortcuts"];
 
 const initialState: GeneralState = {

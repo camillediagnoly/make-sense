@@ -157,4 +157,27 @@ describe('AnnotationMergeUtil mergeImportedAnnotations method', () => {
             height: MeasurementFunctionId.PROJECTED_DISTANCE_RATIO
         });
     });
+
+    it('should merge the tags of every imported image', () => {
+        // given
+        const currentImagesData = [
+            { ...createImageData('image-0'), tags: ['Physio'] },
+            { ...createImageData('image-1'), tags: ['TGA'] }
+        ];
+        const importedImagesData = [{ ...createImageData('image-0'), tags: ['Patho', 'Physio'] }];
+
+        // when
+        const result = AnnotationMergeUtil.mergeImportedAnnotations(
+            currentImagesData,
+            currentLabelNames,
+            {},
+            importedImagesData,
+            importedLabelNames,
+            {}
+        );
+
+        // then
+        expect(result.imagesData.map((imageData: ImageData) => imageData.tags))
+            .toEqual([['Physio', 'Patho'], ['TGA']]);
+    });
 });
