@@ -6,6 +6,7 @@ import { AppState } from '../../../../store';
 import { ImageData, TagConfig, TagName } from '../../../../store/labels/types';
 import { updateActivePopupType } from '../../../../store/general/actionCreators';
 import { PopupWindowType } from '../../../../data/enums/PopupWindowType';
+import { LabelType } from '../../../../data/enums/LabelType';
 import { ContextType } from '../../../../data/enums/ContextType';
 import { ContextManager } from '../../../../logic/context/ContextManager';
 import { TagActions } from '../../../../logic/actions/TagActions';
@@ -27,6 +28,7 @@ interface IProps {
     activeImageIndex: number | null;
     imagesData: ImageData[];
     tagConfig: TagConfig;
+    activeLabelType: LabelType;
     updateActivePopupTypeAction: (activePopupType: PopupWindowType) => any;
 }
 
@@ -35,6 +37,7 @@ const TagsToolkit: React.FC<IProps> = (
         activeImageIndex,
         imagesData,
         tagConfig,
+        activeLabelType,
         updateActivePopupTypeAction
     }) => {
     const [collapsedGroups, setCollapsedGroups] = useState<string[]>(collapsedGroupKeys);
@@ -145,8 +148,11 @@ const TagsToolkit: React.FC<IProps> = (
         const activeTagNames: string[] = TagUtil.getActiveTagNames(activeImageData, tagNames);
         const activeTags: TagName[] = tagConfig.tags.filter((tag: TagName) => activeTagNames.includes(tag.name));
         const availableTags: TagName[] = tagConfig.tags.filter((tag: TagName) => !activeTagNames.includes(tag.name));
-        // Only the images with polygons end up in the COCO file, together with their tags.
-        const areTagsNotSaved: boolean = activeTags.length > 0 && activeImageData.labelPolygons.length === 0;
+        // Only the images with polygons end up in the COCO file and the ones with rectangles in the
+        // VOC files, together with their tags.
+        const isRectProject: boolean = activeLabelType === LabelType.RECT;
+        const areTagsNotSaved: boolean = activeTags.length > 0 &&
+            (isRectProject ? activeImageData.labelRects : activeImageData.labelPolygons).length === 0;
 
         return <>
             <div className='TagsToolkitBody'>
@@ -156,7 +162,7 @@ const TagsToolkit: React.FC<IProps> = (
                         {renderTagList(activeTags, true, 'No tag on this image yet')}
                     </div>
                     {areTagsNotSaved && <div className='TagsNotSavedWarning'>
-                        Tags are only saved for images with at least one polygon.
+                        Tags are only saved for images with at least one {isRectProject ? 'rectangle' : 'polygon'}.
                     </div>}
                     <div className='TagsSection'>
                         {renderSectionHeader(`Available TAGs (${availableTags.length})`)}
@@ -196,7 +202,8 @@ const mapDispatchToProps = {
 const mapStateToProps = (state: AppState) => ({
     activeImageIndex: state.labels.activeImageIndex,
     imagesData: state.labels.imagesData,
-    tagConfig: state.labels.tagConfig
+    tagConfig: state.labels.tagConfig,
+    activeLabelType: state.labels.activeLabelType
 });
 
 export default connect(

@@ -1,5 +1,5 @@
 
-import {ImageData, LabelName, LabelRect} from '../../../store/labels/types';
+import {ImageData, LabelName, LabelRect, TagConfig} from '../../../store/labels/types';
 import {LabelStatus} from '../../../data/enums/LabelStatus';
 import {ISize} from '../../../interfaces/ISize';
 import {RectLabelsExporter} from '../../export/RectLabelsExporter';
@@ -235,3 +235,78 @@ describe('RectLabelsExporter wrapImageIntoVOC method', () => {
         expect(result).toContain(`<name>label-name-002</name>`);
     })
 })
+
+describe('RectLabelsExporter wrapImageIntoVOC method with tags', () => {
+    const createImageData = (tags?: string[]): ImageData => ({
+        id: 'image-000',
+        fileData: new File([''], imageName, {type: 'image/png'}),
+        loadStatus: false,
+        labelRects: [{
+            id: 'label-rect-000',
+            labelId: 'label-002',
+            rect: {x: 10, y: 20, width: 30, height: 40},
+            isVisible: true,
+            isCreatedByAI: false,
+            status: LabelStatus.ACCEPTED,
+            suggestedLabel: 'label-000'
+        }],
+        labelPoints: [],
+        labelLines: [],
+        labelPolygons: [],
+        labelNameIds: [],
+        tags,
+        imgWidth: 640,
+        imgHeight: 480,
+        isVisitedByYOLOObjectDetector: false,
+        isVisitedBySSDObjectDetector: false,
+        isVisitedByPoseDetector: false,
+        isVisitedByRoboflowAPI: false
+    });
+
+    const tagConfig: TagConfig = {
+        tags: [
+            {name: 'Physio', color: '#000000', groupName: 'Diagnostic'},
+            {name: 'Patho', color: '#000000', groupName: 'Diagnostic'},
+            {name: 'A&B <x>', color: '#000000'}
+        ],
+        groupNames: ['Diagnostic']
+    };
+
+    beforeEach(() => {
+        jest.spyOn(LabelsSelector, 'getLabelNames').mockReturnValue(labelNames);
+        jest.spyOn(LabelsSelector, 'getTagConfig').mockReturnValue(tagConfig);
+        jest.spyOn(GeneralSelector, 'getProjectName').mockReturnValue('project-name');
+        jest.spyOn(ImageRepository, 'getById').mockReturnValue(null);
+    });
+
+    afterEach(() => {
+        jest.restoreAllMocks();
+    });
+
+    it('should not add any tags element to an image without tags', () => {
+        const result: string = (RectLabelsExporter as any).wrapImageIntoVOC(createImageData());
+
+        expect(result).not.toContain('<tags>');
+    });
+
+    it('should write the tags after the size, in the tag list order, with their group', () => {
+        // when
+        const result: string = (RectLabelsExporter as any).wrapImageIntoVOC(createImageData(['A&B <x>', 'Physio', 'Removed']));
+
+        // then
+        expect(result).toContain([
+            '\t</size>',
+            '\t<tags>',
+            '\t\t<tag group="Diagnostic">Physio</tag>',
+            '\t\t<tag>A&amp;B &lt;x&gt;</tag>',
+            '\t</tags>',
+            '\t<object>'
+        ].join('\n'));
+    });
+
+    it('should not export an image with tags but without rectangles', () => {
+        const imageData: ImageData = {...createImageData(['Physio']), labelRects: []};
+
+        expect((RectLabelsExporter as any).wrapImageIntoVOC(imageData)).toBeNull();
+    });
+});

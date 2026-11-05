@@ -1,5 +1,5 @@
 
-import { ImageData, LabelName, LabelRect} from '../../../../store/labels/types';
+import { ImageData, LabelName, LabelRect, TagConfig, TagName } from '../../../../store/labels/types';
 import { AcceptedFileType } from '../../../../data/enums/AcceptedFileType';
 import { v4 as uuidv4 } from 'uuid';
 import { VOCImporter, PartialVOCImportError } from '../../../import/voc/VOCImporter';
@@ -199,5 +199,83 @@ describe('VOCImporter import method', () => {
                     }
                 });
         });
+    });
+});
+
+describe('VOCImporter import method with tags', () => {
+    afterEach(() => {
+        jest.restoreAllMocks();
+    });
+
+    const importFiles = (files: Record<string, string>, imagesData: ImageData[], currentTagConfig: TagConfig) => {
+        jest.spyOn(LabelsSelector, 'getImagesData').mockReturnValue(imagesData);
+        jest.spyOn(LabelsSelector, 'getTagConfig').mockReturnValue(currentTagConfig);
+        jest.spyOn(FileUtil, 'readFile').mockImplementation((fileData: File) => Promise.resolve(files[fileData.name]));
+
+        return new Promise<{imagesData: ImageData[], tagConfig: TagConfig}>((resolve, reject) => {
+            new VOCImporter([LabelType.RECT]).import(
+                Object.keys(files).map(getDummyFileData),
+                (importedImagesData: ImageData[], labelNames: LabelName[], measurements, tagConfig: TagConfig) =>
+                    resolve({imagesData: importedImagesData, tagConfig}),
+                reject
+            );
+        });
+    };
+
+    const createFile = (fileName: string, tagsElement: string): string => `
+        <annotation>
+            <filename>${fileName}</filename>
+            ${tagsElement}
+            <object>
+                <name>annotation1</name>
+                <bndbox><xmin>10</xmin><ymin>20</ymin><xmax>30</xmax><ymax>50</ymax></bndbox>
+            </object>
+        </annotation>
+    `;
+
+    it('should restore the tags of each image and add the new ones to the project tags', async () => {
+        // given
+        const imagesData = [
+            { ...getDummyImageData('a.jpg'), tags: ['Old'] },
+            { ...getDummyImageData('b.jpg'), tags: ['Old'] },
+            { ...getDummyImageData('c.jpg'), tags: ['Old'] }
+        ];
+        const files = {
+            'a.xml': createFile('a.jpg', '<tags><tag group="Diagnostic">Patho</tag><tag>A&amp;B</tag></tags>'),
+            'b.xml': createFile('b.jpg', '')
+        };
+        const currentTagConfig: TagConfig = { tags: [{ name: 'Old', color: '#current' }], groupNames: [] };
+
+        // when
+        const result = await importFiles(files, imagesData, currentTagConfig);
+
+        // then
+        expect(result.imagesData.map((imageData: ImageData) => imageData.tags)).toEqual([['Patho', 'A&B'], [], ['Old']]);
+        expect(result.tagConfig.groupNames).toEqual(['Diagnostic']);
+        expect(result.tagConfig.tags.map((tag: TagName) => [tag.name, tag.groupName, tag.color === '#current']))
+            .toEqual([['Patho', 'Diagnostic', false], ['Old', undefined, true], ['A&B', undefined, false]]);
+    });
+
+    it('should give the tag config along with a partial import', async () => {
+        // given
+        jest.spyOn(LabelsSelector, 'getImagesData').mockReturnValue([getDummyImageData('a.jpg')]);
+        jest.spyOn(LabelsSelector, 'getTagConfig').mockReturnValue({ tags: [], groupNames: [] });
+        jest.spyOn(FileUtil, 'readFile').mockImplementation((fileData: File) =>
+            fileData.name === 'a.xml'
+                ? Promise.resolve(createFile('a.jpg', '<tags><tag>Patho</tag></tags>'))
+                : Promise.reject(new Error('read failed')));
+
+        // when
+        const error = await new Promise<PartialVOCImportError>((resolve, reject) => {
+            new VOCImporter([LabelType.RECT]).import(
+                [getDummyFileData('a.xml'), getDummyFileData('broken.xml')],
+                () => reject(new Error('Expected a partial VOC import error.')),
+                (importError?: Error) => resolve(importError as PartialVOCImportError)
+            );
+        });
+
+        // then
+        expect(error.imagesData[0].tags).toEqual(['Patho']);
+        expect(error.tagConfig.tags.map((tag: TagName) => tag.name)).toEqual(['Patho']);
     });
 });

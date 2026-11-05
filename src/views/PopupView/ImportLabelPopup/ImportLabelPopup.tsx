@@ -56,7 +56,7 @@ const ImportLabelPopup: React.FC<IProps> = (
     const [loadedImageData, setLoadedImageData] = useState([]);
     const [loadedMeasurementFunctionByName, setLoadedMeasurementFunctionByName] =
         useState<MeasurementFunctionByName>({});
-    // null when the importer does not know about tags (only COCO does): the project tags are then
+    // null when the importer does not know about tags (only COCO and VOC do): the project tags are then
     // left as they are, since the images keep their tags too.
     const [loadedTagConfig, setLoadedTagConfig] = useState<TagConfig | null>(null);
     const [annotationsLoadedError, setAnnotationsLoadedError] = useState(null);
@@ -106,7 +106,7 @@ const ImportLabelPopup: React.FC<IProps> = (
             setLoadedLabelNames(error.labelNames);
             setLoadedImageData(error.imagesData);
             setLoadedMeasurementFunctionByName({});
-            setLoadedTagConfig(null);
+            setLoadedTagConfig(error.tagConfig ?? null);
             setAnnotationsLoadedError(null);
             setFailedAnnotationFiles(error.fileNames);
             setIsImporting(false);
