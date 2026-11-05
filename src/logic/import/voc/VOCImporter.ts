@@ -1,12 +1,23 @@
-import {ImageData, LabelName, LabelRect} from '../../../store/labels/types';
+import {ImageData, LabelName, LabelRect, TagConfig, TagName} from '../../../store/labels/types';
 import {LabelUtil} from "../../../utils/LabelUtil";
 import {AnnotationImporter} from '../AnnotationImporter';
 import {LabelsSelector} from '../../../store/selectors/LabelsSelector';
 import { FileUtil } from '../../../utils/FileUtil';
+import { TagUtil } from '../../../utils/TagUtil';
+import { ArrayUtil } from '../../../utils/ArrayUtil';
+import { Settings } from '../../../settings/Settings';
+import { MeasurementFunctionByName } from '../../../data/measurements/MeasurementFunctionData';
+
+// A tag read from the <tags> element of a file, with its group when the file gives one
+type ParsedTag = {
+    name: string,
+    groupName?: string
+};
 
 type FileParseResult = {
     filename: string,
-    labeledBoxes: LabelRect[]
+    labeledBoxes: LabelRect[],
+    tags: ParsedTag[]
 };
 
 type VOCImportResult = {
@@ -33,13 +44,15 @@ export class PartialVOCImportError extends Error {
     public readonly fileNames: string[];
     public readonly imagesData: ImageData[];
     public readonly labelNames: LabelName[];
+    public readonly tagConfig: TagConfig;
 
-    constructor(fileNames: string[], imagesData: ImageData[], labelNames: LabelName[]) {
+    constructor(fileNames: string[], imagesData: ImageData[], labelNames: LabelName[], tagConfig: TagConfig) {
         super('Some annotation files could not be imported.');
         this.name = "PartialVOCImportError";
         this.fileNames = fileNames;
         this.imagesData = imagesData;
         this.labelNames = labelNames;
+        this.tagConfig = tagConfig;
     }
 }
 
@@ -50,28 +63,41 @@ export class VOCImporter extends AnnotationImporter {
 
     public import(
         filesData: File[],
-        onSuccess: (imagesData: ImageData[], labelNames: LabelName[]) => any,
+        onSuccess: (
+            imagesData: ImageData[],
+            labelNames: LabelName[],
+            measurementFunctionByName?: MeasurementFunctionByName,
+            tagConfig?: TagConfig,
+        ) => any,
         onFailure: (error?:Error) => any
     ): void {
         try {
             const inputImagesData: Record<string, ImageData> = VOCImporter.mapImageData();
 
             this.loadAndParseFiles(filesData).then(results => {
+                // Each file is the reference for its image, for the boxes as for the tags
                 for (const result of results.fileParseResults) {
                     if (inputImagesData[result.filename]) {
                         inputImagesData[result.filename].labelRects = result.labeledBoxes;
+                        inputImagesData[result.filename].tags = result.tags.map((tag: ParsedTag) => tag.name);
                     }
                 }
 
                 const imagesData = Array.from(Object.values(inputImagesData));
                 const labelNames = Array.from(Object.values(results.labelNames));
+                // The files only describe the tags their image carries, so the project tags are
+                // kept and the new ones are added to them.
+                const tagConfig: TagConfig = TagUtil.mergeTagConfigs(
+                    LabelsSelector.getTagConfig(),
+                    VOCImporter.mapTagConfig(results.fileParseResults)
+                );
 
                 if (results.failedFiles.length !== 0) {
-                    onFailure(new PartialVOCImportError(results.failedFiles, imagesData, labelNames));
+                    onFailure(new PartialVOCImportError(results.failedFiles, imagesData, labelNames, tagConfig));
                     return;
                 }
 
-                onSuccess(imagesData, labelNames);
+                onSuccess(imagesData, labelNames, {}, tagConfig);
             }).catch((error: Error) => onFailure(error));
         } catch (error) {
             onFailure(error as Error)
@@ -131,7 +157,8 @@ export class VOCImporter extends AnnotationImporter {
             result.labelNames = newLabelNames;
             result.fileParseResults.push({
                 filename,
-                labeledBoxes
+                labeledBoxes,
+                tags: this.parseTagsFromDocument(root)
             });
             return result;
         } catch {
@@ -163,6 +190,49 @@ export class VOCImporter extends AnnotationImporter {
             const labelId = newLabelNames[labelName].id;
             return LabelUtil.createLabelRect(labelId, rect);
         }), newLabelNames];
+    }
+
+    protected static parseTagsFromDocument(root: Element): ParsedTag[] {
+        const tagsElement: Element | undefined = root.getElementsByTagName('tags')[0];
+        if (!tagsElement) {
+            return [];
+        }
+
+        const parsedTags: ParsedTag[] = [];
+        Array.from(tagsElement.getElementsByTagName('tag')).forEach((tagElement: Element) => {
+            const [name] = TagUtil.normalizeTagNames([tagElement.textContent]);
+            const [groupName] = TagUtil.normalizeTagNames([tagElement.getAttribute('group')]);
+            if (name && !parsedTags.some((parsedTag: ParsedTag) => parsedTag.name === name)) {
+                parsedTags.push(groupName ? { name, groupName } : { name });
+            }
+        });
+        return parsedTags;
+    }
+
+    // The tags in the order they are first met, each one in the first group a file gives it. Like
+    // the label names, they get the colors of the label palette in their order.
+    protected static mapTagConfig(fileParseResults: FileParseResult[]): TagConfig {
+        const tags: TagName[] = [];
+        const groupNames: string[] = [];
+        fileParseResults.forEach((fileParseResult: FileParseResult) => {
+            fileParseResult.tags.forEach((parsedTag: ParsedTag) => {
+                if (parsedTag.groupName && !groupNames.includes(parsedTag.groupName)) {
+                    groupNames.push(parsedTag.groupName);
+                }
+                if (!tags.some((tag: TagName) => tag.name === parsedTag.name)) {
+                    tags.push({ ...parsedTag, color: null });
+                }
+            });
+        });
+
+        const tagConfig: TagConfig = TagUtil.createTagConfig(tags, groupNames);
+        return {
+            ...tagConfig,
+            tags: tagConfig.tags.map((tag: TagName, index: number) => ({
+                ...tag,
+                color: ArrayUtil.getByInfiniteIndex(Settings.LABEL_COLORS_PALETTE, index)
+            }))
+        };
     }
 
     private static mapImageData(): Record<string, ImageData> {

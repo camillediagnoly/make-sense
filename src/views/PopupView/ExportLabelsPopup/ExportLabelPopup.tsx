@@ -138,14 +138,18 @@ const ExportLabelPopup: React.FC<IProps> = ({
     const unlabeledImageCount = useMemo(() => {
         return imagesData.length - getLabeledImageCount(labelType);
     }, [imagesData, labelType]);
-    // COCO only exports the images that have polygons, so the tags of the other ones are lost.
-    const taggedImageWithoutPolygonCount = useMemo(() => {
+    // COCO only exports the images that have polygons and VOC the ones that have rectangles, so the
+    // tags of the other images are lost.
+    const exportsTags: boolean =
+        (labelType === LabelType.POLYGON && exportFormatType === AnnotationFormatType.COCO) ||
+        (labelType === LabelType.RECT && exportFormatType === AnnotationFormatType.VOC);
+    const taggedImageWithoutLabelCount = useMemo(() => {
         const tagNames: string[] = TagUtil.getTagNames(tagConfig);
         return imagesData.filter((imageData: ImageData) =>
-            imageData.labelPolygons.length === 0 &&
+            (labelType === LabelType.RECT ? imageData.labelRects : imageData.labelPolygons).length === 0 &&
             TagUtil.getActiveTagNames(imageData, tagNames).length > 0
         ).length;
-    }, [imagesData, tagConfig]);
+    }, [imagesData, tagConfig, labelType]);
 
     const exportLabels = (type: LabelType) => {
         switch (type) {
@@ -493,12 +497,10 @@ const ExportLabelPopup: React.FC<IProps> = ({
                             {labelType.toLowerCase()} labels.
                         </div>
                     )}
-                    {labelType === LabelType.POLYGON &&
-                        exportFormatType === AnnotationFormatType.COCO &&
-                        taggedImageWithoutPolygonCount > 0 && (
+                    {exportsTags && taggedImageWithoutLabelCount > 0 && (
                         <div className="SanityCheckExportCount hasMissingLabels">
-                            ({taggedImageWithoutPolygonCount}) images have tags but no
-                            polygons: their tags will not be exported.
+                            ({taggedImageWithoutLabelCount}) images have tags but no{" "}
+                            {labelType.toLowerCase()} labels: their tags will not be exported.
                         </div>
                     )}
                 </div>

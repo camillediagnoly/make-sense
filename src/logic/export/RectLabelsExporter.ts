@@ -1,5 +1,5 @@
 import {AnnotationFormatType} from '../../data/enums/AnnotationFormatType';
-import {ImageData, LabelName, LabelRect} from '../../store/labels/types';
+import {ImageData, LabelName, LabelRect, TagConfig, TagName} from '../../store/labels/types';
 import {ImageRepository} from '../imageRepository/ImageRepository';
 import JSZip from 'jszip';
 import { saveAs } from 'file-saver';
@@ -12,6 +12,7 @@ import {ISize} from '../../interfaces/ISize';
 import {NumberUtil} from '../../utils/NumberUtil';
 import {RectUtil} from '../../utils/RectUtil';
 import {Settings} from '../../settings/Settings';
+import {TagUtil} from '../../utils/TagUtil';
 
 export class RectLabelsExporter {
     public static export(exportFormatType: AnnotationFormatType): void {
@@ -185,8 +186,29 @@ export class RectLabelsExporter {
         return labelRectsString.join('\n');
     }
 
+    // The image tags go in a <tags> element, only when the image has some, so a file without tags
+    // stays exactly as before. Readers that only look at the <object> elements are not affected.
+    // The tag group is kept as an attribute; like for COCO, the tag colors are not saved.
+    private static wrapTagsIntoVOC(imageData: ImageData): string | null {
+        const tagConfig: TagConfig = LabelsSelector.getTagConfig();
+        const activeTagNames: string[] = TagUtil.getActiveTagNames(imageData, TagUtil.getTagNames(tagConfig));
+        if (activeTagNames.length === 0)
+            return null;
+
+        const tagsString: string[] = tagConfig.tags
+            .filter((tag: TagName) => activeTagNames.includes(tag.name))
+            .map((tag: TagName) => {
+                const groupAttribute: string = tag.groupName
+                    ? ` group="${XMLSanitizerUtil.escape(tag.groupName)}"`
+                    : '';
+                return `\t\t<tag${groupAttribute}>${XMLSanitizerUtil.escape(tag.name)}</tag>`;
+            });
+        return [`\t<tags>`, ...tagsString, `\t</tags>`].join('\n');
+    }
+
     private static wrapImageIntoVOC(imageData: ImageData): string {
         const labels: string = RectLabelsExporter.wrapRectLabelsIntoVOC(imageData);
+        const tags: string | null = RectLabelsExporter.wrapTagsIntoVOC(imageData);
         const projectName: string = XMLSanitizerUtil.sanitize(GeneralSelector.getProjectName());
 
         if (labels) {
@@ -206,6 +228,7 @@ export class RectLabelsExporter {
                 `\t\t<height>${imageHeight}</height>`,
                 `\t\t<depth>3</depth>`,
                 `\t</size>`,
+                ...(tags ? [tags] : []),
                 labels,
                 `</annotation>`
             ].join('\n');
