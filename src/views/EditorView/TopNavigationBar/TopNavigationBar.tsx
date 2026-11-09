@@ -1,76 +1,54 @@
-import React from 'react';
+import React, { useState } from 'react';
 import './TopNavigationBar.scss';
 import StateBar from '../StateBar/StateBar';
-import {PopupWindowType} from '../../../data/enums/PopupWindowType';
-import {AppState} from '../../../store';
-import {connect} from 'react-redux';
-import {updateActivePopupType, updateProjectData} from '../../../store/general/actionCreators';
-import TextInput from '../../Common/TextInput/TextInput';
-import {ImageButton} from '../../Common/ImageButton/ImageButton';
-import {Settings} from '../../../settings/Settings';
-import {ProjectData} from '../../../store/general/types';
-import DropDownMenu from './DropDownMenu/DropDownMenu';
+import { PopupWindowType } from '../../../data/enums/PopupWindowType';
+import { AppState } from '../../../store';
+import { connect } from 'react-redux';
+import { updateActivePopupType } from '../../../store/general/actionCreators';
+import { ProjectData } from '../../../store/general/types';
+import { ReviewActions } from '../../../logic/review/ReviewActions';
 
 interface IProps {
     updateActivePopupTypeAction: (activePopupType: PopupWindowType) => any;
-    updateProjectDataAction: (projectData: ProjectData) => any;
     projectData: ProjectData;
 }
 
-const TopNavigationBar: React.FC<IProps> = (props) => {
-    const onFocus = (event: React.FocusEvent<HTMLInputElement>) => {
-        event.target.setSelectionRange(0, event.target.value.length);
+const TopNavigationBar: React.FC<IProps> = ({ updateActivePopupTypeAction, projectData }) => {
+    const [isExporting, setIsExporting] = useState(false);
+
+    const onImportClick = () => updateActivePopupTypeAction(PopupWindowType.EXIT_PROJECT);
+
+    const onExportClick = async () => {
+        if (isExporting) {
+            return;
+        }
+        setIsExporting(true);
+        try {
+            await ReviewActions.exportCurrentFolder();
+        } finally {
+            setIsExporting(false);
+        }
     };
-
-    const onChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-        const value = event.target.value
-            .toLowerCase()
-            .replace(' ', '-');
-
-        props.updateProjectDataAction({
-            ...props.projectData,
-            name: value
-        })
-    };
-
-    const closePopup = () => props.updateActivePopupTypeAction(PopupWindowType.EXIT_PROJECT)
 
     return (
         <div className='TopNavigationBar'>
             <StateBar/>
             <div className='TopNavigationBarWrapper'>
                 <div className='NavigationBarGroupWrapper'>
+                    <div className='NavigationBarButton' onClick={onImportClick}>
+                        <img draggable={false} alt={'import'} src={'ico/import-labels.png'}/>
+                        Import new folder
+                    </div>
                     <div
-                        className='Header'
-                        onClick={closePopup}
+                        className={`NavigationBarButton${isExporting ? ' disabled' : ''}`}
+                        onClick={onExportClick}
                     >
-                        <img
-                            draggable={false}
-                            alt={'make-sense'}
-                            src={'/make-sense-ico-transparent.png'}
-                        />
-                        Make Sense
+                        <img draggable={false} alt={'export'} src={'ico/export-labels.png'}/>
+                        {isExporting ? 'Exporting...' : 'Export current folder'}
                     </div>
                 </div>
-                <div className='NavigationBarGroupWrapper'>
-                    <DropDownMenu/>
-                </div>
                 <div className='NavigationBarGroupWrapper middle'>
-                    <div className='ProjectName'>Project Name:</div>
-                    <TextInput
-                        isPassword={false}
-                        value={props.projectData.name}
-                        onChange={onChange}
-                        onFocus={onFocus}
-                    />
-                </div>
-                <div className='NavigationBarGroupWrapper'>
-                    <ImageButton
-                        image={'ico/github-logo.png'}
-                        imageAlt={'github-logo.png'}
-                        buttonSize={{width: 30, height: 30}}
-                        href={Settings.GITHUB_URL}
-                    />
+                    <div className='ProjectName' title={projectData.name}>{projectData.name}</div>
                 </div>
             </div>
         </div>
@@ -79,7 +57,6 @@ const TopNavigationBar: React.FC<IProps> = (props) => {
 
 const mapDispatchToProps = {
     updateActivePopupTypeAction: updateActivePopupType,
-    updateProjectDataAction: updateProjectData
 };
 
 const mapStateToProps = (state: AppState) => ({

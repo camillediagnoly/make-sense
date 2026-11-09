@@ -1,211 +1,201 @@
-import React from "react";
+import React, {useEffect, useRef, useState} from "react";
 import './LabelsToolkit.scss';
-import {ImageData} from "../../../../store/labels/types";
-import {updateActiveLabelId, updateActiveLabelType, updateImageDataById} from "../../../../store/labels/actionCreators";
+import {ImageData, LabelName, LabelPolygon, LabelRect} from "../../../../store/labels/types";
+import {updateActiveLabelId} from "../../../../store/labels/actionCreators";
 import {AppState} from "../../../../store";
 import {connect} from "react-redux";
-import {LabelType} from "../../../../data/enums/LabelType";
-import {ProjectType} from "../../../../data/enums/ProjectType";
 import {ISize} from "../../../../interfaces/ISize";
-import classNames from "classnames";
-import {find} from "lodash";
-import {ILabelToolkit, LabelToolkitData} from "../../../../data/info/LabelToolkitData";
 import {Settings} from "../../../../settings/Settings";
-import RectLabelsList from "../RectLabelsList/RectLabelsList";
-import PointLabelsList from "../PointLabelsList/PointLabelsList";
-import PolygonLabelsList from "../PolygonLabelsList/PolygonLabelsList";
+import Scrollbars from "react-custom-scrollbars-2";
+import {findLast} from "lodash";
 import {ContextManager} from "../../../../logic/context/ContextManager";
 import {ContextType} from "../../../../data/enums/ContextType";
 import {EventType} from "../../../../data/enums/EventType";
-import LineLabelsList from "../LineLabelsList/LineLabelsList";
-import TagLabelsList from "../TagLabelsList/TagLabelsList";
+import {LabelActions} from "../../../../logic/actions/LabelActions";
+import LabelInputField from "../LabelInputField/LabelInputField";
+import EmptyLabelList from "../EmptyLabelList/EmptyLabelList";
+import {ReviewActions} from "../../../../logic/review/ReviewActions";
+
+const LABEL_INPUT_FIELD_HEIGHT = 40;
 
 interface IProps {
-    activeImageIndex: number | null,
-    activeLabelType: LabelType;
+    activeImageIndex: number | null;
     imagesData: ImageData[];
-    projectType: ProjectType;
-    updateImageDataById: (id: string, newImageData: ImageData) => any;
-    updateActiveLabelType: (activeLabelType: LabelType) => any;
-    updateActiveLabelId: (highlightedLabelId: string) => any;
+    labelNames: LabelName[];
+    activeLabelId: string;
+    highlightedLabelId: string;
+    updateActiveLabelIdAction: (activeLabelId: string) => any;
 }
 
-interface IState {
-    size: ISize;
-}
+type ListedAnnotation = {
+    id: string;
+    labelId: string | null;
+    isVisible: boolean;
+    isDeleted: boolean;
+};
 
-class LabelsToolkit extends React.Component<IProps, IState> {
-    private labelsToolkitRef: HTMLDivElement;
-    private readonly tabs: LabelType[];
+const HINT_HEIGHT = 30;
+const DELETED_HEADER_HEIGHT = 34;
 
-    constructor(props) {
-        super(props);
-
-        this.state = {
-            size: null,
-        };
-
-        this.tabs = props.projectType === ProjectType.IMAGE_RECOGNITION ?
-            [
-                LabelType.IMAGE_RECOGNITION
-            ] :
-            [
-                LabelType.RECT,
-                LabelType.POINT,
-                LabelType.LINE,
-                LabelType.POLYGON
-            ];
-
-        const activeTab: LabelType = props.activeLabelType ? props.activeLabelType : this.tabs[0];
-        props.updateActiveLabelType(activeTab);
+// The single list of the review mode: every rectangle and polygon of the active image, which can
+// be selected or hidden, but neither deleted nor renamed.
+const LabelsToolkit: React.FC<IProps> = (
+    {
+        activeImageIndex,
+        imagesData,
+        labelNames,
+        activeLabelId,
+        highlightedLabelId,
+        updateActiveLabelIdAction
     }
+) => {
+    const toolkitRef = useRef<HTMLDivElement>(null);
+    const [size, setSize] = useState<ISize | null>(null);
+    const activeImageData: ImageData | null = activeImageIndex === null ? null : imagesData[activeImageIndex];
 
-    public componentDidMount(): void {
-        this.updateToolkitSize();
-        window.addEventListener(EventType.RESIZE, this.updateToolkitSize);
-    }
-
-    public componentWillUnmount(): void {
-        window.removeEventListener(EventType.RESIZE, this.updateToolkitSize);
-    }
-
-    private updateToolkitSize = () => {
-        if (!this.labelsToolkitRef)
-            return;
-
-        const listBoundingBox = this.labelsToolkitRef.getBoundingClientRect();
-        this.setState({
-            size: {
-                width: listBoundingBox.width,
-                height: listBoundingBox.height
+    useEffect(() => {
+        const updateSize = () => {
+            if (toolkitRef.current) {
+                const {width, height} = toolkitRef.current.getBoundingClientRect();
+                setSize({width, height});
             }
-        })
-    };
+        };
+        updateSize();
+        window.addEventListener(EventType.RESIZE, updateSize);
+        return () => window.removeEventListener(EventType.RESIZE, updateSize);
+    }, []);
 
-    private headerClickHandler = (activeTab: LabelType) => {
-        this.props.updateActiveLabelType(activeTab);
-        this.props.updateActiveLabelId(null);
-    };
-
-    private renderChildren = () => {
-        const {size} = this.state;
-        const {activeImageIndex, imagesData, activeLabelType} = this.props;
-        const activeImageData = activeImageIndex === null ? null : imagesData[activeImageIndex];
-
+    const getAnnotations = (): ListedAnnotation[] => {
         if (!activeImageData) {
             return [];
         }
-
-        return this.tabs.reduce((children, labelType: LabelType, index: number) => {
-            const isActive: boolean = labelType === activeLabelType;
-            const tabData: ILabelToolkit = find(LabelToolkitData, {labelType});
-            const activeTabContentHeight: number = size.height - this.tabs.length * Settings.TOOLKIT_TAB_HEIGHT_PX;
-            const getClassName = (baseClass: string) => classNames(
-                baseClass,
-                {
-                    "active": isActive,
-                }
-            );
-
-            const header =
-                <div
-                    key={"Header_" + index}
-                    className={getClassName("Header")}
-                    onClick={() => this.headerClickHandler(labelType)}
-                    style={{height: Settings.TOOLKIT_TAB_HEIGHT_PX}}
-                >
-                    <div className="Marker"/>
-                    <div className="HeaderGroupWrapper">
-                        <img
-                            draggable={false}
-                            className="Ico"
-                            src={tabData.imageSrc}
-                            alt={tabData.imageAlt}
-                        />
-                        {tabData.headerText}
-                    </div>
-                    <div className="HeaderGroupWrapper">
-                        <img
-                            draggable={false}
-                            className="Arrow"
-                            src={"ico/down.png"}
-                            alt={"down_arrow"}
-                        />
-                    </div>
-                </div>;
-
-            const content =
-                <div
-                    key={"Content_" + index}
-                    className={getClassName("Content")}
-                    style={{height: isActive ? activeTabContentHeight : 0}}
-                >
-                    {labelType === LabelType.RECT && <RectLabelsList
-                        size={{
-                            width: size.width - 20,
-                            height: activeTabContentHeight - 20
-                        }}
-                        imageData={activeImageData}
-                    />}
-                    {labelType === LabelType.POINT && <PointLabelsList
-                        size={{
-                            width: size.width - 20,
-                            height: activeTabContentHeight - 20
-                        }}
-                        imageData={activeImageData}
-                    />}
-                    {labelType === LabelType.LINE && <LineLabelsList
-                        size={{
-                            width: size.width - 20,
-                            height: activeTabContentHeight - 20
-                        }}
-                        imageData={activeImageData}
-                    />}
-                    {labelType === LabelType.POLYGON && <PolygonLabelsList
-                        size={{
-                            width: size.width - 20,
-                            height: activeTabContentHeight - 20
-                        }}
-                        imageData={activeImageData}
-                    />}
-                    {labelType === LabelType.IMAGE_RECOGNITION && <TagLabelsList
-                        size={{
-                            width: size.width - 20,
-                            height: activeTabContentHeight - 20
-                        }}
-                        imageData={activeImageData}
-                    />}
-                </div>;
-
-            children.push([header, content]);
-            return children;
-        }, [])
+        return [
+            ...activeImageData.labelRects.map((labelRect: LabelRect) => ({
+                id: labelRect.id, labelId: labelRect.labelId, isVisible: labelRect.isVisible,
+                isDeleted: !!labelRect.isDeleted
+            })),
+            ...activeImageData.labelPolygons.map((labelPolygon: LabelPolygon) => ({
+                id: labelPolygon.id, labelId: labelPolygon.labelId, isVisible: labelPolygon.isVisible,
+                isDeleted: !!labelPolygon.isDeleted
+            })),
+        ];
     };
 
-    public render() {
-        return(
-            <div
-                className="LabelsToolkit"
-                ref={ref => this.labelsToolkitRef = ref}
-                onClick={() => ContextManager.switchCtx(ContextType.RIGHT_NAVBAR)}
-            >
-                {this.state.size && this.renderChildren()}
+    const getLabelName = (annotation: ListedAnnotation): LabelName | null =>
+        annotation.labelId !== null ? findLast(labelNames, {id: annotation.labelId}) : null;
+
+    const renderDeletedRow = (annotation: ListedAnnotation, width: number) => {
+        const labelName = getLabelName(annotation);
+        return <div
+            key={annotation.id}
+            className='DeletedAnnotation'
+            style={{width, height: LABEL_INPUT_FIELD_HEIGHT}}
+            title='Click to re-add this annotation'
+            onClick={(event: React.MouseEvent) => {
+                event.stopPropagation();
+                ReviewActions.setAnnotationDeleted(annotation.id, false);
+            }}
+        >
+            <div className='Marker' style={labelName ? {backgroundColor: labelName.color} : {}}/>
+            <div className='Name'>{labelName ? labelName.name : 'no label'}</div>
+            <img draggable={false} src={'ico/plus.png'} alt={'re-add'}/>
+        </div>;
+    };
+
+    const renderList = () => {
+        const annotations = getAnnotations();
+        const shownAnnotations = annotations.filter((annotation: ListedAnnotation) => !annotation.isDeleted);
+        const deletedAnnotations = annotations.filter((annotation: ListedAnnotation) => annotation.isDeleted);
+        const listSize: ISize = {
+            width: size.width - 20,
+            height: size.height - Settings.TOOLKIT_TAB_HEIGHT_PX - HINT_HEIGHT - 20
+        };
+        const areAllHidden = shownAnnotations.length > 0
+            && shownAnnotations.every((annotation: ListedAnnotation) => annotation.isVisible === false);
+        const hint = <div className='SpaceHint' style={{height: HINT_HEIGHT}}>
+            Press <span className='Key'>space</span> to {areAllHidden ? 'show' : 'hide'} the annotations
+        </div>;
+
+        if (annotations.length === 0) {
+            return <div className='Content active' style={{height: listSize.height + HINT_HEIGHT + 20}}>
+                <EmptyLabelList
+                    labelBefore={'no annotation on this image'}
+                    labelAfter={'no annotation on this image'}
+                />
+            </div>;
+        }
+
+        const contentHeight = shownAnnotations.length * LABEL_INPUT_FIELD_HEIGHT
+            + (deletedAnnotations.length > 0
+                ? DELETED_HEADER_HEIGHT + deletedAnnotations.length * LABEL_INPUT_FIELD_HEIGHT
+                : 0);
+
+        return <div
+            className='Content active'
+            style={{height: listSize.height + HINT_HEIGHT + 20}}
+            onClickCapture={() => updateActiveLabelIdAction(null)}
+        >
+            {hint}
+            <div style={{width: listSize.width, height: listSize.height}}>
+                <Scrollbars>
+                    <div style={{width: listSize.width, height: contentHeight}}>
+                        {shownAnnotations.map((annotation: ListedAnnotation) => <LabelInputField
+                            key={annotation.id}
+                            id={annotation.id}
+                            size={{width: listSize.width, height: LABEL_INPUT_FIELD_HEIGHT}}
+                            isActive={annotation.id === activeLabelId}
+                            isHighlighted={annotation.id === highlightedLabelId}
+                            isVisible={annotation.isVisible}
+                            value={getLabelName(annotation)}
+                            options={labelNames}
+                            readOnly={true}
+                            onDelete={(id: string) => ReviewActions.setAnnotationDeleted(id, true)}
+                            toggleLabelVisibility={(id: string) =>
+                                LabelActions.toggleLabelVisibilityById(activeImageData.id, id)}
+                        />)}
+                        {deletedAnnotations.length > 0 && <>
+                            <div className='DeletedHeader' style={{height: DELETED_HEADER_HEIGHT}}>
+                                Deleted annotations - click to re-add
+                            </div>
+                            {deletedAnnotations.map((annotation: ListedAnnotation) =>
+                                renderDeletedRow(annotation, listSize.width))}
+                        </>}
+                    </div>
+                </Scrollbars>
             </div>
-        )
-    }
-}
+        </div>;
+    };
+
+    return (
+        <div
+            className="LabelsToolkit"
+            ref={toolkitRef}
+            onClick={() => ContextManager.switchCtx(ContextType.RIGHT_NAVBAR)}
+        >
+            {size && activeImageData && <>
+                <div className="Header active" style={{height: Settings.TOOLKIT_TAB_HEIGHT_PX, cursor: 'default'}}>
+                    <div className="Marker"/>
+                    <div className="HeaderGroupWrapper">
+                        <img draggable={false} className="Ico" src={'ico/polygon.png'} alt={'annotations'}/>
+                        Annotations
+                    </div>
+                </div>
+                {renderList()}
+            </>}
+        </div>
+    );
+};
 
 const mapDispatchToProps = {
-    updateImageDataById,
-    updateActiveLabelType,
-    updateActiveLabelId
+    updateActiveLabelIdAction: updateActiveLabelId
 };
 
 const mapStateToProps = (state: AppState) => ({
     activeImageIndex: state.labels.activeImageIndex,
-    activeLabelType: state.labels.activeLabelType,
     imagesData: state.labels.imagesData,
-    projectType: state.general.projectData.type,
+    labelNames: state.labels.labels,
+    activeLabelId: state.labels.activeLabelId,
+    highlightedLabelId: state.labels.highlightedLabelId,
 });
 
 export default connect(

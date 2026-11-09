@@ -286,15 +286,8 @@ class ImagesList extends React.Component<IProps, IState> {
     };
 
     private renderSearchAndFilter = () => {
-        const {
-            filterMode,
-            searchText,
-            sortMode,
-            sortOrderLocked,
-            keepLabeledInUnlabeled,
-        } = this.props;
-        const isDateSortActive = sortMode !== ImageSortMode.DEFAULT;
-        const isUnlabeledFilterActive = filterMode === ImageFilterMode.UNLABELED;
+        // The review mode only keeps the search: no labeled / unlabeled filter, no sorting
+        const {searchText} = this.props;
         return (
             <div className="ImagesListControls" ref={(ref) => this.controlsRef = ref}>
                 <div className="SearchContainer">
@@ -306,75 +299,6 @@ class ImagesList extends React.Component<IProps, IState> {
                         value={searchText}
                         onChange={this.handleSearchChange}
                     />
-                </div>
-                <div className="SortContainer">
-                    <span className="SortLabel">Sort</span>
-                    <select
-                        className="SortSelect"
-                        value={sortMode}
-                        onChange={this.handleSortModeChange}
-                        aria-label="Sort images"
-                    >
-                        <option value={ImageSortMode.DEFAULT}>Import order</option>
-                        <option value={ImageSortMode.MODIFIED_DATE_ASC}>Modified date - oldest first</option>
-                        <option value={ImageSortMode.MODIFIED_DATE_DESC}>Modified date - newest first</option>
-                    </select>
-                    {isDateSortActive && (
-                        <button
-                            type="button"
-                            className={`FreezeSortOrderButton ${sortOrderLocked ? 'locked' : 'unlocked'}`}
-                            title={sortOrderLocked ? 'Unfreeze image order' : 'Freeze image order'}
-                            aria-label={sortOrderLocked ? 'Unfreeze image order' : 'Freeze image order'}
-                            aria-pressed={sortOrderLocked}
-                            onClick={this.toggleSortOrderLock}
-                        >
-                            <img
-                                className="FreezeSortOrderIcon"
-                                src={sortOrderLocked ? 'ico/lock-closed.svg' : 'ico/lock-open.svg'}
-                                alt=""
-                                aria-hidden="true"
-                            />
-                        </button>
-                    )}
-                </div>
-                <div className="FilterButtons">
-                    <button
-                        className={`FilterButton ${filterMode === ImageFilterMode.ALL ? 'active' : ''}`}
-                        onClick={() => this.setFilterMode(ImageFilterMode.ALL)}
-                    >
-                        All
-                    </button>
-                    <button
-                        className={`FilterButton ${filterMode === ImageFilterMode.LABELED ? 'active' : ''}`}
-                        onClick={() => this.setFilterMode(ImageFilterMode.LABELED)}
-                    >
-                        Labeled
-                    </button>
-                    <div className={`UnlabeledFilterControls ${isUnlabeledFilterActive ? 'with-lock' : ''}`}>
-                        <button
-                            className={`FilterButton ${isUnlabeledFilterActive ? 'active' : ''}`}
-                            onClick={() => this.setFilterMode(ImageFilterMode.UNLABELED)}
-                        >
-                            Unlabeled
-                        </button>
-                        {isUnlabeledFilterActive && (
-                            <button
-                                type="button"
-                                className={`FreezeUnlabeledButton ${keepLabeledInUnlabeled ? 'locked' : 'unlocked'}`}
-                                title={keepLabeledInUnlabeled ? 'Unfreeze Unlabeled list' : 'Freeze Unlabeled list'}
-                                aria-label={keepLabeledInUnlabeled ? 'Unfreeze Unlabeled list' : 'Freeze Unlabeled list'}
-                                aria-pressed={keepLabeledInUnlabeled}
-                                onClick={this.toggleKeepLabeledInUnlabeled}
-                            >
-                                <img
-                                    className="FreezeUnlabeledIcon"
-                                    src={keepLabeledInUnlabeled ? 'ico/lock-closed.svg' : 'ico/lock-open.svg'}
-                                    alt=""
-                                    aria-hidden="true"
-                                />
-                            </button>
-                        )}
-                    </div>
                 </div>
             </div>
         );

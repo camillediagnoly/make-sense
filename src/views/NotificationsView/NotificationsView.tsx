@@ -71,12 +71,17 @@ const NotificationsView: React.FC<IProps> = (props) => {
     }
 
     const renderNotification = () => {
+        const displayTimeStyle: React.CSSProperties | undefined =
+            notification?.displayTimeMs && notificationState === NotificationState.DISPLAY
+                ? {animationDuration: `${notification.displayTimeMs}ms`}
+                : undefined;
         return(
             notification && <div
                 className={getNotificationWrapperClassName()}
                 key={notification.id}
                 onAnimationEnd={onAnimationEnd}
                 onClick={onClose}
+                style={displayTimeStyle}
             >
                 <div className={getNotificationClassName()}>
                     <div className='header'>
@@ -85,7 +90,7 @@ const NotificationsView: React.FC<IProps> = (props) => {
                     <div className='content'>
                         {notification.description}
                     </div>
-                    <div className='loader'/>
+                    <div className='loader' style={displayTimeStyle}/>
                 </div>
             </div>
         )

@@ -62,7 +62,8 @@ export class ImageFilterUtil {
                     .filter((labelPoint: LabelPoint) => labelPoint.status === LabelStatus.ACCEPTED)
                     .length > 0;
             case LabelType.POLYGON:
-                return imageData.labelPolygons.length > 0;
+                // The review mode shows rectangles and polygons together under the polygon type
+                return imageData.labelPolygons.length > 0 || imageData.labelRects.length > 0;
             case LabelType.RECT:
                 return imageData.labelRects
                     .filter((labelRect: LabelRect) => labelRect.status === LabelStatus.ACCEPTED)

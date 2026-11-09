@@ -5,7 +5,9 @@ export interface INotification {
     id: string,
     type: NotificationType,
     header: string,
-    description: string
+    description: string,
+    // How long it stays on screen, 5 seconds when not set
+    displayTimeMs?: number
 }
 
 export type NotificationsState = {

@@ -222,7 +222,11 @@ const initialState: GeneralState = {
   imageClassCriteria: [],
   imageClassCriteriaLocked: false,
   lockedImageClassCriteriaImageIds: [],
-  classSanityCheckSettings: BrowserSettingsStorage.loadClassSanityCheckSettings(),
+  // The review mode has no class sanity check: it stays off whatever the browser remembers
+  classSanityCheckSettings: {
+    ...BrowserSettingsStorage.loadClassSanityCheckSettings(),
+    enabled: false,
+  },
   classSanityCheckViolationImageIds: [],
   classSanityCheckReviewMode: false,
   measurementFunctionByName: {},

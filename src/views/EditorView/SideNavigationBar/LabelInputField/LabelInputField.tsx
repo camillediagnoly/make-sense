@@ -29,8 +29,10 @@ interface IProps {
   id: string;
   value?: LabelName;
   options: LabelName[];
-  onDelete: (id: string) => any;
-  onSelectLabel: (labelRectId: string, labelNameId: string) => any;
+  onDelete?: (id: string) => any;
+  onSelectLabel?: (labelRectId: string, labelNameId: string) => any;
+  // Shows the label without letting it be renamed or deleted
+  readOnly?: boolean;
   updateHighlightedLabelId: (highlightedLabelId: string) => any;
   updateActiveLabelId: (highlightedLabelId: string) => any;
   updateActivePopupType: (activePopupType: PopupWindowType) => any;
@@ -72,6 +74,9 @@ class LabelInputField extends React.Component<IProps, IState> {
   }
 
   private openDropdown = () => {
+    if (this.props.readOnly) {
+      return;
+    }
     if (LabelsSelector.getLabelNames().length === 0) {
       this.props.updateActivePopupType(PopupWindowType.UPDATE_LABEL);
     } else {
@@ -215,6 +220,7 @@ class LabelInputField extends React.Component<IProps, IState> {
             <div className="ContentWrapper">
               <div
                 className="DropdownLabel"
+                style={this.props.readOnly ? { cursor: "default" } : undefined}
                 ref={(ref) => (this.dropdownLabel = ref)}
                 onClick={this.openDropdown}
               >
@@ -242,13 +248,16 @@ class LabelInputField extends React.Component<IProps, IState> {
             </div>
             <div className="ContentWrapper">
               {this.getToggleVisibilityButton(id)}
-              <ImageButton
+              {!!onDelete && <ImageButton
                 externalClassName={"icon"}
                 image={"ico/trash.png"}
                 imageAlt={"remove label"}
                 buttonSize={{ width: 28, height: 28 }}
-                onClick={() => onDelete(id)}
-              />
+                onClick={(event: React.MouseEvent) => {
+                  event.stopPropagation();
+                  onDelete(id);
+                }}
+              />}
             </div>
           </div>
         </div>

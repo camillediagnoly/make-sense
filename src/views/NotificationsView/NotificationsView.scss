@@ -98,7 +98,7 @@ $warningColor: #eed202;
     &.warning {
       .header {
         background-color: #{$warningColor};
-        color: white;
+        color: black;
       }
       .loader {
         background-color: #{$warningColor};

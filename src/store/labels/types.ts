@@ -13,6 +13,8 @@ export type Annotation = {
     id: string;
     labelId: string | null;
     isVisible: boolean;
+    // Review mode: listed under "deleted annotations", exported with a "_deleted" category
+    isDeleted?: boolean;
 }
 
 export type LabelRect = Annotation & {

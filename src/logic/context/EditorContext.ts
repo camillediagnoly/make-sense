@@ -10,13 +10,10 @@ import { ViewPortActions } from "../actions/ViewPortActions";
 import { Direction } from "../../data/enums/Direction";
 import { PlatformUtil } from "../../utils/PlatformUtil";
 import { LabelActions } from "../actions/LabelActions";
-import { LineRenderEngine } from "../render/LineRenderEngine";
 import { LabelsSelector } from "../../store/selectors/LabelsSelector"; 
 import { store } from '../../index';
 import { ShortcutItem } from '../../store/general/types';
 import { ImageHistoryActions } from '../actions/ImageHistoryActions';
-import { ImageExportActions } from '../actions/ImageExportActions';
-import { TagActions } from '../actions/TagActions';
 
 export class EditorContext extends BaseContext {
     private static getShortcutByName(name: string): ShortcutItem | undefined {
@@ -28,33 +25,9 @@ export class EditorContext extends BaseContext {
 
     public static initializeActions() {
         // Create a mapping of action handlers
+        // The review mode only moves existing annotations: the shortcuts that create, delete or
+        // rename annotations, copy images or toggle tags are left out
         const actionHandlers: {[key: string]: (event: KeyboardEvent) => void} = {
-            'Finish Polygon Creation': (event: KeyboardEvent) => {
-                event.preventDefault();
-                if (EditorModel.supportRenderingEngine && EditorModel.supportRenderingEngine.labelType === LabelType.POLYGON) {
-                    const editorData: EditorData = EditorActions.getEditorData();
-                    const isDrawingEllipse: boolean = (EditorModel.supportRenderingEngine as PolygonRenderEngine).isDrawingEllipse;
-                    if (!isDrawingEllipse)
-                        (EditorModel.supportRenderingEngine as PolygonRenderEngine).addLabelAndFinishCreation(editorData);
-                    else
-                        (EditorModel.supportRenderingEngine as PolygonRenderEngine).addLabelAndFinishCreationEllipse(editorData);
-
-                }
-                EditorActions.fullRender();
-            },
-            'Cancel Label Creation': (event: KeyboardEvent) => {
-                if (EditorModel.supportRenderingEngine) {
-                    switch (EditorModel.supportRenderingEngine.labelType) {
-                        case LabelType.POLYGON:
-                            (EditorModel.supportRenderingEngine as PolygonRenderEngine).cancelLabelCreation();
-                            break;
-                        case LabelType.LINE:
-                            (EditorModel.supportRenderingEngine as LineRenderEngine).cancelLabelCreation();
-                            break;
-                    }
-                }
-                EditorActions.fullRender();
-            },
             'Undo Current Image Action': (event: KeyboardEvent) => {
                 event.preventDefault();
                 if (EditorModel.supportRenderingEngine &&
@@ -83,14 +56,7 @@ export class EditorContext extends BaseContext {
             'Zoom Out': (event: KeyboardEvent) => {
                 ViewPortActions.zoomOut();
             },
-            'Move Right': (event: KeyboardEvent) => {
-                event.preventDefault();
-                ViewPortActions.translateViewPortPosition(Direction.RIGHT);
-            },
-            'Move Left': (event: KeyboardEvent) => {
-                event.preventDefault();
-                ViewPortActions.translateViewPortPosition(Direction.LEFT);
-            },
+            // The left and right arrows go to the previous / next image (see below), not pan
             'Move Up': (event: KeyboardEvent) => {
                 event.preventDefault();
                 ViewPortActions.translateViewPortPosition(Direction.BOTTOM);
@@ -98,53 +64,8 @@ export class EditorContext extends BaseContext {
             'Move Down': (event: KeyboardEvent) => {
                 event.preventDefault();
                 ViewPortActions.translateViewPortPosition(Direction.TOP);
-            },
-            'Delete Active Label': (event: KeyboardEvent) => {
-                LabelActions.deleteActiveLabel();
-            },
-            'Toggle Labels Visibility': (event: KeyboardEvent) => {
-                const imageData = LabelsSelector.getActiveImageData();
-                if (imageData) {
-                    LabelActions.toggleAllLabelsVisibilityInImage(imageData.id);
-                }
-            },
-            'Show or Hide All Labels': (event: KeyboardEvent) => {
-                const imageData = LabelsSelector.getActiveImageData();
-                if (imageData) {
-                    LabelActions.toggleShowAllLabelsInImage(imageData.id);
-                }
-            },
-            'Hide or Restore Labels': (event: KeyboardEvent) => {
-                const imageData = LabelsSelector.getActiveImageData();
-                if (imageData) {
-                    LabelActions.toggleLabelsVisibilityWithRestoreInImage(imageData.id);
-                }
-            },
-            'Copy Image to Export Folder': (event: KeyboardEvent) => {
-                // holding the key down would otherwise copy again on every auto-repeat
-                if (!event.repeat) {
-                    ImageExportActions.copyActiveImageToExportFolder();
-                }
             }
         };
-
-        // Add label selection actions (0-9)
-        for (let i = 0; i <= 9; i++) {
-            actionHandlers[`Select Label ${i}`] = (event: KeyboardEvent) => {
-                ImageActions.setActiveLabelOnActiveImage(i);
-                EditorActions.fullRender();
-            };
-        }
-
-        // Add tag toggling actions (1-9)
-        for (let i = 1; i <= 9; i++) {
-            actionHandlers[`Toggle Tag ${i}`] = (event: KeyboardEvent) => {
-                // holding the keys down would otherwise add and remove the tag on every auto-repeat
-                if (!event.repeat) {
-                    TagActions.toggleTagByIndexOnActiveImage(i - 1);
-                }
-            };
-        }
 
         // Handlers that fire the instant a shortcut's key combo stops matching (key released),
         // rather than on every other keyup. Used to stop draining a queued action immediately.
@@ -174,6 +95,38 @@ export class EditorContext extends BaseContext {
             }
         });
         
+        // Space shows / hides every annotation of the current image (the r / t variants are gone)
+        actions.push({
+            keyCombo: [" "],
+            action: (event: KeyboardEvent) => {
+                event.preventDefault();
+                if (!event.repeat) {
+                    const imageData = LabelsSelector.getActiveImageData();
+                    if (imageData) {
+                        LabelActions.toggleAllLabelsVisibilityInImage(imageData.id);
+                    }
+                }
+            }
+        });
+
+        // The left and right arrows also go to the previous / next image, next to the shortcuts above
+        actions.push({
+            keyCombo: ["ArrowLeft"],
+            action: (event: KeyboardEvent) => {
+                event.preventDefault();
+                ImageActions.getPreviousImage();
+            },
+            onRelease: releaseHandlers['Previous Image']
+        });
+        actions.push({
+            keyCombo: ["ArrowRight"],
+            action: (event: KeyboardEvent) => {
+                event.preventDefault();
+                ImageActions.getNextImage();
+            },
+            onRelease: releaseHandlers['Next Image']
+        });
+
         // Special case for measurement label visibility which isn't in the Redux shortcuts list
         actions.push({
             keyCombo: ["0"],

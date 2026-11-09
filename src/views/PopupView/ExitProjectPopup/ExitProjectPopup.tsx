@@ -1,65 +1,23 @@
 import React from 'react';
 import './ExitProjectPopup.scss';
 import { GenericYesNoPopup } from "../GenericYesNoPopup/GenericYesNoPopup";
-import {
-    updateActiveImageIndex as storeUpdateActiveImageIndex,
-    updateActiveLabelNameId as storeUpdateActiveLabelNameId,
-    updateFirstLabelCreatedFlag as storeUpdateFirstLabelCreatedFlag,
-    updateImageData as storeUpdateImageData,
-    updateLabelNames as storeUpdateLabelNames,
-    updateTagConfig as storeUpdateTagConfig
-} from "../../../store/labels/actionCreators";
-import { AppState } from "../../../store";
-import { connect } from "react-redux";
-import { ImageData, LabelName, TagConfig } from "../../../store/labels/types";
 import { PopupActions } from "../../../logic/actions/PopupActions";
-import { ProjectData } from "../../../store/general/types";
-import { updateProjectData as storeUpdateProjectData } from "../../../store/general/actionCreators";
-import { LocalImageDirectoryRegistry } from "../../../logic/imageRepository/LocalImageDirectoryRegistry";
-import { ImageExportActions } from "../../../logic/actions/ImageExportActions";
+import { ReviewActions } from "../../../logic/review/ReviewActions";
 
-interface IProps {
-    updateActiveImageIndex: (activeImageIndex: number | null) => any;
-    updateActiveLabelNameId: (activeLabelId: string) => any;
-    updateLabelNames: (labelNames: LabelName[]) => any;
-    updateTagConfig: (tagConfig: TagConfig) => any;
-    updateImageData: (imageData: ImageData[]) => any;
-    updateFirstLabelCreatedFlag: (firstLabelCreatedFlag: boolean) => any;
-    updateProjectData: (projectData: ProjectData) => any;
-}
-
-const ExitProjectPopup: React.FC<IProps> = ({
-    updateActiveLabelNameId,
-    updateLabelNames,
-    updateTagConfig,
-    updateActiveImageIndex,
-    updateImageData,
-    updateFirstLabelCreatedFlag,
-    updateProjectData
-}: IProps) => {
-
-
+const ExitProjectPopup: React.FC = () => {
     const renderContent = () => {
         return (
             <div className="ExitProjectPopupContent">
                 <div className="Message">
-                    Are you sure you want to leave the editor? You will permanently lose all your progress.
+                    Do you want to load a new folder? The changes made to this folder since its last export will be lost.
                 </div>
             </div>
         );
     };
 
     const onAccept = () => {
-        updateActiveLabelNameId(null);
-        updateLabelNames([]);
-        updateTagConfig({ tags: [], groupNames: [] });
-        updateProjectData({ type: null, name: "my-project-name" });
-        updateActiveImageIndex(null);
-        updateImageData([]);
-        LocalImageDirectoryRegistry.clear();
-        ImageExportActions.forgetExportFolder();
-        updateFirstLabelCreatedFlag(false);
         PopupActions.close();
+        ReviewActions.closeProject();
     };
 
     const onReject = () => {
@@ -68,28 +26,13 @@ const ExitProjectPopup: React.FC<IProps> = ({
 
     return (
         <GenericYesNoPopup
-            title={"Exit project"}
+            title={"Import new folder"}
             renderContent={renderContent}
-            acceptLabel={"Exit"}
+            acceptLabel={"Load new folder"}
             onAccept={onAccept}
             rejectLabel={"Back"}
             onReject={onReject}
         />);
 };
 
-const mapDispatchToProps = {
-    updateActiveLabelNameId: storeUpdateActiveLabelNameId,
-    updateLabelNames: storeUpdateLabelNames,
-    updateTagConfig: storeUpdateTagConfig,
-    updateProjectData: storeUpdateProjectData,
-    updateActiveImageIndex: storeUpdateActiveImageIndex,
-    updateImageData: storeUpdateImageData,
-    updateFirstLabelCreatedFlag: storeUpdateFirstLabelCreatedFlag
-};
-
-const mapStateToProps = (state: AppState) => ({});
-
-export default connect(
-    mapStateToProps,
-    mapDispatchToProps
-)(ExitProjectPopup);
+export default ExitProjectPopup;

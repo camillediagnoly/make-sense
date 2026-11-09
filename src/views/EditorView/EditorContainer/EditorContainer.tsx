@@ -7,7 +7,6 @@ import {AppState} from '../../../store';
 import {ImageData} from '../../../store/labels/types';
 import ImagesList from '../SideNavigationBar/ImagesList/ImagesList';
 import LabelsToolkit from '../SideNavigationBar/LabelsToolkit/LabelsToolkit';
-import TagsToolkit from '../SideNavigationBar/TagsToolkit/TagsToolkit';
 import {SideNavigationBar} from '../SideNavigationBar/SideNavigationBar';
 import {VerticalEditorButton} from '../VerticalEditorButton/VerticalEditorButton';
 import './EditorContainer.scss';
@@ -18,7 +17,6 @@ import EditorBottomNavigationBar from '../EditorBottomNavigationBar/EditorBottom
 import EditorTopNavigationBar from '../EditorTopNavigationBar/EditorTopNavigationBar';
 import {ProjectType} from '../../../data/enums/ProjectType';
 
-type RightSideBarTab = 'LABELS' | 'TAGS';
 
 interface IProps {
     windowSize: ISize;
@@ -37,9 +35,7 @@ const EditorContainer: React.FC<IProps> = (
         projectType
     }) => {
     const [leftTabStatus, setLeftTabStatus] = useState(true);
-    // The Labels and Tags tabs share the right side bar: null when it is closed.
-    const [rightTab, setRightTab] = useState<RightSideBarTab | null>('LABELS');
-    const rightTabStatus = rightTab !== null;
+    const [rightTabStatus, setRightTabStatus] = useState(true);
     const activeImageData = activeImageIndex === null ? null : imagesData[activeImageIndex];
 
 
@@ -82,47 +78,29 @@ const EditorContainer: React.FC<IProps> = (
         return <ImagesList/>
     };
 
-    const rightSideBarButtonOnClick = (tab: RightSideBarTab) => {
-        if (rightTab === tab) {
-            if (activeContext === ContextType.RIGHT_NAVBAR)
-                ContextManager.restoreCtx();
-
-            setRightTab(null);
-            return;
-        }
-
-        // The right side bar context has no shortcut at all, so the tags panel never takes it:
-        // tagging relies on the editor shortcuts (Shift+1...9, previous / next image, undo).
-        if (tab === 'TAGS' && activeContext === ContextType.RIGHT_NAVBAR)
-            ContextManager.switchCtx(ContextType.EDITOR);
-        else if (tab === 'LABELS' && !rightTabStatus)
+    const rightSideBarButtonOnClick = () => {
+        if (!rightTabStatus)
             ContextManager.switchCtx(ContextType.RIGHT_NAVBAR);
+        else if (rightTabStatus && activeContext === ContextType.RIGHT_NAVBAR)
+            ContextManager.restoreCtx();
 
-        setRightTab(tab);
+        setRightTabStatus(!rightTabStatus);
     };
 
     const rightSideBarCompanionRender = () => {
         return <>
             <VerticalEditorButton
-                label='Labels'
+                label='Annotations'
                 image={'/ico/tags.png'}
-                imageAlt={'labels'}
-                onClick={() => rightSideBarButtonOnClick('LABELS')}
-                isActive={rightTab === 'LABELS'}
-            />
-            <VerticalEditorButton
-                label='Tags'
-                image={'/ico/labels.png'}
-                imageAlt={'tags'}
-                onClick={() => rightSideBarButtonOnClick('TAGS')}
-                isActive={rightTab === 'TAGS'}
-                style={{top: 161}}
+                imageAlt={'annotations'}
+                onClick={rightSideBarButtonOnClick}
+                isActive={rightTabStatus}
             />
         </>
     };
 
     const rightSideBarRender = () => {
-        return rightTab === 'TAGS' ? <TagsToolkit/> : <LabelsToolkit/>
+        return <LabelsToolkit/>
     };
 
     return (

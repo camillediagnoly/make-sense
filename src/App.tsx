@@ -1,7 +1,7 @@
 import React, { useEffect } from 'react';
 import './App.scss';
 import EditorView from './views/EditorView/EditorView';
-import MainView from './views/MainView/MainView';
+import FolderDropView from './views/FolderDropView/FolderDropView';
 import {ProjectType} from './data/enums/ProjectType';
 import {AppState} from './store';
 import {connect} from 'react-redux';
@@ -54,7 +54,7 @@ const App: React.FC<IProps> = (
         if (!!PlatformModel.mobileDeviceData.manufacturer && !!PlatformModel.mobileDeviceData.os)
             return <MobileMainView/>;
         if (!projectType)
-            return <MainView/>;
+            return <FolderDropView/>;
         else {
             if (windowSize.height < Settings.EDITOR_MIN_HEIGHT || windowSize.width < Settings.EDITOR_MIN_WIDTH) {
                 return <SizeItUpView/>;

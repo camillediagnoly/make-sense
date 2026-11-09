@@ -311,6 +311,8 @@ const EditorTopNavigationBar: React.FC<IProps> = (
         </div>
     );
 
+    // The review mode only moves existing annotations: no drawing, copy / paste, filter, sanity
+    // check, AI or image deletion tools
     return (
         <div className={getClassName()}>
             <div className='ButtonWrapper'>
@@ -382,156 +384,8 @@ const EditorTopNavigationBar: React.FC<IProps> = (
                         crossHairOnClick
                     )
                 }
-                {
-                    getButtonWithTooltip(
-                        'zoom-fixed',
-                        fixedZoom ? 'turn-off persistent zoom' : 'turn-on persistent zoom',
-                        'ico/zoom-fixed.png',
-                        'zoom-fixed',
-                        fixedZoom,
-                        undefined,
-                        fixedZoomOnClick
-                    )
-                }
-                {
-                    getButtonWithTooltip(
-                        'ellipse-draw',
-                        ellipseDraw ? 'turn-off ellipse draw' : 'turn-on ellipse draw',
-                        'ico/ellipse.png',
-                        'ellipse',
-                        ellipseDraw,
-                        undefined,
-                        ellipseDrawOnClick
-                    )
-                }
-                {
-                    getButtonWithTooltip(
-                        'line-keypoint-mode',
-                        lineKeypointMode ? 'turn-off line keypoints mode' : 'turn-on line keypoints mode (n clicks → n sequential keypoint polygons)',
-                        'ico/keypoint-line.svg',
-                        'line-keypoints',
-                        lineKeypointMode,
-                        undefined,
-                        lineKeypointModeOnClick
-                    )
-                }
-                {
-                    renderPolygonModeControl()
-                }
-                {
-                    getButtonWithTooltip(
-                        'moving-annotation',
-                        movingAnnotation ? 'turn-off annotation moving' : 'turn-on annotation moving',
-                        'ico/move-100.png',
-                        'move',
-                        movingAnnotation,
-                        undefined,
-                        movingAnnotationOnClick
-                    )
-                }
-                
             </div>
-
             <div className='ButtonWrapper'>
-                {
-                    getButtonWithTooltip(
-                        'image-class-filter',
-                        'open labels filter',
-                        'ico/filter.svg',
-                        'image-class-filter',
-                        false,
-                        undefined,
-                        openImageClassFilter
-                    )
-                }
-                {
-                    getButtonWithTooltip(
-                        'class-sanity-check',
-                        classSanityCheckEnabled ? 'class sanity check settings' : 'class sanity check disabled',
-                        'ico/bug.png',
-                        'class-sanity-check',
-                        classSanityCheckEnabled,
-                        undefined,
-                        openClassSanityCheck
-                    )
-                }
-                {
-                    getButtonWithTooltip(
-                        'copy-polygons',
-                        copyPolygons ? '' : 'copy all polygons',
-                        'ico/copy-polygons.png',
-                        'copy-polygons',
-                        copyPolygons,
-                        undefined,
-                        copyPolygonsOnClick
-                    )
-                }
-                {
-                    getButtonWithTooltip(
-                        'paste-polygons',
-                        pastePolygons ? '' : 'paste all copied polygons',
-                        'ico/paste-polygons.png',
-                        'paste-polygons',
-                        pastePolygons,
-                        undefined,
-                        pastePolygonsOnClick
-                    )
-                }
-            </div>
-            {withAI && <div className='ButtonWrapper'>
-                {
-                    getButtonWithTooltip(
-                        'accept-all',
-                        'accept all proposed detections',
-                        'ico/accept-all.png',
-                        'accept-all',
-                        false,
-                        undefined,
-                        () => AIActions.acceptAllSuggestedLabels(LabelsSelector.getActiveImageData())
-                    )
-                }
-                {
-                    getButtonWithTooltip(
-                        'reject-all',
-                        'reject all proposed detections',
-                        'ico/reject-all.png',
-                        'reject-all',
-                        false,
-                        undefined,
-                        () => AIActions.rejectAllSuggestedLabels(LabelsSelector.getActiveImageData())
-                    )
-                }
-            </div>}
-            <div className='ButtonWrapper'>
-                {showLocalDeleteButton &&
-                    getButtonWithTooltip(
-                        'refresh-local-image-folders',
-                        isRefreshingLocalImageFolders
-                            ? 'refreshing local images'
-                            : 'refresh local images',
-                        'ico/refresh.png',
-                        'refresh-local-image-folders',
-                        isRefreshingLocalImageFolders,
-                        undefined,
-                        refreshLocalImageFoldersOnClick,
-                        !canRefreshLocalImageFolders || isRefreshingLocalImageFolders,
-                        classNames('RefreshLocalImageFoldersButton', {
-                            refreshing: isRefreshingLocalImageFolders,
-                        })
-                    )
-                }
-                {showLocalDeleteButton &&
-                    getButtonWithTooltip(
-                        'delete-active-image',
-                        getDeleteImageTooltip(),
-                        'ico/trash.png',
-                        'delete-active-image',
-                        false,
-                        undefined,
-                        deleteActiveImageOnClick,
-                        !activeImageData || !FileSystemAccessUtil.canDeleteLocalFile(activeImageData)
-                    )
-                }
                 {
                     getButtonWithTooltip(
                         'undo-active-image-action',
