@@ -1,5 +1,5 @@
 import { ReviewProject } from '../../review/ReviewProject';
-import { ReviewFolder, ReviewFolderError, ReviewFolderReader } from '../../review/ReviewFolderReader';
+import { COCOReviewFolder, ReviewFolder, ReviewFolderError, ReviewFolderReader } from '../../review/ReviewFolderReader';
 import { ImageData } from '../../../store/labels/types';
 import { COCOObject } from '../../../data/labels/COCO';
 
@@ -28,6 +28,7 @@ const cocoObject = (): COCOObject => ({
 
 const folder = (content: unknown, imageNames: string[] = ['b.png', 'a.png']): ReviewFolder => ({
     name: 'study-1',
+    format: 'coco',
     jsonFile: jsonFile('annotations.json', content),
     reviewedJsonName: 'annotations_reviewed.json',
     skippedJsonName: null,
@@ -123,7 +124,7 @@ const fakeDirectory = (name: string, children: FakeHandle[]): FakeHandle => ({
 });
 const drop = (handle: FakeHandle) => ReviewFolderReader.readFromDroppedItems([
     { handle: Promise.resolve(handle as any), entry: null },
-]);
+]) as Promise<COCOReviewFolder>;
 
 describe('ReviewFolderReader.readFromDroppedItems', () => {
     it('reads a folder holding an images folder and one json file', async () => {
@@ -140,7 +141,7 @@ describe('ReviewFolderReader.readFromDroppedItems', () => {
 
     it.each([
         ['no images folder', [fakeFile('annotations.json')], /has no "images" folder/],
-        ['no json file', [fakeDirectory('images', [fakeFile('a.png')])], /has no \.json file/],
+        ['no json file', [fakeDirectory('images', [fakeFile('a.png')])], /has no annotations/],
         ['two json files', [fakeDirectory('images', [fakeFile('a.png')]), fakeFile('a.json'), fakeFile('b.json')], /2 \.json files/],
         ['another file', [fakeDirectory('images', [fakeFile('a.png')]), fakeFile('a.json'), fakeFile('notes.txt')], /also holds: "notes.txt"/],
         ['an empty images folder', [fakeDirectory('images', []), fakeFile('a.json')], /has no image/],

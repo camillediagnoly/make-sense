@@ -5,20 +5,29 @@ import {
     LocalFileSystemFileHandle,
 } from '../../interfaces/IFileSystemAccess';
 
-// The only folder layout the review mode accepts:
-//   <folder>/
-//       images/        - the images, and nothing else
-//       <name>.json    - the COCO annotations of those images
+// The two folder layouts the review mode accepts:
+//   <folder>/                          <folder>/
+//       images/      - the images          images/    - the images
+//       <name>.json  - COCO annotations    labels/    - one Pascal VOC .xml per image
 export const EXPECTED_FOLDER_STRUCTURE: string[] = [
     '<your-folder>/',
     '    images/          only .jpg, .jpeg or .png images',
-    '    <name>.json      the annotations of these images',
+    '    <name>.json      the COCO annotations of these images',
     '    <name>_reviewed.json   (optional) written by "Export current folder"',
+    '',
+    'or',
+    '',
+    '<your-folder>/',
+    '    images/          only .jpg, .jpeg or .png images',
+    '    labels/          one Pascal VOC .xml file per image',
+    '    labels_reviewed/ (optional) written by "Export current folder"',
 ];
 
 export const REVIEWED_SUFFIX = '_reviewed';
 
 export const IMAGES_FOLDER_NAME = 'images';
+export const LABELS_FOLDER_NAME = 'labels';
+export const REVIEWED_LABELS_FOLDER_NAME = `${LABELS_FOLDER_NAME}${REVIEWED_SUFFIX}`;
 const IMAGE_EXTENSIONS: string[] = ['.jpg', '.jpeg', '.png'];
 // Files the operating system drops in folders on its own: they are not part of the folder layout
 const IGNORED_FILE_NAMES: string[] = ['thumbs.db', 'desktop.ini'];
@@ -33,10 +42,15 @@ export class ReviewFolderError extends Error {
     }
 }
 
-export type ReviewFolder = {
+type ReviewFolderBase = {
     name: string;
     // Only set in browsers with the File System Access API (Chrome, Edge)
     directoryHandle?: LocalFileSystemDirectoryHandle;
+    imageFiles: File[];
+};
+
+export type COCOReviewFolder = ReviewFolderBase & {
+    format: 'coco';
     // The annotations to load: <name>_reviewed.json when the folder was already exported, so the
     // review goes on from there, otherwise <name>.json
     jsonFile: File;
@@ -44,8 +58,22 @@ export type ReviewFolder = {
     reviewedJsonName: string;
     // <name>.json when <name>_reviewed.json was loaded instead of it
     skippedJsonName: string | null;
-    imageFiles: File[];
 };
+
+export type VOCReviewFolder = ReviewFolderBase & {
+    format: 'voc';
+    // The .xml files to load: those of labels_reviewed/ when the folder was already exported, so
+    // the review goes on from there, otherwise those of labels/
+    labelFiles: File[];
+    // The folder they were read from
+    labelsFolderName: string;
+    // Where "Export current folder" writes, next to labels/ (which is never overwritten)
+    reviewedLabelsFolderName: string;
+    // labels/ when labels_reviewed/ was loaded instead of it
+    skippedLabelsFolderName: string | null;
+};
+
+export type ReviewFolder = COCOReviewFolder | VOCReviewFolder;
 
 // A file or folder of the dropped tree, whichever browser API it comes from
 type FolderEntry = {
@@ -100,7 +128,7 @@ export class ReviewFolderReader {
     public static async readFromDirectoryPicker(): Promise<ReviewFolder> {
         const handle = await (window as FileSystemAccessWindow).showDirectoryPicker({
             id: 'make-sense-review-import',
-            // Write access too: the export saves <name>_reviewed.json in this folder
+            // Write access too: the export saves <name>_reviewed.json or labels_reviewed/ in this folder
             mode: 'readwrite',
         });
         return ReviewFolderReader.readFolder(ReviewFolderReader.fromHandle(handle));
@@ -118,43 +146,68 @@ export class ReviewFolderReader {
         const children: FolderEntry[] = ReviewFolderReader.withoutIgnoredFiles(await root.listChildren());
         const problems: string[] = [];
 
-        const imagesFolders = children.filter((child: FolderEntry) =>
-            child.kind === 'directory' && child.name.toLowerCase() === IMAGES_FOLDER_NAME);
+        const isDirectoryNamed = (child: FolderEntry, name: string) =>
+            child.kind === 'directory' && child.name.toLowerCase() === name;
+        const imagesFolders = children.filter((child: FolderEntry) => isDirectoryNamed(child, IMAGES_FOLDER_NAME));
+        const labelsFolder = children.find((child: FolderEntry) => isDirectoryNamed(child, LABELS_FOLDER_NAME));
+        const reviewedLabelsFolder = children
+            .find((child: FolderEntry) => isDirectoryNamed(child, REVIEWED_LABELS_FOLDER_NAME));
+        const labelsFolders = [labelsFolder, reviewedLabelsFolder].filter(Boolean);
         const jsonFiles = children.filter((child: FolderEntry) =>
             child.kind === 'file' && child.name.toLowerCase().endsWith('.json'));
         const unexpected = children.filter((child: FolderEntry) =>
-            !imagesFolders.includes(child) && !jsonFiles.includes(child));
+            !imagesFolders.includes(child) && !labelsFolders.includes(child) && !jsonFiles.includes(child));
 
         if (imagesFolders.length === 0) {
             problems.push(`The folder "${root.name}" has no "${IMAGES_FOLDER_NAME}" folder.`);
         }
+
+        const isVOC = labelsFolders.length > 0;
         const jsonPair = ReviewFolderReader.getJsonPair(jsonFiles);
-        if (jsonFiles.length === 0) {
-            problems.push(`The folder "${root.name}" has no .json file.`);
-        } else if (!jsonPair) {
+        if (isVOC && jsonFiles.length > 0) {
+            problems.push(`The folder "${root.name}" holds both a "${LABELS_FOLDER_NAME}" folder and .json `
+                + `annotations (${ReviewFolderReader.listNames(jsonFiles)}): keep only one of them.`);
+        } else if (!isVOC && jsonFiles.length === 0) {
+            problems.push(`The folder "${root.name}" has no annotations: neither a .json file nor a `
+                + `"${LABELS_FOLDER_NAME}" folder of .xml files.`);
+        } else if (!isVOC && !jsonPair) {
             problems.push(`The folder "${root.name}" has ${jsonFiles.length} .json files `
                 + `(${ReviewFolderReader.listNames(jsonFiles)}): it must have only one, plus `
                 + `optionally its "${REVIEWED_SUFFIX}" version.`);
         }
         if (unexpected.length > 0) {
             problems.push(`The folder "${root.name}" must only hold the "${IMAGES_FOLDER_NAME}" folder and `
-                + `the .json file, but it also holds: ${ReviewFolderReader.listNames(unexpected)}.`);
+                + (isVOC ? `the "${LABELS_FOLDER_NAME}" folder` : 'the .json file')
+                + `, but it also holds: ${ReviewFolderReader.listNames(unexpected)}.`);
         }
 
-        let imageFiles: File[] = [];
+        let imageEntries: FolderEntry[] = [];
         if (imagesFolders.length === 1) {
-            const imageEntries = ReviewFolderReader.withoutIgnoredFiles(await imagesFolders[0].listChildren());
-            const notImages = imageEntries.filter((entry: FolderEntry) => !ReviewFolderReader.isImageEntry(entry));
-            const images = imageEntries.filter((entry: FolderEntry) => ReviewFolderReader.isImageEntry(entry));
+            const entries = ReviewFolderReader.withoutIgnoredFiles(await imagesFolders[0].listChildren());
+            const notImages = entries.filter((entry: FolderEntry) => !ReviewFolderReader.isImageEntry(entry));
+            imageEntries = entries.filter((entry: FolderEntry) => ReviewFolderReader.isImageEntry(entry));
 
             if (notImages.length > 0) {
                 problems.push(`The "${IMAGES_FOLDER_NAME}" folder must only hold .jpg, .jpeg or .png images, `
                     + `but it also holds: ${ReviewFolderReader.listNames(notImages)}.`);
-            } else if (images.length === 0) {
+            } else if (imageEntries.length === 0) {
                 problems.push(`The "${IMAGES_FOLDER_NAME}" folder has no image.`);
             }
-            if (problems.length === 0) {
-                imageFiles = await Promise.all(images.map((entry: FolderEntry) => entry.getFile()));
+        }
+
+        // labels_reviewed/ when the folder was already exported, so the review goes on from there
+        const loadedLabelsFolder = reviewedLabelsFolder || labelsFolder;
+        let labelEntries: FolderEntry[] = [];
+        if (isVOC && jsonFiles.length === 0) {
+            const entries = ReviewFolderReader.withoutIgnoredFiles(await loadedLabelsFolder.listChildren());
+            const notLabels = entries.filter((entry: FolderEntry) => !ReviewFolderReader.isXmlEntry(entry));
+            labelEntries = entries.filter((entry: FolderEntry) => ReviewFolderReader.isXmlEntry(entry));
+
+            if (notLabels.length > 0) {
+                problems.push(`The "${loadedLabelsFolder.name}" folder must only hold .xml files, `
+                    + `but it also holds: ${ReviewFolderReader.listNames(notLabels)}.`);
+            } else if (labelEntries.length === 0) {
+                problems.push(`The "${loadedLabelsFolder.name}" folder has no .xml file.`);
             }
         }
 
@@ -162,13 +215,27 @@ export class ReviewFolderReader {
             throw new ReviewFolderError(problems);
         }
 
-        return {
+        const base: ReviewFolderBase = {
             name: root.name,
             directoryHandle: root.directoryHandle,
+            imageFiles: await Promise.all(imageEntries.map((entry: FolderEntry) => entry.getFile())),
+        };
+        if (isVOC) {
+            return {
+                ...base,
+                format: 'voc',
+                labelFiles: await Promise.all(labelEntries.map((entry: FolderEntry) => entry.getFile())),
+                labelsFolderName: loadedLabelsFolder.name,
+                reviewedLabelsFolderName: reviewedLabelsFolder ? reviewedLabelsFolder.name : REVIEWED_LABELS_FOLDER_NAME,
+                skippedLabelsFolderName: reviewedLabelsFolder && labelsFolder ? labelsFolder.name : null,
+            };
+        }
+        return {
+            ...base,
+            format: 'coco',
             jsonFile: await (jsonPair.reviewed || jsonPair.original).getFile(),
             reviewedJsonName: jsonPair.reviewedName,
             skippedJsonName: jsonPair.reviewed ? jsonPair.original.name : null,
-            imageFiles,
         };
     }
 
@@ -201,6 +268,10 @@ export class ReviewFolderReader {
     private static isImageEntry(entry: FolderEntry): boolean {
         const name = entry.name.toLowerCase();
         return entry.kind === 'file' && IMAGE_EXTENSIONS.some((extension: string) => name.endsWith(extension));
+    }
+
+    private static isXmlEntry(entry: FolderEntry): boolean {
+        return entry.kind === 'file' && entry.name.toLowerCase().endsWith('.xml');
     }
 
     private static listNames(entries: FolderEntry[]): string {

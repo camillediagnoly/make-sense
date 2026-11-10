@@ -108,7 +108,19 @@
     justify-content: center;
     color: rgba(255, 255, 255, 0.75);
     font-size: 13px;
+    line-height: 20px;
+    text-align: center;
+    padding: 0 8px;
+    box-sizing: border-box;
     user-select: none;
+
+    .EyeIcon {
+      width: 14px;
+      height: 14px;
+      margin: 0 2px;
+      vertical-align: -2px;
+      filter: brightness(0) invert(1);
+    }
 
     .Key {
       margin: 0 5px;

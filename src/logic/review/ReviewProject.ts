@@ -1,4 +1,5 @@
 import { saveAs } from 'file-saver';
+import JSZip from 'jszip';
 import { isEqual } from 'lodash';
 import { v4 as uuidv4 } from 'uuid';
 import { ImageData, LabelName, LabelPolygon, LabelRect } from '../../store/labels/types';
@@ -14,7 +15,8 @@ import { Settings } from '../../settings/Settings';
 import { IPoint } from '../../interfaces/IPoint';
 import { IRect } from '../../interfaces/IRect';
 import { LocalFileSystemDirectoryHandle } from '../../interfaces/IFileSystemAccess';
-import { ReviewFolder, ReviewFolderError } from './ReviewFolderReader';
+import { COCOReviewFolder, ReviewFolder, ReviewFolderError } from './ReviewFolderReader';
+import { ReviewVOC, VOCLabelFile } from './ReviewVOC';
 
 // Category names starting with this are rectangles, the ones starting with POLYGON_PREFIX are polygons
 const RECT_PREFIX = 'q';
@@ -38,13 +40,17 @@ export type ReviewProjectLoadResult = {
     imagesData: ImageData[];
     labelNames: LabelName[];
     measurementFunctionByName: MeasurementFunctionByName;
-    // file_name of the images the json describes but the images folder does not hold
+    // The images the annotations describe but the images folder does not hold: file_name of the
+    // json images, or name of the .xml files
     missingImageNames: string[];
+    // Images no .xml file describes (always empty for a .json file)
+    imagesWithoutAnnotations: string[];
 };
 
+// fileName is the .json file, or the labels_reviewed/ folder (with fileCount .xml files in it)
 export type ReviewExportResult =
-    | { kind: 'folder'; folderName: string; fileName: string }
-    | { kind: 'download'; fileName: string };
+    | { kind: 'folder'; folderName: string; fileName: string; fileCount?: number }
+    | { kind: 'download'; fileName: string; fileCount?: number };
 
 // Gives access to the protected COCO import helpers
 class ReviewCOCOImporter extends COCOImporter {
@@ -60,19 +66,23 @@ export class ReviewProject {
     private static folder: ReviewFolder | null = null;
     private static originalCOCO: COCOObject | null = null;
     private static annotationLinks: AnnotationLink[] = [];
+    private static vocLabelFiles: VOCLabelFile[] = [];
 
     public static getFolderName(): string | null {
         return ReviewProject.folder?.name ?? null;
     }
 
+    // The .json file, or the labels folder, "Export current folder" writes
     public static getReviewedJsonFileName(): string {
-        return ReviewProject.folder.reviewedJsonName;
+        const folder = ReviewProject.folder;
+        return folder.format === 'coco' ? folder.reviewedJsonName : folder.reviewedLabelsFolderName;
     }
 
     public static clear(): void {
         ReviewProject.folder = null;
         ReviewProject.originalCOCO = null;
         ReviewProject.annotationLinks = [];
+        ReviewProject.vocLabelFiles = [];
     }
 
     // =================================================================================================================
@@ -80,6 +90,22 @@ export class ReviewProject {
     // =================================================================================================================
 
     public static async load(folder: ReviewFolder): Promise<ReviewProjectLoadResult> {
+        if (folder.format === 'voc') {
+            const imagesData: ImageData[] = [...folder.imageFiles].sort(ReviewProject.naturalSort)
+                .map((file: File) => ImageDataUtil.createImageDataFromFileData(file));
+            const result = await ReviewVOC.load(folder, imagesData);
+            ReviewProject.folder = folder;
+            ReviewProject.originalCOCO = null;
+            ReviewProject.annotationLinks = [];
+            ReviewProject.vocLabelFiles = result.labelFiles;
+            return {
+                imagesData: result.imagesData,
+                labelNames: result.labelNames,
+                measurementFunctionByName: {},
+                missingImageNames: result.labelFilesWithoutImage,
+                imagesWithoutAnnotations: result.imagesWithoutLabelFile,
+            };
+        }
         const cocoObject: COCOObject = ReviewProject.parseJson(folder.jsonFile.name, await folder.jsonFile.text());
         const result = ReviewProject.buildProject(folder, cocoObject);
         ReviewProject.folder = folder;
@@ -104,7 +130,7 @@ export class ReviewProject {
         return cocoObject;
     }
 
-    private static buildProject(folder: ReviewFolder, cocoObject: COCOObject): ReviewProjectLoadResult {
+    private static buildProject(folder: COCOReviewFolder, cocoObject: COCOObject): ReviewProjectLoadResult {
         const { images, categories, annotations } = cocoObject;
         const jsonName = folder.jsonFile.name;
 
@@ -215,6 +241,7 @@ export class ReviewProject {
             labelNames: Array.from(labelByBaseName.values()),
             measurementFunctionByName: ReviewCOCOImporter.getMeasurementFunctionByName(cocoObject, labelNameMap),
             missingImageNames,
+            imagesWithoutAnnotations: [],
         };
     }
 
@@ -366,6 +393,9 @@ export class ReviewProject {
     // Writes <name>_reviewed.json in the input folder, next to <name>.json (which is never
     // overwritten). Browsers without folder access (Firefox, Safari) download it instead.
     public static async exportReviewedFolder(imagesData: ImageData[]): Promise<ReviewExportResult> {
+        if (ReviewProject.folder.format === 'voc') {
+            return ReviewProject.exportReviewedLabelsFolder(imagesData);
+        }
         const content = JSON.stringify(ReviewProject.buildReviewedCOCO(imagesData), null, 2);
         const fileName = ReviewProject.getReviewedJsonFileName();
         const folderHandle = ReviewProject.folder.directoryHandle;
@@ -379,6 +409,30 @@ export class ReviewProject {
         }
         await ReviewProject.writeFile(folderHandle, fileName, content);
         return { kind: 'folder', fileName, folderName: ReviewProject.folder.name };
+    }
+
+    // Writes every loaded .xml file in labels_reviewed/, next to labels/ (which is never
+    // overwritten). Browsers without folder access (Firefox, Safari) download a zip of it instead.
+    private static async exportReviewedLabelsFolder(imagesData: ImageData[]): Promise<ReviewExportResult> {
+        const files = ReviewVOC.buildReviewedFiles(ReviewProject.vocLabelFiles, imagesData);
+        const folderName = ReviewProject.getReviewedJsonFileName();
+        const folderHandle = ReviewProject.folder.directoryHandle;
+
+        if (!folderHandle || !folderHandle.getDirectoryHandle) {
+            const zip = new JSZip();
+            files.forEach(({ fileName, content }) => zip.file(`${folderName}/${fileName}`, content));
+            const zipName = `${folderName}.zip`;
+            saveAs(await zip.generateAsync({ type: 'blob' }), zipName);
+            return { kind: 'download', fileName: zipName, fileCount: files.length };
+        }
+        if (!await ReviewProject.hasWritePermission(folderHandle)) {
+            throw new Error(`Saving in "${ReviewProject.folder.name}" was not allowed by the browser.`);
+        }
+        const labelsHandle = await folderHandle.getDirectoryHandle(folderName, { create: true });
+        for (const { fileName, content } of files) {
+            await ReviewProject.writeFile(labelsHandle, fileName, content);
+        }
+        return { kind: 'folder', fileName: `${folderName}/`, folderName: ReviewProject.folder.name, fileCount: files.length };
     }
 
     private static async hasWritePermission(handle: LocalFileSystemDirectoryHandle): Promise<boolean> {

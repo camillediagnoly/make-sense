@@ -25,6 +25,7 @@ export type LocalFileSystemDirectoryHandle = {
     name: string;
     values?: () => AsyncIterable<LocalFileSystemFileHandle | LocalFileSystemDirectoryHandle>;
     getFileHandle?: (name: string, options?: { create?: boolean }) => Promise<LocalFileSystemFileHandle>;
+    getDirectoryHandle?: (name: string, options?: { create?: boolean }) => Promise<LocalFileSystemDirectoryHandle>;
     isSameEntry?: (other: LocalFileSystemFileHandle | LocalFileSystemDirectoryHandle) => Promise<boolean>;
     queryPermission?: (descriptor?: LocalFileSystemPermissionDescriptor) => Promise<PermissionState>;
     requestPermission?: (descriptor?: LocalFileSystemPermissionDescriptor) => Promise<PermissionState>;

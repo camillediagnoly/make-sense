@@ -34,7 +34,7 @@ type ListedAnnotation = {
     isDeleted: boolean;
 };
 
-const HINT_HEIGHT = 30;
+const HINT_HEIGHT = 48;
 const DELETED_HEADER_HEIGHT = 34;
 
 // The single list of the review mode: every rectangle and polygon of the active image, which can
@@ -113,7 +113,11 @@ const LabelsToolkit: React.FC<IProps> = (
         const areAllHidden = shownAnnotations.length > 0
             && shownAnnotations.every((annotation: ListedAnnotation) => annotation.isVisible === false);
         const hint = <div className='SpaceHint' style={{height: HINT_HEIGHT}}>
-            Press <span className='Key'>space</span> to {areAllHidden ? 'show' : 'hide'} the annotations
+            <span>
+                Press <span className='Key'>space</span> to {areAllHidden ? 'show' : 'hide'} the annotations,
+                and click the <img className='EyeIcon' draggable={false} src={'ico/eye.png'} alt={'eye'}/> to
+                show/hide just one criteria
+            </span>
         </div>;
 
         if (annotations.length === 0) {
