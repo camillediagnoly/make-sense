@@ -251,6 +251,7 @@ const EditTagsPopup: React.FC<IProps> = (
             <ColorSelectorView
                 color={tagEntry.color}
                 onClick={() => updateTagEntry(tagEntry.id, { color: sample(Settings.LABEL_COLORS_PALETTE) })}
+                onColorSelect={(color: string) => updateTagEntry(tagEntry.id, { color })}
             />
             {groupEntries.length > 0 && <select
                 className='TagGroupSelect'
