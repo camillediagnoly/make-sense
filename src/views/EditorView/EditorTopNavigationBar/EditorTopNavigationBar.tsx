@@ -451,7 +451,7 @@ const EditorTopNavigationBar: React.FC<IProps> = (
                 {
                     getButtonWithTooltip(
                         'copy-polygons',
-                        'copy all labelled rectangles, polygons and tags of this image',
+                        'copy all annotations and tags',
                         'ico/copy-polygons.png',
                         'copy-polygons',
                         false,
@@ -462,7 +462,7 @@ const EditorTopNavigationBar: React.FC<IProps> = (
                 {
                     getButtonWithTooltip(
                         'paste-polygons',
-                        'paste the copied rectangles, polygons and tags (replaces the ones with the same label)',
+                        'paste all annotations and tags',
                         'ico/paste-polygons.png',
                         'paste-polygons',
                         false,
