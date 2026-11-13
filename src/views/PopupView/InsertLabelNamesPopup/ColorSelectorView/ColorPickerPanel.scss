@@ -1,0 +1,38 @@
+.ColorPickerPanel {
+  position: fixed;
+  z-index: 10000;
+
+  display: flex;
+  flex-direction: row;
+  flex-wrap: nowrap;
+  gap: 4px;
+  padding: 8px;
+
+  background-color: #282828;
+  border: 1px solid #4c4c4c;
+  border-radius: 4px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.5);
+
+  .ColorPickerColumn {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .ColorPickerSwatch {
+    width: 18px;
+    height: 18px;
+    border-radius: 2px;
+    box-sizing: border-box;
+
+    &:hover {
+      cursor: pointer;
+      transform: scale(1.2);
+      box-shadow: 0 0 0 1px #fff;
+    }
+
+    &.selected {
+      box-shadow: 0 0 0 2px #fff;
+    }
+  }
+}

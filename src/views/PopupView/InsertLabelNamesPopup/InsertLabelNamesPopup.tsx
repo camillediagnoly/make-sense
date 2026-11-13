@@ -99,9 +99,9 @@ const InsertLabelNamesPopup: React.FC<IProps> = (
         }
     }, [projectType, enablePerClassColoration, updatePerClassColorationStatusAction]);
 
-    const changeLabelNameColorCallback = (id: string) => {
+    const changeLabelNameColorCallback = (id: string, color: string = sample(Settings.LABEL_COLORS_PALETTE)) => {
         const newLabelNames = labelNames.map((labelName: LabelName) => {
-            return labelName.id === id ? { ...labelName, color: sample(Settings.LABEL_COLORS_PALETTE) } : labelName;
+            return labelName.id === id ? { ...labelName, color } : labelName;
         });
         setLabelNames(newLabelNames);
     };
@@ -179,7 +179,6 @@ const InsertLabelNamesPopup: React.FC<IProps> = (
         const onChangeCallback = (event: React.ChangeEvent<HTMLInputElement>) =>
             onChange(labelName.id, event.target.value);
         const onDeleteCallback = () => deleteLabelNameCallback(labelName.id);
-        const onChangeColorCallback = () => changeLabelNameColorCallback(labelName.id);
         return <div className='LabelEntry' key={labelName.id}>
             <StyledTextField variant='standard'
                 id={'key'}
@@ -198,7 +197,7 @@ const InsertLabelNamesPopup: React.FC<IProps> = (
             />
             {projectType === ProjectType.OBJECT_DETECTION && <ColorSelectorView
                 color={labelName.color}
-                onClick={onChangeColorCallback}
+                onColorSelect={(color: string) => changeLabelNameColorCallback(labelName.id, color)}
             />}
             <ImageButton
                 image={(labelName.isVisible !== false) ? 'ico/eye.png' : 'ico/hide.png'}

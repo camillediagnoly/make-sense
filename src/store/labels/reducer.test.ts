@@ -6,6 +6,7 @@ import {
     redoActiveImageAction,
     undoActiveImageAction,
     updateActiveImageIndex,
+    updateImageData,
     updateImageDataById,
     updateTagConfig,
 } from './actionCreators';
@@ -165,5 +166,34 @@ describe('labelsReducer image tags', () => {
 
         expect(state.tagConfig).toEqual({ tags: [], groupNames: [] });
         expect(nextState.tagConfig).toEqual(tagConfig);
+    });
+});
+
+describe('labelsReducer add images', () => {
+    const fileNames = (state: ReturnType<typeof labelsReducer>) =>
+        state.imagesData.map((imageData: ImageData) => imageData.fileData.name);
+
+    it('inserts added images in natural file name order instead of appending them', () => {
+        const state = initializeState([createImageData('img1'), createImageData('img3'), createImageData('img10')]);
+
+        const nextState = labelsReducer(state, addImageData([createImageData('img20'), createImageData('img2')]));
+
+        expect(fileNames(nextState)).toEqual(['img1.jpg', 'img2.jpg', 'img3.jpg', 'img10.jpg', 'img20.jpg']);
+    });
+
+    it('keeps the active image selected when images are inserted before it', () => {
+        const state = initializeState([createImageData('img1'), createImageData('img3')], 1);
+
+        const nextState = labelsReducer(state, addImageData([createImageData('img0'), createImageData('img2')]));
+
+        expect(nextState.imagesData[nextState.activeImageIndex].id).toBe('img3');
+    });
+
+    it('does not reorder existing images', () => {
+        const state = labelsReducer(initializeState([]), updateImageData([createImageData('b'), createImageData('a')]));
+
+        const nextState = labelsReducer(state, addImageData([createImageData('c')]));
+
+        expect(fileNames(nextState)).toEqual(['b.jpg', 'a.jpg', 'c.jpg']);
     });
 });

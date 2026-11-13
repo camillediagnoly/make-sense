@@ -124,7 +124,7 @@ export class ImageFilterUtil {
         return assignedLabelIds;
     }
 
-    private static getImageAssignedClassLabelIds(imageData: ImageData): Set<string> {
+    public static getImageAssignedClassLabelIds(imageData: ImageData): Set<string> {
         const assignedLabelIds = new Set<string>(imageData.labelNameIds || []);
 
         imageData.labelRects

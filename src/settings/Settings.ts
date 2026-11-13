@@ -67,6 +67,23 @@ export class Settings {
         '#ff37c7'
     ];
 
+    // Colors offered by the color picker panel (shift+click on a color swatch): one column per
+    // main hue, each one going from its lightest to its darkest shade, then a vivid (neon) shade.
+    public static readonly COLOR_PICKER_PALETTE: string[][] = [
+        ['#ef9a9a', '#e57373', '#f44336', '#d32f2f', '#b71c1c', '#ff1744'], // red
+        ['#ffcc80', '#ffb74d', '#ff9800', '#f57c00', '#e65100', '#ff9100'], // orange
+        ['#fff59d', '#fff176', '#ffeb3b', '#fbc02d', '#f57f17', '#ffea00'], // yellow
+        ['#c5e1a5', '#aed581', '#8bc34a', '#689f38', '#33691e', '#76ff03'], // lime green
+        ['#a5d6a7', '#81c784', '#4caf50', '#388e3c', '#1b5e20', '#00e676'], // green
+        ['#80cbc4', '#4db6ac', '#009688', '#00796b', '#004d40', '#1de9b6'], // teal
+        ['#80deea', '#4dd0e1', '#00bcd4', '#0097a7', '#006064', '#00e5ff'], // cyan
+        ['#90caf9', '#64b5f6', '#2196f3', '#1976d2', '#0d47a1', '#2979ff'], // blue
+        ['#ce93d8', '#ba68c8', '#9c27b0', '#7b1fa2', '#4a148c', '#d500f9'], // purple
+        ['#f48fb1', '#f06292', '#e91e63', '#c2185b', '#880e4f', '#f50057'], // pink
+        ['#bcaaa4', '#a1887f', '#795548', '#5d4037', '#3e2723', '#d2691e'], // brown
+        ['#eeeeee', '#bdbdbd', '#9e9e9e', '#616161', '#212121', '#ffffff']  // grey
+    ];
+
     public static readonly CSV_SEPARATOR = ','
     public static readonly RECT_LABELS_EXPORT_CSV_COLUMN_NAMES = [
         'label_name',

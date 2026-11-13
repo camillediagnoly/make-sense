@@ -8,6 +8,7 @@ import {ImageData} from '../../../store/labels/types';
 import ImagesList from '../SideNavigationBar/ImagesList/ImagesList';
 import LabelsToolkit from '../SideNavigationBar/LabelsToolkit/LabelsToolkit';
 import TagsToolkit from '../SideNavigationBar/TagsToolkit/TagsToolkit';
+import StatisticsPanel from '../SideNavigationBar/StatisticsPanel/StatisticsPanel';
 import {SideNavigationBar} from '../SideNavigationBar/SideNavigationBar';
 import {VerticalEditorButton} from '../VerticalEditorButton/VerticalEditorButton';
 import './EditorContainer.scss';
@@ -18,6 +19,7 @@ import EditorBottomNavigationBar from '../EditorBottomNavigationBar/EditorBottom
 import EditorTopNavigationBar from '../EditorTopNavigationBar/EditorTopNavigationBar';
 import {ProjectType} from '../../../data/enums/ProjectType';
 
+type LeftSideBarTab = 'IMAGES' | 'STATISTICS';
 type RightSideBarTab = 'LABELS' | 'TAGS';
 
 interface IProps {
@@ -36,7 +38,9 @@ const EditorContainer: React.FC<IProps> = (
         activeContext,
         projectType
     }) => {
-    const [leftTabStatus, setLeftTabStatus] = useState(true);
+    // The Images and Statistics tabs share the left side bar: null when it is closed.
+    const [leftTab, setLeftTab] = useState<LeftSideBarTab | null>('IMAGES');
+    const leftTabStatus = leftTab !== null;
     // The Labels and Tags tabs share the right side bar: null when it is closed.
     const [rightTab, setRightTab] = useState<RightSideBarTab | null>('LABELS');
     const rightTabStatus = rightTab !== null;
@@ -57,13 +61,23 @@ const EditorContainer: React.FC<IProps> = (
             return null;
     };
 
-    const leftSideBarButtonOnClick = () => {
-        if (!leftTabStatus)
-            ContextManager.switchCtx(ContextType.LEFT_NAVBAR);
-        else if (leftTabStatus && activeContext === ContextType.LEFT_NAVBAR)
-            ContextManager.restoreCtx();
+    const leftSideBarButtonOnClick = (tab: LeftSideBarTab) => {
+        if (leftTab === tab) {
+            if (activeContext === ContextType.LEFT_NAVBAR)
+                ContextManager.restoreCtx();
 
-        setLeftTabStatus(!leftTabStatus);
+            setLeftTab(null);
+            return;
+        }
+
+        // Like the tags panel, the statistics never take the left side bar context (which has no
+        // shortcut at all): the editor shortcuts keep working while the stats update live.
+        if (tab === 'STATISTICS' && activeContext === ContextType.LEFT_NAVBAR)
+            ContextManager.switchCtx(ContextType.EDITOR);
+        else if (tab === 'IMAGES' && !leftTabStatus)
+            ContextManager.switchCtx(ContextType.LEFT_NAVBAR);
+
+        setLeftTab(tab);
     };
 
     const leftSideBarCompanionRender = () => {
@@ -72,14 +86,22 @@ const EditorContainer: React.FC<IProps> = (
                 label='Images'
                 image={'/ico/camera.png'}
                 imageAlt={'images'}
-                onClick={leftSideBarButtonOnClick}
-                isActive={leftTabStatus}
+                onClick={() => leftSideBarButtonOnClick('IMAGES')}
+                isActive={leftTab === 'IMAGES'}
+            />
+            <VerticalEditorButton
+                label='Statistics'
+                image={'/ico/statistics.svg'}
+                imageAlt={'statistics'}
+                onClick={() => leftSideBarButtonOnClick('STATISTICS')}
+                isActive={leftTab === 'STATISTICS'}
+                style={{top: 181, width: 100}}
             />
         </>
     };
 
     const leftSideBarRender = () => {
-        return <ImagesList/>
+        return leftTab === 'STATISTICS' ? <StatisticsPanel/> : <ImagesList/>
     };
 
     const rightSideBarButtonOnClick = (tab: RightSideBarTab) => {

@@ -33,25 +33,10 @@ const TopNavigationBar: React.FC<IProps> = (props) => {
         })
     };
 
-    const closePopup = () => props.updateActivePopupTypeAction(PopupWindowType.EXIT_PROJECT)
-
     return (
         <div className='TopNavigationBar'>
             <StateBar/>
             <div className='TopNavigationBarWrapper'>
-                <div className='NavigationBarGroupWrapper'>
-                    <div
-                        className='Header'
-                        onClick={closePopup}
-                    >
-                        <img
-                            draggable={false}
-                            alt={'make-sense'}
-                            src={'/make-sense-ico-transparent.png'}
-                        />
-                        Make Sense
-                    </div>
-                </div>
                 <div className='NavigationBarGroupWrapper'>
                     <DropDownMenu/>
                 </div>

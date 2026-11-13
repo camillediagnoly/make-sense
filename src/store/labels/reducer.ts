@@ -38,6 +38,24 @@ const getActiveImageData = (state: LabelsState): ImageData | null => {
     return state.imagesData[state.activeImageIndex] || null;
 };
 
+const fileNameCollator = new Intl.Collator(undefined, { numeric: true, sensitivity: 'base' });
+
+const compareImagesDataByFileName = (a: ImageData, b: ImageData): number =>
+    fileNameCollator.compare(a.fileData?.name ?? '', b.fileData?.name ?? '');
+
+// Each added image goes before the first existing image whose file name sorts after it
+// (natural order, e.g. img2 < img10). Existing images keep their relative order.
+const insertImagesDataByFileName = (imagesData: ImageData[], addedImagesData: ImageData[]): ImageData[] => {
+    const result = [...imagesData];
+    [...addedImagesData].sort(compareImagesDataByFileName).forEach((addedImageData: ImageData) => {
+        const insertIndex = result.findIndex((imageData: ImageData) =>
+            compareImagesDataByFileName(imageData, addedImageData) > 0
+        );
+        result.splice(insertIndex === -1 ? result.length : insertIndex, 0, addedImageData);
+    });
+    return result;
+};
+
 const getImageDataById = (imagesData: ImageData[], imageId: string): ImageData | null => {
     return imagesData.find((imageData: ImageData) => imageData.id === imageId) || null;
 };
@@ -182,11 +200,20 @@ export function labelsReducer(
             }
         }
         case Action.ADD_IMAGES_DATA: {
+            const imagesData = insertImagesDataByFileName(
+                state.imagesData,
+                ImageDataUtil.cloneImagesData(action.payload.imageData)
+            );
+            // Inserting before the active image shifts it: keep pointing at the same image
+            const activeImageId = getActiveImageData(state)?.id;
+            const activeImageIndex = activeImageId
+                ? imagesData.findIndex((imageData: ImageData) => imageData.id === activeImageId)
+                : state.activeImageIndex;
+
             return {
                 ...state,
-                imagesData: state.imagesData.concat(
-                    ImageDataUtil.cloneImagesData(action.payload.imageData)
-                )
+                imagesData,
+                activeImageIndex
             }
         }
         case Action.UPDATE_IMAGES_DATA: {

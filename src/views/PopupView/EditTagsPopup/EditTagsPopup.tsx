@@ -5,7 +5,7 @@ import { AppState } from '../../../store';
 import { connect } from 'react-redux';
 import Scrollbars from 'react-custom-scrollbars-2';
 import { v4 as uuidv4 } from 'uuid';
-import { sample, uniq } from 'lodash';
+import { uniq } from 'lodash';
 import { ImageButton } from '../../Common/ImageButton/ImageButton';
 import { StyledTextField } from '../../Common/StyledTextField/StyledTextField';
 import { ColorSelectorView } from '../InsertLabelNamesPopup/ColorSelectorView/ColorSelectorView';
@@ -13,7 +13,6 @@ import { ImageData, TagConfig, TagName } from '../../../store/labels/types';
 import { PopupActions } from '../../../logic/actions/PopupActions';
 import { TagActions } from '../../../logic/actions/TagActions';
 import { TagNameChanges, TagUtil } from '../../../utils/TagUtil';
-import { Settings } from '../../../settings/Settings';
 import { submitNewNotification } from '../../../store/notifications/actionCreators';
 import { INotification } from '../../../store/notifications/types';
 import { NotificationUtil } from '../../../utils/NotificationUtil';
@@ -250,7 +249,7 @@ const EditTagsPopup: React.FC<IProps> = (
             />
             <ColorSelectorView
                 color={tagEntry.color}
-                onClick={() => updateTagEntry(tagEntry.id, { color: sample(Settings.LABEL_COLORS_PALETTE) })}
+                onColorSelect={(color: string) => updateTagEntry(tagEntry.id, { color })}
             />
             {groupEntries.length > 0 && <select
                 className='TagGroupSelect'

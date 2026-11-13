@@ -1,5 +1,4 @@
 .ImagesDropZone {
-  opacity: 0;
   display: flex;
   flex-direction: column;
   flex-wrap: nowrap;
@@ -44,34 +43,4 @@
     }
   }
 
-
-  .DropZoneButtons {
-    align-self: stretch;
-    display: flex;
-    flex-direction: row;
-    flex-wrap: nowrap;
-    justify-content: space-between;
-    align-items: center;
-
-    .TextButton {
-      width: calc(50% - 3px);
-      display: flex;
-      flex-direction: row;
-      flex-wrap: nowrap;
-      justify-content: center;
-      align-items: center;
-
-      &.disabled {
-        box-shadow: rgba(0, 0, 0, 0.2) 0 0 0 2px inset;
-        color: rgba(0, 0, 0, 0.2);
-        cursor: default;
-
-        &:hover {
-          box-shadow: rgba(0, 0, 0, 0.2) 0 0 0 2px inset;
-          color: rgba(0, 0, 0, 0.2);
-          background-color: transparent;
-        }
-      }
-    }
-  }
 }
