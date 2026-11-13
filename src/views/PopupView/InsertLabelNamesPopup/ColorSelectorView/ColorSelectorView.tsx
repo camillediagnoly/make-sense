@@ -4,33 +4,15 @@ import { ColorPickerPanel } from './ColorPickerPanel';
 
 interface IProps {
     color: string;
-    // Click: random color
-    onClick: () => void;
-    // Shift+click: opens a panel of predefined colors, the chosen one is passed here
+    // Click on the swatch opens a panel of predefined colors, the chosen one is passed here
     onColorSelect: (color: string) => void;
 }
 
-export const ColorSelectorView: React.FC<IProps> = ({color, onClick, onColorSelect}) => {
+export const ColorSelectorView: React.FC<IProps> = ({color, onColorSelect}) => {
     const swatchRef = useRef<HTMLDivElement>(null);
     const [isPickerOpen, setIsPickerOpen] = useState(false);
 
     const closePicker = useCallback(() => setIsPickerOpen(false), []);
-
-    const onSwatchClick = (event: React.MouseEvent<HTMLDivElement>) => {
-        if (event.shiftKey) {
-            setIsPickerOpen(!isPickerOpen);
-        } else {
-            setIsPickerOpen(false);
-            onClick();
-        }
-    };
-
-    // Shift+mousedown would otherwise extend the text selection of the page
-    const onSwatchMouseDown = (event: React.MouseEvent<HTMLDivElement>) => {
-        if (event.shiftKey) {
-            event.preventDefault();
-        }
-    };
 
     const onPickerSelect = (pickedColor: string) => {
         onColorSelect(pickedColor);
@@ -44,16 +26,9 @@ export const ColorSelectorView: React.FC<IProps> = ({color, onClick, onColorSele
             style={{
                 backgroundColor: color
             }}
-            title={'Click: random color - Shift+click: pick a color'}
-            onMouseDown={onSwatchMouseDown}
-            onClick={onSwatchClick}
-        >
-            <img
-                draggable={false}
-                alt={'refresh'}
-                src={'ico/refresh.png'}
-            />
-        </div>
+            title={'Pick a color'}
+            onClick={() => setIsPickerOpen(!isPickerOpen)}
+        />
         {isPickerOpen && <ColorPickerPanel
             anchor={swatchRef.current}
             selectedColor={color}

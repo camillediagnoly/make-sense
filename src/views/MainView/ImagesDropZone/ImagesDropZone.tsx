@@ -1,7 +1,6 @@
-import React, {PropsWithChildren, useRef, useState} from 'react';
+import React, {PropsWithChildren, useRef} from 'react';
 import './ImagesDropZone.scss';
 import {useDropzone, DropzoneOptions} from 'react-dropzone';
-import {TextButton} from '../../Common/TextButton/TextButton';
 import {ImageData} from '../../../store/labels/types';
 import {connect} from 'react-redux';
 import {addImageData, updateActiveImageIndex} from '../../../store/labels/actionCreators';
@@ -36,9 +35,30 @@ const sortImageSelections = (items: LocalFileSelection[]): LocalFileSelection[] 
 };
 
 const ImagesDropZone: React.FC<IProps> = (props: PropsWithChildren<IProps>) => {
-    const [selectedFiles, setSelectedFiles] = useState<LocalFileSelection[]>([]);
     const droppedFileSystemSelections = useRef<Promise<LocalFileSelection[]> | null>(null);
     const supportsFilePicker = FileSystemAccessUtil.supportsFilePicker();
+
+    // Only object detection is used: the editor starts as soon as images are dropped or picked
+    const startEditor = (selectedFiles: LocalFileSelection[]) => {
+        if (selectedFiles.length === 0) {
+            return;
+        }
+        const files = sortImageSelections(selectedFiles);
+        props.updateProjectDataAction({
+            ...props.projectData,
+            type: ProjectType.OBJECT_DETECTION
+        });
+        props.updateActiveImageIndexAction(0);
+        props.addImageDataAction(files.map((selection: LocalFileSelection) => ImageDataUtil
+            .createImageDataFromFileData(
+                selection.file,
+                undefined,
+                selection.fileHandle,
+                selection.directoryHandle,
+                selection.directoryId
+            )));
+        props.updateActivePopupTypeAction(PopupWindowType.INSERT_LABEL_NAMES);
+    };
 
     const captureDroppedFileSystemSelections = (event: any) => {
         const droppedItems = event?.dataTransfer?.items;
@@ -56,7 +76,7 @@ const ImagesDropZone: React.FC<IProps> = (props: PropsWithChildren<IProps>) => {
                 const filesFromHandles = await fileSystemSelections;
                 if (filesFromHandles.length > 0
                     && (acceptedFiles.length === 0 || filesFromHandles.length >= acceptedFiles.length)) {
-                    setSelectedFiles(sortImageSelections(filesFromHandles));
+                    startEditor(filesFromHandles);
                     return;
                 }
             } catch (error) {
@@ -64,8 +84,7 @@ const ImagesDropZone: React.FC<IProps> = (props: PropsWithChildren<IProps>) => {
             }
         }
 
-        const selectedFilesFromDrop = acceptedFiles.map((file: File) => ({ file }));
-        setSelectedFiles(sortImageSelections(selectedFilesFromDrop));
+        startEditor(acceptedFiles.map((file: File) => ({ file })));
     };
 
     const {getRootProps, getInputProps} = useDropzone({
@@ -80,10 +99,7 @@ const ImagesDropZone: React.FC<IProps> = (props: PropsWithChildren<IProps>) => {
         }
 
         try {
-            const files = await FileSystemAccessUtil.showOpenImageFilePicker();
-            if (files.length > 0) {
-                setSelectedFiles(sortImageSelections(files));
-            }
+            startEditor(await FileSystemAccessUtil.showOpenImageFilePicker());
         } catch (error) {
             if (error instanceof Error && error.name !== 'AbortError') {
                 console.error('Error selecting image files:', error);
@@ -91,29 +107,13 @@ const ImagesDropZone: React.FC<IProps> = (props: PropsWithChildren<IProps>) => {
         }
     };
 
-    const startEditor = (projectType: ProjectType) => {
-        if (selectedFiles.length > 0) {
-            const files = sortImageSelections(selectedFiles);
-            props.updateProjectDataAction({
-                ...props.projectData,
-                type: projectType
-            });
-            props.updateActiveImageIndexAction(0);
-            props.addImageDataAction(files.map((selection: LocalFileSelection) => ImageDataUtil
-                .createImageDataFromFileData(
-                    selection.file,
-                    undefined,
-                    selection.fileHandle,
-                    selection.directoryHandle,
-                    selection.directoryId
-                )));
-            props.updateActivePopupTypeAction(PopupWindowType.INSERT_LABEL_NAMES);
-        }
-    };
-
-    const getDropZoneContent = () => {
-        if (selectedFiles.length === 0)
-            return <>
+    return(
+        <div className='ImagesDropZone'>
+            <div {...getRootProps({
+                className: 'DropZone',
+                onClick: supportsFilePicker ? handleBrowseClick : undefined,
+                onDrop: captureDroppedFileSystemSelections,
+            })}>
                 <input {...getInputProps()} />
                 <img
                     draggable={false}
@@ -125,52 +125,6 @@ const ImagesDropZone: React.FC<IProps> = (props: PropsWithChildren<IProps>) => {
                 <p className='extraBold'>Drop your images</p>
                 <p>or</p>
                 <p className='extraBold'>Click here to select your images</p>
-            </>;
-        else if (selectedFiles.length === 1)
-            return <>
-                <img
-                    draggable={false}
-                    alt={'uploaded'}
-                    src={'ico/box-closed.png'}
-                />
-                <p className='extraBold'>1 image loaded</p>
-            </>;
-        else
-            return <>
-                <input {...getInputProps()} />
-                <img
-                    draggable={false}
-                    key={1}
-                    alt={'uploaded'}
-                    src={'ico/box-closed.png'}
-                />
-                <p key={2} className='extraBold'>{selectedFiles.length} images loaded</p>
-            </>;
-    };
-
-    const startEditorWithObjectDetection = () => startEditor(ProjectType.OBJECT_DETECTION)
-    const startEditorWithImageRecognition = () => startEditor(ProjectType.IMAGE_RECOGNITION)
-
-    return(
-        <div className='ImagesDropZone'>
-            <div {...getRootProps({
-                className: 'DropZone',
-                onClick: supportsFilePicker ? handleBrowseClick : undefined,
-                onDrop: captureDroppedFileSystemSelections,
-            })}>
-                {getDropZoneContent()}
-            </div>
-            <div className='DropZoneButtons'>
-                <TextButton
-                    label={'Object Detection'}
-                    isDisabled={!selectedFiles.length}
-                    onClick={startEditorWithObjectDetection}
-                />
-                <TextButton
-                    label={'Image recognition'}
-                    isDisabled={!selectedFiles.length}
-                    onClick={startEditorWithImageRecognition}
-                />
             </div>
         </div>
     )

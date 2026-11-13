@@ -179,7 +179,6 @@ const InsertLabelNamesPopup: React.FC<IProps> = (
         const onChangeCallback = (event: React.ChangeEvent<HTMLInputElement>) =>
             onChange(labelName.id, event.target.value);
         const onDeleteCallback = () => deleteLabelNameCallback(labelName.id);
-        const onChangeColorCallback = () => changeLabelNameColorCallback(labelName.id);
         return <div className='LabelEntry' key={labelName.id}>
             <StyledTextField variant='standard'
                 id={'key'}
@@ -198,7 +197,6 @@ const InsertLabelNamesPopup: React.FC<IProps> = (
             />
             {projectType === ProjectType.OBJECT_DETECTION && <ColorSelectorView
                 color={labelName.color}
-                onClick={onChangeColorCallback}
                 onColorSelect={(color: string) => changeLabelNameColorCallback(labelName.id, color)}
             />}
             <ImageButton
