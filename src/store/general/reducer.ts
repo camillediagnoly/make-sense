@@ -201,8 +201,6 @@ const initialState: GeneralState = {
   fixedZoom: true,
   ellipseDraw: false,
   movingAnnotation: false,
-  copyPolygons: false,
-  pastePolygons: false,
   enablePerClassColoration: true,
   projectData: {
     type: null,
@@ -294,18 +292,6 @@ export function generalReducer(
       return {
         ...state,
         movingAnnotation: action.payload.movingAnnotation,
-      };
-    }
-    case Action.UPDATE_COPY_POLYGONS_STATUS: {
-      return {
-        ...state,
-        copyPolygons: action.payload.copyPolygons,
-      };
-    }
-    case Action.UPDATE_PASTE_POLYGONS_STATUS: {
-      return {
-        ...state,
-        pastePolygons: action.payload.pastePolygons,
       };
     }
     case Action.UPDATE_PROJECT_DATA: {

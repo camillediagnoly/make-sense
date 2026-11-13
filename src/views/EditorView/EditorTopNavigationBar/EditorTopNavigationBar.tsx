@@ -4,7 +4,7 @@ import React from 'react';
 import classNames from 'classnames';
 import { AppState } from '../../../store';
 import { connect } from 'react-redux';
-import { updateCrossHairVisibleStatus, updateImageDragModeStatus, updateFixedZoomStatus, updateEllipseDrawStatus, updateMovingAnnotationStatus, updateCopyPolygonsStatus, updatePasteAnnotationsStatus, updatePolygonDrawMode, updateActivePopupType, updateLineKeypointMode, updatePolygonLassoTargetVertexCount } from '../../../store/general/actionCreators';
+import { updateCrossHairVisibleStatus, updateImageDragModeStatus, updateFixedZoomStatus, updateEllipseDrawStatus, updateMovingAnnotationStatus, updatePolygonDrawMode, updateActivePopupType, updateLineKeypointMode, updatePolygonLassoTargetVertexCount } from '../../../store/general/actionCreators';
 import { GeneralSelector } from '../../../store/selectors/GeneralSelector';
 import { ViewPointSettings } from '../../../settings/ViewPointSettings';
 import { ImageButton } from '../../Common/ImageButton/ImageButton';
@@ -20,6 +20,7 @@ import { ImageHistoryActions } from '../../../logic/actions/ImageHistoryActions'
 import { ImageActions } from '../../../logic/actions/ImageActions';
 import { ImageData } from '../../../store/labels/types';
 import { FileSystemAccessUtil } from '../../../utils/FileSystemAccessUtil';
+import { AnnotationClipboardActions } from '../../../logic/actions/AnnotationClipboardActions';
 const BUTTON_SIZE: ISize = { width: 30, height: 30 };
 const BUTTON_PADDING: number = 10;
 const POLYGON_LASSO_PRECISION_OPTIONS = [
@@ -83,8 +84,6 @@ interface IProps {
     updateFixedZoomStatusAction: (fixedZoom: boolean) => any;
     updateEllipseDrawAction: (ellipseDraw: boolean) => any;
     updateMovingAnnotationAction: (movingAnnotation: boolean) => any;
-    updateCopyPolygonsAction: (copyPolygons: boolean) => any;
-    updatePastePolygonsAction: (pastePolygons: boolean) => any;
     updatePolygonDrawModeAction: (polygonLassoMode: boolean) => any;
     updatePolygonLassoTargetVertexCountAction: (polygonLassoTargetVertexCount: number) => any;
     updateLineKeypointModeAction: (lineKeypointMode: boolean) => any;
@@ -94,8 +93,6 @@ interface IProps {
     fixedZoom: boolean;
     ellipseDraw: boolean;
     movingAnnotation: boolean;
-    copyPolygons: boolean;
-    pastePolygons: boolean;
     activeLabelType: LabelType;
     polygonLassoMode: boolean;
     polygonLassoTargetVertexCount: number;
@@ -115,8 +112,6 @@ const EditorTopNavigationBar: React.FC<IProps> = (
         updateFixedZoomStatusAction,
         updateEllipseDrawAction,
         updateMovingAnnotationAction,
-        updateCopyPolygonsAction,
-        updatePastePolygonsAction,
         updatePolygonDrawModeAction,
         updatePolygonLassoTargetVertexCountAction,
         updateLineKeypointModeAction,
@@ -126,8 +121,6 @@ const EditorTopNavigationBar: React.FC<IProps> = (
         fixedZoom,
         ellipseDraw,
         movingAnnotation,
-        copyPolygons,
-        pastePolygons,
         activeLabelType,
         polygonLassoMode,
         polygonLassoTargetVertexCount,
@@ -175,12 +168,12 @@ const EditorTopNavigationBar: React.FC<IProps> = (
         updateMovingAnnotationAction(!movingAnnotation);
     };
     
-    const copyPolygonsOnClick = () => {
-        updateCopyPolygonsAction(!copyPolygons);
+    const copyAnnotationsOnClick = () => {
+        AnnotationClipboardActions.copyFromActiveImage();
     };
 
-    const pastePolygonsOnClick = () => {
-        updatePastePolygonsAction(!pastePolygons);
+    const pasteAnnotationsOnClick = () => {
+        AnnotationClipboardActions.pasteOnActiveImage();
     };
 
     const polygonModeOnClick = () => {
@@ -458,23 +451,23 @@ const EditorTopNavigationBar: React.FC<IProps> = (
                 {
                     getButtonWithTooltip(
                         'copy-polygons',
-                        copyPolygons ? '' : 'copy all polygons',
+                        'copy all labelled rectangles, polygons and tags of this image',
                         'ico/copy-polygons.png',
                         'copy-polygons',
-                        copyPolygons,
+                        false,
                         undefined,
-                        copyPolygonsOnClick
+                        copyAnnotationsOnClick
                     )
                 }
                 {
                     getButtonWithTooltip(
                         'paste-polygons',
-                        pastePolygons ? '' : 'paste all copied polygons',
+                        'paste the copied rectangles, polygons and tags (replaces the ones with the same label)',
                         'ico/paste-polygons.png',
                         'paste-polygons',
-                        pastePolygons,
+                        false,
                         undefined,
-                        pastePolygonsOnClick
+                        pasteAnnotationsOnClick
                     )
                 }
             </div>
@@ -567,8 +560,6 @@ const mapDispatchToProps = {
     updateFixedZoomStatusAction: updateFixedZoomStatus,
     updateEllipseDrawAction: updateEllipseDrawStatus,
     updateMovingAnnotationAction: updateMovingAnnotationStatus,
-    updateCopyPolygonsAction: updateCopyPolygonsStatus,
-    updatePastePolygonsAction: updatePasteAnnotationsStatus,
     updatePolygonDrawModeAction: updatePolygonDrawMode,
     updatePolygonLassoTargetVertexCountAction: updatePolygonLassoTargetVertexCount,
     updateLineKeypointModeAction: updateLineKeypointMode,
@@ -589,8 +580,6 @@ const mapStateToProps = (state: AppState) => {
         fixedZoom: state.general.fixedZoom,
         ellipseDraw: state.general.ellipseDraw,
         movingAnnotation: state.general.movingAnnotation,
-        copyPolygons: state.general.copyPolygons,
-        pastePolygons: state.general.pastePolygons,
         activeLabelType: state.labels.activeLabelType,
         polygonLassoMode: state.general.polygonLassoMode,
         polygonLassoTargetVertexCount: state.general.polygonLassoTargetVertexCount,

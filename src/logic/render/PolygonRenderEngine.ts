@@ -96,11 +96,6 @@ export class PolygonRenderEngine extends BaseRenderEngine {
     ];
     public isDrawingEllipse: boolean;
     public isMovingAnnotation: boolean;
-    public copyPolygons: boolean;
-    public copyTwoPolygons: boolean;
-    public copyThreePolygons: boolean;
-    public pastePolygons: boolean = true;
-    public annotationsInMemory: LabelPolygon[] = [];
     // State to track dragging
     private draggingPolygon: LabelPolygon = null;
     private dragOffset: IPoint = null;
@@ -673,8 +668,6 @@ export class PolygonRenderEngine extends BaseRenderEngine {
         const imageData: ImageData = LabelsSelector.getActiveImageData();
         this.isDrawingEllipse = GeneralSelector.getEllipseDrawStatus();
         this.isMovingAnnotation = GeneralSelector.getMovingAnnotationStatus();
-        this.copyPolygons = GeneralSelector.getCopyPolygonsStatus();
-        this.pastePolygons = GeneralSelector.getPastePolygonsStatus();
 
         if (imageData) {
             this.drawExistingLabels(data);
@@ -682,7 +675,6 @@ export class PolygonRenderEngine extends BaseRenderEngine {
             this.drawActivelyResizeLabel(data);
             this.updateCursorStyle(data);
             this.drawSuggestedAnchor(data);
-            this.copyAndPasteAnnotations(data);
         }
     }
 
@@ -1667,82 +1659,6 @@ export class PolygonRenderEngine extends BaseRenderEngine {
         }
 
         return polygonVertices;
-    }
-
-    private copyAndPasteAnnotations(data: EditorData) {
-        const activeLabelId: string = LabelsSelector.getActiveLabelNameId();
-        const imageData: ImageData = LabelsSelector.getActiveImageData();
-        const activeLabelPolygon: LabelPolygon =
-            LabelsSelector.getActivePolygonLabel();
-        const labelPolygonsInImageData =
-            this.getPolygonsOfActiveImage(imageData);
-
-        if (this.copyPolygons)
-            if (labelPolygonsInImageData.length > 0) {
-                for (let i = 0; i < labelPolygonsInImageData.length; i++) {
-                    const labelPolygon = labelPolygonsInImageData[i];
-                    if (
-                        !!labelPolygon.labelId &&
-                        !this.checkPolygonAlreadyInMemory(labelPolygon)
-                    )
-                        this.copyAnnotationToMemory(labelPolygon);
-                }
-                GeneralSelector.deactivateCopyPolygons();
-            } else GeneralSelector.deactivateCopyPolygons();
-
-        if (this.pastePolygons) {
-            this.pasteAnnotations();
-            GeneralSelector.deactivatePastePolygons();
-        }
-    }
-
-    private copyAnnotationToMemory(labelPolygon: LabelPolygon) {
-        this.annotationsInMemory.push(labelPolygon);
-    }
-
-    private getPolygonsOfActiveImage(imageData: ImageData) {
-        if (!!imageData && !!imageData.labelPolygons) {
-            return imageData.labelPolygons;
-        }
-        return [];
-    }
-
-    private checkPolygonAlreadyInMemory(labelPolygon: LabelPolygon): boolean {
-        const polygonId = labelPolygon.id;
-        return this.annotationsInMemory.some(
-            (polygon) => polygon.id === polygonId
-        );
-    }
-
-    private pasteAnnotations() {
-        const imageData: ImageData = LabelsSelector.getActiveImageData();
-        if (this.annotationsInMemory.length > 0) {
-            for (let i = 0; i < this.annotationsInMemory.length; i++) {
-                const currentLabelPolygon = this.annotationsInMemory[i];
-                const currPolygon = currentLabelPolygon.vertices;
-                const labelId = currentLabelPolygon.labelId;
-                const labelPolygonWithNewId = LabelUtil.createLabelPolygon(
-                    labelId,
-                    currPolygon
-                );
-                imageData.labelPolygons = this.removePolygonsInImageWithLabelId(
-                    imageData,
-                    labelId
-                );
-                imageData.labelPolygons.push(labelPolygonWithNewId);
-            }
-            store.dispatch(updateImageDataById(imageData.id, imageData));
-            this.annotationsInMemory = [];
-        }
-    }
-
-    private removePolygonsInImageWithLabelId(
-        imageData: ImageData,
-        labelId: string
-    ) {
-        return imageData.labelPolygons.filter(
-            (polygon) => polygon.labelId != labelId
-        );
     }
 
     // =================================================================================================================
