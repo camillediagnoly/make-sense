@@ -6,10 +6,11 @@ $darkThemeForthColor: #262c2f;
 $primaryColor: #2af598;
 $secondaryColor: #009efd;
 
-$topNavigationBarHeight: 35px;
-$stateBarHeight: 5px;
+$topNavigationBarHeight: 52px;
 $sideNavigationBarCompanionWidth: 23px;
 $sideNavigationBarContentWidth: 300px;
-$editorBottomNavigationBarHeight: 76px;
-$editorTopNavigationBarHeight: 40px;
+// The review mode keeps the side panels narrow, so the image gets the space
+$leftSideNavigationBarContentWidth: 180px;
+$rightSideNavigationBarContentWidth: 260px;
+$editorBottomNavigationBarHeight: 60px;
 $toolboxWidth: 50px;

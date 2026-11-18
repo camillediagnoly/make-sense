@@ -1,0 +1,62 @@
+@import '../../../settings/Settings';
+
+.EditorTools {
+  align-self: stretch;
+  display: flex;
+  align-items: center;
+
+  .ToolGroup {
+    display: flex;
+    gap: 4px;
+
+    & + .ToolGroup {
+      margin-left: 8px;
+      padding-left: 8px;
+      border-left: solid 1px $darkThemeThirdColor;
+    }
+  }
+
+  .ToolButton {
+    width: 72px;
+    height: 44px;
+    padding: 2px;
+    border: none;
+    border-radius: 6px;
+    background: transparent;
+    color: white;
+    font-family: inherit;
+    cursor: pointer;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 3px;
+    transition: background-color 0.2s;
+
+    > img {
+      width: 20px;
+      height: 20px;
+      filter: brightness(0) invert(1);
+    }
+
+    > span {
+      font-size: 12px;
+      line-height: 1;
+      white-space: nowrap;
+    }
+
+    &:not(:disabled):hover {
+      background-color: $darkThemeSecondColor;
+    }
+
+    &.active {
+      background-color: rgba(0, 158, 253, 0.25);
+      box-shadow: $secondaryColor 0 0 0 1px inset;
+    }
+
+    &:disabled {
+      opacity: 0.35;
+      cursor: default;
+    }
+  }
+}

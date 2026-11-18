@@ -99,8 +99,8 @@ const FolderDropView: React.FC = () => {
         }
         return <>
             <img draggable={false} alt={''} src={'ico/box-opened.png'}/>
-            <p className='extraBold'>Drag the folder here</p>
-            {canPickFolder && <p>or click here to choose it on your computer</p>}
+            <p className='extraBold'>Drop them here</p>
+            {canPickFolder && <p className='Secondary'>or click here to choose the folder that contains them</p>}
         </>;
     };
 
@@ -109,13 +109,11 @@ const FolderDropView: React.FC = () => {
             <div className='FolderDropViewContent'>
                 <img className='Logo' draggable={false} alt={'Diagnoly'} src={'diagnoly-logo-blue.png'}/>
                 <div className='Explanation'>
-                    <p className='extraBold'>Open the folder to review</p>
-                    <p>Choose the folder that holds these two things, side by side:</p>
-                    <FolderStructure/>
-                    <p className='Hint'>
-                        You can also select the &quot;{IMAGES_FOLDER_NAME}&quot; folder and the .json file
-                        together, and drag both of them here.
+                    <p className='extraBold'>
+                        Drag and drop both the &quot;{IMAGES_FOLDER_NAME}&quot; folder and the .json file
                     </p>
+                    <FolderStructure/>
+                    <p className='Secondary'>You can also drag and drop the folder that contains them.</p>
                 </div>
                 <div
                     className={classNames('FolderDropZone', {
@@ -130,16 +128,12 @@ const FolderDropView: React.FC = () => {
                 >
                     {renderDropZoneContent()}
                 </div>
+                {!canPickFolder && <p className='BrowserTip'>
+                    Tip: for the best experience, please use Google Chrome or Microsoft Edge. Your review can then
+                    be saved directly into the folder, instead of being downloaded.
+                </p>}
                 {problems.length > 0 && <div className='FolderErrors' role='alert'>
-                    <p className='extraBold'>This folder cannot be opened</p>
-                    <p>Here is what is wrong:</p>
-                    <ul>
-                        {problems.map((problem: string) => <li key={problem}>{problem}</li>)}
-                    </ul>
-                    <p>
-                        Fix this on your computer, then drag the folder here again. The folder must hold
-                        exactly the &quot;{IMAGES_FOLDER_NAME}&quot; folder and one .json file, as shown above.
-                    </p>
+                    {problems.map((problem: string) => <p key={problem}>{problem}</p>)}
                 </div>}
             </div>
         </div>

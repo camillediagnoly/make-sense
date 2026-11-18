@@ -199,7 +199,7 @@ describe('ReviewFolderReader with a labels folder', () => {
             /"labels" folder has no .xml file/],
         ['another folder',
             [fakeDirectory('images', [fakeFile('a.jpg')]), fakeDirectory('labels', [fakeFile('a.xml')]), fakeDirectory('masks', [])],
-            /do not belong there: "masks\/"\. Only the "images" folder and the "labels" folder/],
+            /also holds "masks\/", which do not belong there\. Please drag and drop only the "images" folder and the "labels" folder/],
     ])('rejects a folder with %s', async (_, children, message) => {
         await expect(drop(fakeDirectory('update_testset', children))).rejects.toThrow(message);
     });

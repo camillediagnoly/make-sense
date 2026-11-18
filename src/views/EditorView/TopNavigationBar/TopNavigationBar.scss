@@ -19,7 +19,7 @@
     color: white;
     align-self: stretch;
     flex: 1;
-    height: calc(#{$topNavigationBarHeight} - #{$stateBarHeight});
+    height: $topNavigationBarHeight;
     display: flex;
     flex-wrap: nowrap;
     justify-content: space-between;
@@ -49,6 +49,7 @@
 
     .ProjectName {
       font-weight: 700;
+      font-size: 17px;
       user-select: none;
       overflow: hidden;
       text-overflow: ellipsis;
@@ -60,16 +61,18 @@
       display: flex;
       align-items: center;
       padding: 0 10px;
-      border-radius: 3px;
+      border-radius: 4px;
       cursor: pointer;
       user-select: none;
       white-space: nowrap;
+      font-size: 16px;
+      font-weight: 600;
       transition: background-color 0.2s;
 
       > img {
-        width: 16px;
-        height: 16px;
-        margin-right: 6px;
+        width: 18px;
+        height: 18px;
+        margin-right: 8px;
         filter: brightness(0) invert(1);
       }
 
@@ -80,6 +83,35 @@
       &.disabled {
         opacity: 0.5;
         cursor: default;
+      }
+
+      &.SaveButton {
+        margin-left: 8px;
+        box-shadow: rgba(255, 255, 255, 0.3) 0 0 0 1px inset;
+
+        &.highlighted {
+          box-shadow: none;
+          background-color: $secondaryColor;
+
+          &:hover {
+            background-color: darken($secondaryColor, 8%);
+          }
+        }
+      }
+    }
+
+    .SaveStatus {
+      margin-left: 14px;
+      white-space: nowrap;
+      color: rgba(255, 255, 255, 0.6);
+
+      &.unsaved {
+        color: #ffb21d;
+        font-weight: 600;
+      }
+
+      &.saved {
+        color: $primaryColor;
       }
     }
 

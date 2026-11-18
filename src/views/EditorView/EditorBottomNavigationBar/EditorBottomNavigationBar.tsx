@@ -3,7 +3,6 @@ import './EditorBottomNavigationBar.scss';
 import { ImageData } from "../../../store/labels/types";
 import { AppState } from "../../../store";
 import { connect } from "react-redux";
-import { ImageButton } from "../../Common/ImageButton/ImageButton";
 import { ISize } from "../../../interfaces/ISize";
 import { ContextType } from "../../../data/enums/ContextType";
 import classNames from "classnames";
@@ -76,9 +75,8 @@ const EditorBottomNavigationBar: React.FC<IProps> = ({
         return measurementResult.value !== null;
     };
 
-    const getImageCounter = () => {
-        return currentImagePosition + " / " + totalImageCount;
-    };
+    const isFirst = totalImageCount === 0 || activeFilteredIndex === 0;
+    const isLast = totalImageCount === 0 || activeFilteredIndex === totalImageCount - 1;
 
     const getClassName = () => {
         return classNames(
@@ -106,32 +104,31 @@ const EditorBottomNavigationBar: React.FC<IProps> = ({
 
     return (
         <div className={getClassName()}>
-            <div className="TopRow">
-                <ImageButton
-                    image={"ico/left.png"}
-                    imageAlt={"previous"}
-                    buttonSize={{ width: 25, height: 25 }}
+            <div className="ImageNavigation">
+                <button
+                    type="button"
+                    className="NavigationButton"
+                    title="Previous image (left arrow key)"
+                    disabled={isFirst}
                     onClick={() => ImageActions.getPreviousImage()}
-                    isDisabled={totalImageCount === 0 || (activeFilteredIndex >= 0 && activeFilteredIndex === 0)}
-                    externalClassName={"left"}
-                />
-
-                    <div className="CurrentImageName"> {imageData.fileData.name} </div> :
-                    <div className="CurrentImageCount"> {getImageCounter()} </div>
-
-                <ImageButton
-                    image={"ico/right.png"}
-                    imageAlt={"next"}
-                    buttonSize={{ width: 25, height: 25 }}
+                >
+                    ‹ Previous
+                </button>
+                <div className="CurrentImage">
+                    <div className="CurrentImageCount">Image {currentImagePosition} of {totalImageCount}</div>
+                    <div className="CurrentImageName" title={imageData.fileData.name}>{imageData.fileData.name}</div>
+                </div>
+                <button
+                    type="button"
+                    className="NavigationButton"
+                    title="Next image (right arrow key)"
+                    disabled={isLast}
                     onClick={() => ImageActions.getNextImage()}
-                    isDisabled={
-                        totalImageCount === 0 ||
-                        (activeFilteredIndex >= 0 && activeFilteredIndex === totalImageCount - 1)
-                    }
-                    externalClassName={"right"}
-                />
+                >
+                    Next ›
+                </button>
             </div>
-            <div className="BottomRow">
+            <div className="Measurements">
                 {completedMeasurementTexts.map((measurementText) => (
                     <div className="RatioMeasurement" key={measurementText}>
                         {measurementText}

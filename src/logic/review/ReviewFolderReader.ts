@@ -14,6 +14,8 @@ export const REVIEWED_SUFFIX = '_reviewed';
 export const IMAGES_FOLDER_NAME = 'images';
 export const LABELS_FOLDER_NAME = 'labels';
 export const REVIEWED_LABELS_FOLDER_NAME = `${LABELS_FOLDER_NAME}${REVIEWED_SUFFIX}`;
+// What to do, ending most errors
+const DROP_BOTH = `Please drag and drop both the "${IMAGES_FOLDER_NAME}" folder and the .json file.`;
 const IMAGE_EXTENSIONS: string[] = ['.jpg', '.jpeg', '.png'];
 // Files the operating system drops in folders on its own: they are not part of the folder layout
 const IGNORED_FILE_NAMES: string[] = ['thumbs.db', 'desktop.ini'];
@@ -98,14 +100,13 @@ export class ReviewFolderReader {
     // Accepts the folder itself, or what it holds (the "images" folder and the .json file) dropped together
     public static async readFromDroppedItems(items: DroppedItem[]): Promise<ReviewFolder> {
         if (items.length === 0) {
-            throw new ReviewFolderError(['Nothing was dropped. Drag the folder from your computer onto the box.']);
+            throw new ReviewFolderError([`Nothing was dropped. ${DROP_BOTH}`]);
         }
 
         const entries: FolderEntry[] = (await Promise.all(items.map(ReviewFolderReader.toRootEntry)))
             .filter((entry: FolderEntry | null): entry is FolderEntry => !!entry);
         if (entries.length === 0) {
-            throw new ReviewFolderError(['What was dropped could not be read. Drag the folder from your computer '
-                + 'onto the box.']);
+            throw new ReviewFolderError([`What was dropped could not be read. ${DROP_BOTH}`]);
         }
 
         if (entries.length === 1 && entries[0].kind === 'directory') {
@@ -114,10 +115,9 @@ export class ReviewFolderReader {
         if (entries.length === 1) {
             const [file] = entries;
             throw new ReviewFolderError([file.name.toLowerCase().endsWith('.json')
-                ? `Only the file "${file.name}" was dropped: the "${IMAGES_FOLDER_NAME}" folder is missing. `
-                    + `Drop the folder that holds both of them, or drop them together.`
-                : `Only the file "${file.name}" was dropped. Drop the folder that holds the "${IMAGES_FOLDER_NAME}" `
-                    + `folder and the .json file.`]);
+                ? `Only the file "${file.name}" was dropped. Please drag and drop it together with the `
+                    + `"${IMAGES_FOLDER_NAME}" folder.`
+                : `Only the file "${file.name}" was dropped. ${DROP_BOTH}`]);
         }
 
         // Several items: they are read as the content of their folder, which the browser does not give, so
@@ -152,6 +152,8 @@ export class ReviewFolderReader {
         const children: FolderEntry[] = ReviewFolderReader.withoutIgnoredFiles(await root.listChildren());
         const problems: string[] = [];
         const where = root.name ? `The folder "${root.name}"` : 'What you dropped';
+        const dropOnly = (isVOCFolder: boolean) => `Please drag and drop only the "${IMAGES_FOLDER_NAME}" folder and `
+            + (isVOCFolder ? `the "${LABELS_FOLDER_NAME}" folder.` : 'the .json file.');
 
         const isDirectoryNamed = (child: FolderEntry, name: string) =>
             child.kind === 'directory' && child.name.toLowerCase() === name;
@@ -174,37 +176,32 @@ export class ReviewFolderReader {
 
         const looseImages = children.filter((child: FolderEntry) => ReviewFolderReader.isImageEntry(child));
         if (imagesFolders.length === 0 && root.name.toLowerCase() === IMAGES_FOLDER_NAME && looseImages.length > 0) {
-            throw new ReviewFolderError([`This is the "${IMAGES_FOLDER_NAME}" folder itself. Choose the folder `
-                + `one level up instead: the one that holds both the "${IMAGES_FOLDER_NAME}" folder and the .json file.`]);
+            throw new ReviewFolderError([`This is the "${IMAGES_FOLDER_NAME}" folder itself. ${DROP_BOTH}`]);
         }
 
         if (imagesFolders.length === 0 && looseImages.length > 0) {
-            problems.push(`${where} holds pictures directly (${ReviewFolderReader.listNames(looseImages)}). `
-                + `The pictures must be inside a folder named "${IMAGES_FOLDER_NAME}".`);
+            problems.push(`The pictures (${ReviewFolderReader.listNames(looseImages)}) must stay inside the `
+                + `"${IMAGES_FOLDER_NAME}" folder. ${DROP_BOTH}`);
         } else if (imagesFolders.length === 0) {
-            problems.push(`${where} has no folder named "${IMAGES_FOLDER_NAME}". The pictures must be inside `
-                + `a folder named exactly "${IMAGES_FOLDER_NAME}".`);
+            problems.push(`${where} has no "${IMAGES_FOLDER_NAME}" folder. ${DROP_BOTH}`);
         }
 
         const isVOC = labelsFolders.length > 0;
         const jsonPair = ReviewFolderReader.getJsonPair(jsonFiles);
         if (isVOC && jsonFiles.length > 0) {
             problems.push(`${where} holds both a "${LABELS_FOLDER_NAME}" folder and a .json file `
-                + `(${ReviewFolderReader.listNames(jsonFiles)}). Keep only one of them.`);
+                + `(${ReviewFolderReader.listNames(jsonFiles)}). ${dropOnly(false)}`);
         } else if (!isVOC && jsonFiles.length === 0) {
-            problems.push(`${where} has no .json file. The .json file holds the annotations to review: `
-                + `it must be next to the "${IMAGES_FOLDER_NAME}" folder.`);
+            problems.push(`${where} has no .json file. ${DROP_BOTH}`);
         } else if (!isVOC && !jsonPair) {
             problems.push(`${where} holds ${jsonFiles.length} .json files `
-                + `(${ReviewFolderReader.listNames(jsonFiles)}). There must be only one `
-                + `(plus, if the folder was already reviewed, its "${REVIEWED_SUFFIX}" copy).`);
+                + `(${ReviewFolderReader.listNames(jsonFiles)}). Please drag and drop only one .json file with `
+                + `the "${IMAGES_FOLDER_NAME}" folder.`);
         }
         const otherItems = unexpected.filter((child: FolderEntry) => !looseImages.includes(child));
         if (otherItems.length > 0) {
-            problems.push(`${where} holds things that do not belong there: `
-                + `${ReviewFolderReader.listNames(otherItems)}. Only the "${IMAGES_FOLDER_NAME}" folder and `
-                + (isVOC ? `the "${LABELS_FOLDER_NAME}" folder` : 'the .json file')
-                + ' may be there: move the rest out, then try again.');
+            problems.push(`${where} also holds ${ReviewFolderReader.listNames(otherItems)}, which do not `
+                + `belong there. ${dropOnly(isVOC)}`);
         }
 
         let imageEntries: FolderEntry[] = [];
@@ -214,8 +211,9 @@ export class ReviewFolderReader {
             imageEntries = entries.filter((entry: FolderEntry) => ReviewFolderReader.isImageEntry(entry));
 
             if (notImages.length > 0) {
-                problems.push(`The "${IMAGES_FOLDER_NAME}" folder must only hold pictures (.jpg, .jpeg or .png), `
-                    + `but it also holds: ${ReviewFolderReader.listNames(notImages)}. Move them out, then try again.`);
+                problems.push(`The "${IMAGES_FOLDER_NAME}" folder also holds files that are not pictures `
+                    + `(.jpg, .jpeg or .png): ${ReviewFolderReader.listNames(notImages)}. Please move them out of `
+                    + 'it, then drag and drop again.');
             } else if (imageEntries.length === 0) {
                 problems.push(`The "${IMAGES_FOLDER_NAME}" folder is empty: it has no picture.`);
             }
@@ -231,7 +229,8 @@ export class ReviewFolderReader {
 
             if (notLabels.length > 0) {
                 problems.push(`The "${loadedLabelsFolder.name}" folder must only hold .xml files, `
-                    + `but it also holds: ${ReviewFolderReader.listNames(notLabels)}. Move them out, then try again.`);
+                    + `but it also holds: ${ReviewFolderReader.listNames(notLabels)}. Please move them out of it, then `
+                    + 'drag and drop again.');
             } else if (labelEntries.length === 0) {
                 problems.push(`The "${loadedLabelsFolder.name}" folder has no .xml file.`);
             }

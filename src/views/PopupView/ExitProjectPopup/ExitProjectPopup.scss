@@ -1,20 +1,59 @@
 @import '../../../settings/Settings';
 
-.ExitProjectPopupContent {
+// Shared by the popups of the review mode
+.ReviewPopupContent {
   align-self: stretch;
   flex: 1;
   display: flex;
   flex-direction: column;
   flex-wrap: nowrap;
   justify-content: flex-start;
-  align-items: center;
-  align-content: flex-start;
-  padding-top: 30px;
+  align-items: stretch;
+  padding: 30px 40px;
+  color: white;
+  font-size: 16px;
+  line-height: 1.5;
 
-  .Message {
-    align-self: stretch;
-    color: white;
-    font-size: 15px;
-    padding: 0 40px 30px 40px;
+  > p {
+    margin: 0;
+
+    & + p {
+      margin-top: 12px;
+    }
+
+    &.Problem {
+      padding: 10px 14px;
+      border-radius: 6px;
+      color: white;
+      background-color: rgba(255, 107, 107, 0.12);
+      box-shadow: #ff6b6b 0 0 0 1px inset;
+    }
+  }
+}
+
+// Room for three buttons on one line; only the main action is filled
+.GenericYesNoPopup.ReviewPopup {
+  width: 640px;
+  max-width: calc(100% - 32px);
+
+  .Footer {
+    padding: 0 30px;
+
+    .TextButton {
+      white-space: nowrap;
+      padding: 20px 22px;
+      font-size: 15px;
+
+      &.reject, &.extra-action {
+        background-color: transparent;
+        color: white;
+        box-shadow: rgba(255, 255, 255, 0.4) 0 0 0 2px inset;
+
+        &:hover {
+          background-color: rgba(255, 255, 255, 0.08);
+          color: white;
+        }
+      }
+    }
   }
 }

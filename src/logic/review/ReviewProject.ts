@@ -14,7 +14,7 @@ import { ArrayUtil } from '../../utils/ArrayUtil';
 import { Settings } from '../../settings/Settings';
 import { IPoint } from '../../interfaces/IPoint';
 import { IRect } from '../../interfaces/IRect';
-import { LocalFileSystemDirectoryHandle } from '../../interfaces/IFileSystemAccess';
+import { FileSystemAccessWindow, LocalFileSystemDirectoryHandle } from '../../interfaces/IFileSystemAccess';
 import { COCOReviewFolder, ReviewFolder, ReviewFolderError } from './ReviewFolderReader';
 import { ReviewVOC, VOCLabelFile } from './ReviewVOC';
 
@@ -76,6 +76,40 @@ export class ReviewProject {
     public static getReviewedJsonFileName(): string {
         const folder = ReviewProject.folder;
         return folder.format === 'coco' ? folder.reviewedJsonName : folder.reviewedLabelsFolderName;
+    }
+
+    // The .json file, or the labels folder, the annotations were loaded from
+    public static getLoadedAnnotationsName(): string {
+        const folder = ReviewProject.folder;
+        return folder.format === 'coco' ? folder.jsonFile.name : `${folder.labelsFolderName}/`;
+    }
+
+    // True when the review could be saved next to the annotations, but the browser does not know
+    // their folder yet: the images folder and the .json file were dropped instead of their folder
+    public static needsSaveFolder(): boolean {
+        return !!ReviewProject.folder
+            && !ReviewProject.folder.directoryHandle
+            && typeof window !== 'undefined'
+            && typeof (window as FileSystemAccessWindow).showDirectoryPicker === 'function';
+    }
+
+    // Asks for the folder of the annotations, and saves there from now on. Throws a ReviewFolderError
+    // when the chosen folder does not hold the loaded annotations.
+    public static async chooseSaveFolder(): Promise<void> {
+        const handle: LocalFileSystemDirectoryHandle = await (window as FileSystemAccessWindow).showDirectoryPicker({
+            id: 'make-sense-review-import',
+            mode: 'readwrite',
+        });
+        const folder = ReviewProject.folder;
+        const exists = (lookup: Promise<unknown> | undefined) => lookup ? lookup.then(() => true, () => false) : false;
+        const holdsAnnotations = folder.format === 'coco'
+            ? await exists(handle.getFileHandle?.(folder.jsonFile.name))
+            : await exists(handle.getDirectoryHandle?.(folder.labelsFolderName));
+        if (!holdsAnnotations) {
+            throw new ReviewFolderError([`The folder "${handle.name}" does not hold `
+                + `"${ReviewProject.getLoadedAnnotationsName()}". Please choose the folder that holds it.`]);
+        }
+        folder.directoryHandle = handle;
     }
 
     public static clear(): void {
@@ -405,10 +439,11 @@ export class ReviewProject {
             return { kind: 'download', fileName };
         }
         if (!await ReviewProject.hasWritePermission(folderHandle)) {
-            throw new Error(`Saving in "${ReviewProject.folder.name}" was not allowed by the browser.`);
+            throw new Error(`The browser did not allow saving in "${folderHandle.name || ReviewProject.folder.name}". `
+                + 'Please click "Save my review" again and allow it.');
         }
         await ReviewProject.writeFile(folderHandle, fileName, content);
-        return { kind: 'folder', fileName, folderName: ReviewProject.folder.name };
+        return { kind: 'folder', fileName, folderName: folderHandle.name || ReviewProject.folder.name };
     }
 
     // Writes every loaded .xml file in labels_reviewed/, next to labels/ (which is never
@@ -426,13 +461,14 @@ export class ReviewProject {
             return { kind: 'download', fileName: zipName, fileCount: files.length };
         }
         if (!await ReviewProject.hasWritePermission(folderHandle)) {
-            throw new Error(`Saving in "${ReviewProject.folder.name}" was not allowed by the browser.`);
+            throw new Error(`The browser did not allow saving in "${folderHandle.name || ReviewProject.folder.name}". `
+                + 'Please click "Save my review" again and allow it.');
         }
         const labelsHandle = await folderHandle.getDirectoryHandle(folderName, { create: true });
         for (const { fileName, content } of files) {
             await ReviewProject.writeFile(labelsHandle, fileName, content);
         }
-        return { kind: 'folder', fileName: `${folderName}/`, folderName: ReviewProject.folder.name, fileCount: files.length };
+        return { kind: 'folder', fileName: `${folderName}/`, folderName: folderHandle.name || ReviewProject.folder.name, fileCount: files.length };
     }
 
     private static async hasWritePermission(handle: LocalFileSystemDirectoryHandle): Promise<boolean> {

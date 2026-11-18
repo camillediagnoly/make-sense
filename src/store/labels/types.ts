@@ -76,6 +76,8 @@ export type ImageData = {
     tags?: string[];
     imgWidth?: number;
     imgHeight?: number;
+    // Review mode: the image was shown in the editor at least once
+    isSeen?: boolean;
 
     // YOLO
     isVisitedByYOLOObjectDetector: boolean;

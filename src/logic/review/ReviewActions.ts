@@ -21,6 +21,12 @@ import { Annotation, ImageData } from '../../store/labels/types';
 import { LocalImageDirectoryRegistry } from '../imageRepository/LocalImageDirectoryRegistry';
 import { ReviewFolder } from './ReviewFolderReader';
 import { ReviewProject, ReviewProjectLoadResult } from './ReviewProject';
+import { ReviewSaveState } from './ReviewSaveState';
+import { ReviewFolderError } from './ReviewFolderReader';
+import { updateActivePopupType } from '../../store/general/actionCreators';
+import { PopupWindowType } from '../../data/enums/PopupWindowType';
+
+export type SaveFolderChoice = { chosen: true } | { chosen: false; problem: string | null };
 
 export class ReviewActions {
     public static async startProject(folder: ReviewFolder): Promise<void> {
@@ -34,84 +40,115 @@ export class ReviewActions {
         store.dispatch(updateImageData(result.imagesData));
         store.dispatch(updateActiveImageIndex(0));
         store.dispatch(updateProjectData({ type: ProjectType.OBJECT_DETECTION, name: folder.name }));
+        ReviewSaveState.markLoaded(result.imagesData);
 
         ReviewActions.notifyLoadWarnings(folder, result);
     }
 
     private static notifyLoadWarnings(folder: ReviewFolder, result: ReviewProjectLoadResult): void {
-        const plural = (count: number, word: string) => `${count} ${word}${count > 1 ? 's' : ''}`;
-        const example = (names: string[]) => `e.g. "${names[0]}"`;
+        const pictures = (count: number) => count > 1 ? `${count} pictures` : '1 picture';
+        const example = (names: string[]) => `for example "${names[0]}"`;
 
-        // An already exported folder: the review goes on from the reviewed annotations, which the
-        // next export overwrites
-        if (folder.format === 'coco' && folder.jsonFile.name === folder.reviewedJsonName) {
-            store.dispatch(submitNewNotification({...NotificationUtil.createWarningNotification({
-                header: `"${folder.reviewedJsonName}" was loaded`,
-                description: (folder.skippedJsonName
-                    ? `This folder was already reviewed: "${folder.reviewedJsonName}" was picked over `
-                        + `the original "${folder.skippedJsonName}", which stays untouched. `
-                    : `This folder was already reviewed. `)
-                    + `"Export current folder" will overwrite "${folder.reviewedJsonName}".`,
-            }), displayTimeMs: 15000}));
-        }
-        if (folder.format === 'voc' && folder.labelsFolderName === folder.reviewedLabelsFolderName) {
-            store.dispatch(submitNewNotification({...NotificationUtil.createWarningNotification({
-                header: `"${folder.reviewedLabelsFolderName}" was loaded`,
-                description: (folder.skippedLabelsFolderName
-                    ? `This folder was already reviewed: "${folder.reviewedLabelsFolderName}/" was picked `
-                        + `over the original "${folder.skippedLabelsFolderName}/", which stays untouched. `
-                    : `This folder was already reviewed. `)
-                    + `"Export current folder" will overwrite the files of "${folder.reviewedLabelsFolderName}/".`,
-            }), displayTimeMs: 15000}));
+        // An already reviewed folder: the review goes on from the reviewed annotations, which saving
+        // updates. Stays until closed, so it is not missed.
+        const reviewedName = folder.format === 'coco' ? folder.reviewedJsonName : `${folder.reviewedLabelsFolderName}/`;
+        const loadedName = folder.format === 'coco' ? folder.jsonFile.name : `${folder.labelsFolderName}/`;
+        const originalName = folder.format === 'coco'
+            ? folder.skippedJsonName
+            : folder.skippedLabelsFolderName && `${folder.skippedLabelsFolderName}/`;
+        if (loadedName === reviewedName) {
+            store.dispatch(submitNewNotification({...NotificationUtil.createMessageNotification({
+                header: 'You already worked on this folder',
+                description: `Your previous review ("${reviewedName}") was opened, so you continue where you `
+                    + 'stopped. Saving will update it'
+                    + (originalName ? `; the original "${originalName}" is not changed.` : '.'),
+            }), persistent: true}));
         }
 
         if (result.missingImageNames.length > 0) {
             const count = result.missingImageNames.length;
-            store.dispatch(submitNewNotification(NotificationUtil.createWarningNotification({
-                header: `${plural(count, 'image')} not found`,
-                description: folder.format === 'coco'
-                    ? `The .json file describes ${plural(count, 'image')} that the images folder does not `
-                        + `hold (${example(result.missingImageNames)}). Their annotations are not shown, and `
-                        + 'are written unchanged on export.'
-                    : `${plural(count, '.xml file')} of "${folder.labelsFolderName}/" describe${count > 1 ? '' : 's'} `
-                        + `an image that the images folder does not hold (${example(result.missingImageNames)}). `
-                        + `${count > 1 ? 'They are' : 'It is'} not shown, and copied unchanged on export.`,
-            })));
+            store.dispatch(submitNewNotification({...NotificationUtil.createWarningNotification({
+                header: 'Some pictures are missing',
+                description: (folder.format === 'coco'
+                    ? `${pictures(count)} listed in "${loadedName}" ${count > 1 ? 'are' : 'is'} not in the `
+                    : `${count} file${count > 1 ? 's' : ''} of "${loadedName}" describe${count > 1 ? '' : 's'} `
+                        + 'pictures that are not in the ')
+                    + `"images" folder (${example(result.missingImageNames)}). `
+                    + 'They are skipped, and kept as they are when you save.',
+            }), persistent: true}));
         }
 
         if (folder.format === 'voc' && result.imagesWithoutAnnotations.length > 0) {
             const count = result.imagesWithoutAnnotations.length;
-            store.dispatch(submitNewNotification(NotificationUtil.createWarningNotification({
-                header: `${plural(count, 'image')} without .xml file`,
-                description: `${plural(count, 'image')} of the images folder ha${count > 1 ? 've' : 's'} no .xml `
-                    + `file in "${folder.labelsFolderName}/" (${example(result.imagesWithoutAnnotations)}). `
-                    + `${count > 1 ? 'They are' : 'It is'} shown without annotations, and no .xml file is `
-                    + 'written for them on export.',
-            })));
+            store.dispatch(submitNewNotification({...NotificationUtil.createWarningNotification({
+                header: 'Some pictures have no annotations',
+                description: `${pictures(count)} of the "images" folder ${count > 1 ? 'have' : 'has'} no file in `
+                    + `"${loadedName}" (${example(result.imagesWithoutAnnotations)}). `
+                    + `${count > 1 ? 'They are' : 'It is'} shown without annotations.`,
+            }), persistent: true}));
         }
     }
 
-    public static async exportCurrentFolder(): Promise<void> {
+    // "Save my review": asks first where to save when the browser does not know the folder yet
+    public static async onSaveClick(): Promise<void> {
+        if (ReviewProject.needsSaveFolder()) {
+            store.dispatch(updateActivePopupType(PopupWindowType.CHOOSE_SAVE_FOLDER));
+            return;
+        }
+        await ReviewActions.exportCurrentFolder();
+    }
+
+    // Opens the folder picker: has to be called right from a click
+    public static async chooseSaveFolder(): Promise<SaveFolderChoice> {
         try {
-            const result = await ReviewProject.exportReviewedFolder(LabelsSelector.getImagesData());
-            store.dispatch(submitNewNotification(NotificationUtil.createSuccessNotification({
-                header: 'Folder exported',
-                description: result.kind === 'folder'
-                    ? `The reviewed annotations were saved in "${result.folderName}/${result.fileName}"`
-                        + (result.fileCount !== undefined ? ` (${result.fileCount} .xml files).` : '.')
-                    : result.fileCount !== undefined
-                        ? `"${result.fileName}" was downloaded: unzip it into the reviewed folder.`
-                        : `"${result.fileName}" was downloaded: move it into the reviewed folder.`,
-            })));
+            await ReviewProject.chooseSaveFolder();
+            return { chosen: true };
+        } catch (error) {
+            if (error instanceof Error && error.name === 'AbortError') {
+                return { chosen: false, problem: null };
+            }
+            return {
+                chosen: false,
+                problem: error instanceof ReviewFolderError
+                    ? error.problems.join(' ')
+                    : `This folder could not be used: ${error instanceof Error ? error.message : String(error)}`,
+            };
+        }
+    }
+
+    // Saves the review, returns whether it was saved
+    public static async exportCurrentFolder(): Promise<boolean> {
+        const annotationsName = ReviewProject.getLoadedAnnotationsName();
+        try {
+            const imagesData = LabelsSelector.getImagesData();
+            const result = await ReviewProject.exportReviewedFolder(imagesData);
+            ReviewSaveState.markSaved(imagesData);
+            if (result.kind === 'folder') {
+                store.dispatch(submitNewNotification(NotificationUtil.createSuccessNotification({
+                    header: 'Review saved',
+                    description: `Your review was saved in "${result.folderName}", as "${result.fileName}"`
+                        + (result.fileCount !== undefined ? ` (${result.fileCount} files)` : '')
+                        + `. The original "${annotationsName}" is not changed.`,
+                })));
+            } else {
+                store.dispatch(submitNewNotification({...NotificationUtil.createSuccessNotification({
+                    header: 'Review downloaded',
+                    description: `"${result.fileName}" is in your Downloads folder. Please `
+                        + (result.fileCount !== undefined ? 'unzip it' : 'move it')
+                        + ` into the folder that holds "${annotationsName}".`,
+                }), persistent: true}));
+            }
+            return true;
         } catch (error) {
             // Closing the folder picker is not an error
             if (error instanceof Error && error.name === 'AbortError') {
-                return;
+                return false;
             }
-            store.dispatch(submitNewNotification(NotificationUtil.createErrorNotification({
-                header: 'Export failed',
-                description: error instanceof Error ? error.message : 'The reviewed folder could not be written.',
-            })));
+            store.dispatch(submitNewNotification({...NotificationUtil.createErrorNotification({
+                header: 'Your review could not be saved',
+                description: error instanceof Error ? error.message : 'The review could not be written.',
+            }), persistent: true}));
+            return false;
         }
     }
 
@@ -152,5 +189,6 @@ export class ReviewActions {
         store.dispatch(updateFirstLabelCreatedFlag(false));
         LocalImageDirectoryRegistry.clear();
         ReviewProject.clear();
+        ReviewSaveState.clear();
     }
 }

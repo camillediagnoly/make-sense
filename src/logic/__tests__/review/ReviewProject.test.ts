@@ -140,12 +140,12 @@ describe('ReviewFolderReader.readFromDroppedItems', () => {
     });
 
     it.each([
-        ['no images folder', [fakeFile('annotations.json')], /has no folder named "images"/],
+        ['no images folder', [fakeFile('annotations.json')], /has no "images" folder/],
         ['no json file', [fakeDirectory('images', [fakeFile('a.png')])], /has no \.json file/],
         ['two json files', [fakeDirectory('images', [fakeFile('a.png')]), fakeFile('a.json'), fakeFile('b.json')], /2 \.json files/],
-        ['another file', [fakeDirectory('images', [fakeFile('a.png')]), fakeFile('a.json'), fakeFile('notes.txt')], /do not belong there: "notes.txt"/],
+        ['another file', [fakeDirectory('images', [fakeFile('a.png')]), fakeFile('a.json'), fakeFile('notes.txt')], /also holds "notes.txt", which do not belong there/],
         ['an empty images folder', [fakeDirectory('images', []), fakeFile('a.json')], /is empty/],
-        ['a non image in images', [fakeDirectory('images', [fakeFile('a.png'), fakeFile('a.txt')]), fakeFile('a.json')], /only hold pictures/],
+        ['a non image in images', [fakeDirectory('images', [fakeFile('a.png'), fakeFile('a.txt')]), fakeFile('a.json')], /not pictures/],
     ])('rejects a folder with %s', async (_, children, message) => {
         await expect(drop(fakeDirectory('study-1', children))).rejects.toThrow(message);
     });
@@ -182,7 +182,7 @@ describe('ReviewFolderReader.readFromDroppedItems', () => {
     });
 
     it('rejects a lone dropped json file, naming the missing images folder', async () => {
-        await expect(drop(fakeFile('annotations.json'))).rejects.toThrow(/Only the file "annotations.json".*"images" folder is missing/);
+        await expect(drop(fakeFile('annotations.json'))).rejects.toThrow(/Only the file "annotations.json" was dropped\. Please drag and drop it together with the "images" folder/);
     });
 
     it('reads the images folder and the json file dropped together', async () => {
@@ -201,7 +201,7 @@ describe('ReviewFolderReader.readFromDroppedItems', () => {
         await expect(ReviewFolderReader.readFromDroppedItems([
             { handle: Promise.resolve(fakeFile('a.png') as any), entry: null },
             { handle: Promise.resolve(fakeFile('labels_CH.json') as any), entry: null },
-        ])).rejects.toThrow(/What you dropped holds pictures directly.*inside a folder named "images"/);
+        ])).rejects.toThrow(/The pictures \("a.png"\) must stay inside the "images" folder/);
     });
 
     it('opens the folder inside a folder that only wraps it', async () => {
@@ -216,7 +216,7 @@ describe('ReviewFolderReader.readFromDroppedItems', () => {
 
     it('tells to go one level up when the images folder itself is given', async () => {
         await expect(drop(fakeDirectory('images', [fakeFile('a.png')])))
-            .rejects.toThrow(/This is the "images" folder itself/);
+            .rejects.toThrow(/^This is the "images" folder itself\. Please drag and drop both the "images" folder and the \.json file\.$/);
     });
 
     it('rejects an empty drop', async () => {
@@ -307,7 +307,7 @@ describe('ReviewProject.exportReviewedFolder', () => {
         };
         const result = await ReviewProject.load({ ...folder(cocoObject()), directoryHandle });
 
-        await expect(ReviewProject.exportReviewedFolder(result.imagesData)).rejects.toThrow(/not allowed/);
+        await expect(ReviewProject.exportReviewedFolder(result.imagesData)).rejects.toThrow(/did not allow saving/);
         expect(directoryHandle.getFileHandle).not.toHaveBeenCalled();
     });
 });

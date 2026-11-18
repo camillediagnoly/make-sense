@@ -90,15 +90,20 @@ const LabelsToolkit: React.FC<IProps> = (
             key={annotation.id}
             className='DeletedAnnotation'
             style={{width, height: LABEL_INPUT_FIELD_HEIGHT}}
-            title='Click to re-add this annotation'
-            onClick={(event: React.MouseEvent) => {
-                event.stopPropagation();
-                ReviewActions.setAnnotationDeleted(annotation.id, false);
-            }}
         >
             <div className='Marker' style={labelName ? {backgroundColor: labelName.color} : {}}/>
             <div className='Name'>{labelName ? labelName.name : 'no label'}</div>
-            <img draggable={false} src={'ico/plus.png'} alt={'re-add'}/>
+            <button
+                type='button'
+                className='RestoreButton'
+                title='Put this annotation back on the image'
+                onClick={(event: React.MouseEvent) => {
+                    event.stopPropagation();
+                    ReviewActions.setAnnotationDeleted(annotation.id, false);
+                }}
+            >
+                Restore
+            </button>
         </div>;
     };
 
@@ -159,7 +164,7 @@ const LabelsToolkit: React.FC<IProps> = (
                         />)}
                         {deletedAnnotations.length > 0 && <>
                             <div className='DeletedHeader' style={{height: DELETED_HEADER_HEIGHT}}>
-                                Deleted annotations - click to re-add
+                                Deleted annotations
                             </div>
                             {deletedAnnotations.map((annotation: ListedAnnotation) =>
                                 renderDeletedRow(annotation, listSize.width))}

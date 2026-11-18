@@ -7,7 +7,9 @@ export interface INotification {
     header: string,
     description: string,
     // How long it stays on screen, 5 seconds when not set
-    displayTimeMs?: number
+    displayTimeMs?: number,
+    // Stays on screen until clicked: for what must not be missed
+    persistent?: boolean
 }
 
 export type NotificationsState = {

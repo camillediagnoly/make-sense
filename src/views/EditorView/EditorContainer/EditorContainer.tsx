@@ -1,4 +1,4 @@
-import React, {useState} from 'react';
+import React, {useEffect, useState} from 'react';
 import {connect} from 'react-redux';
 import {Direction} from '../../../data/enums/Direction';
 import {ISize} from '../../../interfaces/ISize';
@@ -14,8 +14,7 @@ import Editor from '../Editor/Editor';
 import {ContextManager} from '../../../logic/context/ContextManager';
 import {ContextType} from '../../../data/enums/ContextType';
 import EditorBottomNavigationBar from '../EditorBottomNavigationBar/EditorBottomNavigationBar';
-import EditorTopNavigationBar from '../EditorTopNavigationBar/EditorTopNavigationBar';
-import {ProjectType} from '../../../data/enums/ProjectType';
+import {updateImageDataById} from '../../../store/labels/actionCreators';
 
 
 interface IProps {
@@ -23,7 +22,7 @@ interface IProps {
     activeImageIndex: number | null;
     imagesData: ImageData[];
     activeContext: ContextType;
-    projectType: ProjectType;
+    updateImageDataByIdAction: (id: string, newImageData: ImageData) => any;
 }
 
 const EditorContainer: React.FC<IProps> = (
@@ -32,21 +31,29 @@ const EditorContainer: React.FC<IProps> = (
         activeImageIndex,
         imagesData,
         activeContext,
-        projectType
+        updateImageDataByIdAction
     }) => {
     const [leftTabStatus, setLeftTabStatus] = useState(true);
     const [rightTabStatus, setRightTabStatus] = useState(true);
     const activeImageData = activeImageIndex === null ? null : imagesData[activeImageIndex];
 
+    // The review progress: an image shown in the editor is seen
+    useEffect(() => {
+        if (activeImageData && !activeImageData.isSeen) {
+            updateImageDataByIdAction(activeImageData.id, {...activeImageData, isSeen: true});
+        }
+    }, [activeImageData, updateImageDataByIdAction]);
+
 
     const calculateEditorSize = (): ISize => {
         if (windowSize) {
-            const leftTabWidth = leftTabStatus ? Settings.SIDE_NAVIGATION_BAR_WIDTH_OPEN_PX : Settings.SIDE_NAVIGATION_BAR_WIDTH_CLOSED_PX;
-            const rightTabWidth = rightTabStatus ? Settings.SIDE_NAVIGATION_BAR_WIDTH_OPEN_PX : Settings.SIDE_NAVIGATION_BAR_WIDTH_CLOSED_PX;
+            const leftTabWidth = leftTabStatus ? Settings.LEFT_SIDE_NAVIGATION_BAR_WIDTH_OPEN_PX : Settings.SIDE_NAVIGATION_BAR_WIDTH_CLOSED_PX;
+            const rightTabWidth = rightTabStatus ? Settings.RIGHT_SIDE_NAVIGATION_BAR_WIDTH_OPEN_PX : Settings.SIDE_NAVIGATION_BAR_WIDTH_CLOSED_PX;
+            // The tools are in the bottom bar: no editor top bar
             return {
                 width: windowSize.width - leftTabWidth - rightTabWidth,
                 height: windowSize.height - Settings.TOP_NAVIGATION_BAR_HEIGHT_PX
-                    - Settings.EDITOR_BOTTOM_NAVIGATION_BAR_HEIGHT_PX - Settings.EDITOR_TOP_NAVIGATION_BAR_HEIGHT_PX,
+                    - Settings.EDITOR_BOTTOM_NAVIGATION_BAR_HEIGHT_PX,
             }
         }
         else
@@ -117,9 +124,6 @@ const EditorContainer: React.FC<IProps> = (
                 onMouseDown={() => ContextManager.switchCtx(ContextType.EDITOR)}
                  key='editor-wrapper'
             >
-                {projectType === ProjectType.OBJECT_DETECTION && activeImageData && <EditorTopNavigationBar
-                    key='editor-top-navigation-bar'
-                />}
                 {activeImageData ? <Editor
                     size={calculateEditorSize()}
                     imageData={activeImageData}
@@ -150,9 +154,9 @@ const mapStateToProps = (state: AppState) => ({
     activeImageIndex: state.labels.activeImageIndex,
     imagesData: state.labels.imagesData,
     activeContext: state.general.activeContext,
-    projectType: state.general.projectData.type
 });
 
 export default connect(
-    mapStateToProps
+    mapStateToProps,
+    {updateImageDataByIdAction: updateImageDataById}
 )(EditorContainer);

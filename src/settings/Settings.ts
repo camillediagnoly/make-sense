@@ -6,11 +6,13 @@ export class Settings {
     public static readonly TWITCH_URL: string = 'https://www.twitch.tv/skalskip';
     public static readonly YOUTUBE_URL: string = 'https://www.youtube.com/watch?v=AWjKfjDGiYE';
 
-    public static readonly TOP_NAVIGATION_BAR_HEIGHT_PX: number = 35;
-    public static readonly EDITOR_BOTTOM_NAVIGATION_BAR_HEIGHT_PX: number = 40 + 1;
-    public static readonly EDITOR_TOP_NAVIGATION_BAR_HEIGHT_PX: number = 40 + 1;
+    public static readonly TOP_NAVIGATION_BAR_HEIGHT_PX: number = 52;
+    public static readonly EDITOR_BOTTOM_NAVIGATION_BAR_HEIGHT_PX: number = 60 + 1;
     public static readonly SIDE_NAVIGATION_BAR_WIDTH_CLOSED_PX: number = 23 + 1;
     public static readonly SIDE_NAVIGATION_BAR_WIDTH_OPEN_PX: number = Settings.SIDE_NAVIGATION_BAR_WIDTH_CLOSED_PX + 300 + 1;
+    // Keep in sync with $leftSideNavigationBarContentWidth and $rightSideNavigationBarContentWidth
+    public static readonly LEFT_SIDE_NAVIGATION_BAR_WIDTH_OPEN_PX: number = Settings.SIDE_NAVIGATION_BAR_WIDTH_CLOSED_PX + 180 + 1;
+    public static readonly RIGHT_SIDE_NAVIGATION_BAR_WIDTH_OPEN_PX: number = Settings.SIDE_NAVIGATION_BAR_WIDTH_CLOSED_PX + 260 + 1;
     public static readonly TOOLKIT_TAB_HEIGHT_PX: number = 40;
     public static readonly TOOLBOX_PANEL_WIDTH_PX: number = 50 + 1;
     public static readonly MAX_DROPDOWN_OPTION_LENGTH: number = 20;
@@ -37,6 +39,7 @@ export class Settings {
         PopupWindowType.EXPORT_ANNOTATIONS,
         PopupWindowType.IMPORT_ANNOTATIONS,
         PopupWindowType.EXIT_PROJECT,
+        PopupWindowType.CHOOSE_SAVE_FOLDER,
         PopupWindowType.DELETE_IMAGE,
         PopupWindowType.UPDATE_LABEL,
         PopupWindowType.EDIT_TAGS,

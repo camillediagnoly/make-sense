@@ -40,6 +40,11 @@
     flex-direction: row;
     border-right: solid 1px $darkThemeFirstColor;
 
+    .NavigationBarContentWrapper {
+      min-width: $leftSideNavigationBarContentWidth;
+      width: $leftSideNavigationBarContentWidth;
+    }
+
     .CompanionBar {
       border-right: solid 1px $darkThemeFirstColor;
 
@@ -52,6 +57,11 @@
   &.right {
     flex-direction: row-reverse;
     border-left: solid 1px $darkThemeFirstColor;
+
+    .NavigationBarContentWrapper {
+      min-width: $rightSideNavigationBarContentWidth;
+      width: $rightSideNavigationBarContentWidth;
+    }
 
     .CompanionBar {
       border-left: solid 1px $darkThemeFirstColor;

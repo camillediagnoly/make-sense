@@ -71,10 +71,14 @@ const NotificationsView: React.FC<IProps> = (props) => {
     }
 
     const renderNotification = () => {
+        const isDisplayed = notificationState === NotificationState.DISPLAY;
+        // A persistent notification has no display animation, so it only leaves when clicked
         const displayTimeStyle: React.CSSProperties | undefined =
-            notification?.displayTimeMs && notificationState === NotificationState.DISPLAY
-                ? {animationDuration: `${notification.displayTimeMs}ms`}
-                : undefined;
+            notification?.persistent && isDisplayed
+                ? {animation: 'none'}
+                : notification?.displayTimeMs && isDisplayed
+                    ? {animationDuration: `${notification.displayTimeMs}ms`}
+                    : undefined;
         return(
             notification && <div
                 className={getNotificationWrapperClassName()}
@@ -90,7 +94,9 @@ const NotificationsView: React.FC<IProps> = (props) => {
                     <div className='content'>
                         {notification.description}
                     </div>
-                    <div className='loader' style={displayTimeStyle}/>
+                    {notification.persistent
+                        ? <div className='close-hint'>Click to close</div>
+                        : <div className='loader' style={displayTimeStyle}/>}
                 </div>
             </div>
         )

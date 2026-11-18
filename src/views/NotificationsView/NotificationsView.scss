@@ -12,8 +12,10 @@ $warningColor: #eed202;
 
 .notification-wrapper {
   position: fixed;
-  height: calc(#{$messageHeight} + 2 * #{$wrapperMargin});
-  bottom: 0;
+  width: calc(#{$messageWidth} + 2 * #{$wrapperMargin});
+  padding-bottom: calc(2 * #{$wrapperMargin});
+  // Top right, below the top bar: clear of the image navigation at the bottom
+  top: $topNavigationBarHeight;
   right: 0;
   overflow: hidden;
   z-index: #{$baseZIndex};
@@ -21,7 +23,7 @@ $warningColor: #eed202;
   .notification {
     position: relative;
     width: #{$messageWidth};
-    height: #{$messageHeight};
+    min-height: #{$messageHeight};
     left: #{$wrapperMargin};
     top: #{$wrapperMargin};
     overflow: hidden;
@@ -51,6 +53,15 @@ $warningColor: #eed202;
       flex: 1;
       padding: 20px;
       color: #ffffff;
+      font-size: 15px;
+      line-height: 1.45;
+    }
+
+    .close-hint {
+      padding: 0 20px 12px;
+      text-align: right;
+      font-size: 13px;
+      color: rgba(255, 255, 255, 0.6);
     }
 
     .loader {

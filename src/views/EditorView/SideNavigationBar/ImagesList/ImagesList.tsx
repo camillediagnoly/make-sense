@@ -57,6 +57,9 @@ interface IState {
     key: number;
 }
 
+// One column of thumbnails, so the list stays narrow
+const PREVIEW_SIZE: ISize = {width: 170, height: 140};
+
 class ImagesList extends React.Component<IProps, IState> {
     private imagesListRef: HTMLDivElement;
     private controlsRef: HTMLDivElement;
@@ -98,9 +101,9 @@ class ImagesList extends React.Component<IProps, IState> {
         })
     };
 
+    // Ticked once seen: the review progress
     private isImageChecked = (index:number): boolean => {
-        const imageData = this.props.imagesData[index];
-        return ImageFilterUtil.isImageLabeled(imageData, this.props.activeLabelType);
+        return !!this.props.imagesData[index].isSeen;
     };
 
     private getFilteredImagesFromProps = (props: IProps): number[] => {
@@ -221,7 +224,7 @@ class ImagesList extends React.Component<IProps, IState> {
         return <ImagePreview
             key={actualIndex}
             style={style}
-            size={{width: 150, height: 150}}
+            size={PREVIEW_SIZE}
             isScrolling={isScrolling}
             isChecked={this.isImageChecked(actualIndex)}
             isInvalid={this.props.classSanityCheckViolationImageIds.includes(this.props.imagesData[actualIndex].id)}
@@ -294,7 +297,7 @@ class ImagesList extends React.Component<IProps, IState> {
                     <input
                         type="text"
                         className="SearchInput"
-                        placeholder="Search images by name (comma separated list)..."
+                        placeholder="Search by name..."
                         title="Enter one or more names, separated by commas"
                         value={searchText}
                         onChange={this.handleSearchChange}
@@ -319,7 +322,7 @@ class ImagesList extends React.Component<IProps, IState> {
                     <VirtualList
                         key={key}
                         size={size}
-                        childSize={{width: 150, height: 150}}
+                        childSize={PREVIEW_SIZE}
                         childCount={filteredIndices.length}
                         childRender={this.renderImagePreview}
                         overScanHeight={200}
