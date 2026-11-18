@@ -1,4 +1,5 @@
 import React from 'react';
+import './VirtualList.scss';
 import {ISize} from "../../../interfaces/ISize";
 import {IRect} from "../../../interfaces/IRect";
 import Scrollbars from 'react-custom-scrollbars-2';
@@ -160,7 +161,18 @@ export class VirtualList extends React.Component<IProps, IState> {
                     onScrollFrame={this.onScroll}
                     onScrollStart={this.onScrollStart}
                     onScrollStop={this.onScrollStop}
-                    autoHide={true}
+                    // Always shown and easy to grab: a thin bar fading away is easily missed
+                    autoHide={false}
+                    renderTrackVertical={({style, ...props}) => <div
+                        {...props}
+                        className="VirtualListTrack"
+                        style={{...style, width: 10, right: 2, top: 2, bottom: 2}}
+                    />}
+                    renderThumbVertical={({style, ...props}) => <div
+                        {...props}
+                        className="VirtualListThumb"
+                        style={style}
+                    />}
                 >
                     {displayContent && <div
                         className="VirtualListContent"

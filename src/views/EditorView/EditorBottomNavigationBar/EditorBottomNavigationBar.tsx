@@ -105,28 +105,34 @@ const EditorBottomNavigationBar: React.FC<IProps> = ({
     return (
         <div className={getClassName()}>
             <div className="ImageNavigation">
-                <button
-                    type="button"
-                    className="NavigationButton"
-                    title="Previous image (left arrow key)"
-                    disabled={isFirst}
-                    onClick={() => ImageActions.getPreviousImage()}
-                >
-                    ‹ Previous
-                </button>
+                <div className="NavigationControl">
+                    <button
+                        type="button"
+                        className="NavigationButton"
+                        title="Previous image (left arrow key)"
+                        disabled={isFirst}
+                        onClick={() => ImageActions.getPreviousImage()}
+                    >
+                        ‹ Previous
+                    </button>
+                    <div className="KeyHint">left arrow</div>
+                </div>
                 <div className="CurrentImage">
                     <div className="CurrentImageCount">Image {currentImagePosition} of {totalImageCount}</div>
                     <div className="CurrentImageName" title={imageData.fileData.name}>{imageData.fileData.name}</div>
                 </div>
-                <button
-                    type="button"
-                    className="NavigationButton"
-                    title="Next image (right arrow key)"
-                    disabled={isLast}
-                    onClick={() => ImageActions.getNextImage()}
-                >
-                    Next ›
-                </button>
+                <div className="NavigationControl">
+                    <button
+                        type="button"
+                        className="NavigationButton"
+                        title="Next image (right arrow key)"
+                        disabled={isLast}
+                        onClick={() => ImageActions.getNextImage()}
+                    >
+                        Next ›
+                    </button>
+                    <div className="KeyHint">right arrow</div>
+                </div>
             </div>
             <div className="Measurements">
                 {completedMeasurementTexts.map((measurementText) => (

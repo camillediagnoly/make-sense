@@ -28,9 +28,9 @@ export const SideNavigationBar: React.FC<IProps> = (props) => {
 
     return (
         <div className={getClassName()}>
-            <div className="CompanionBar">
-                {renderCompanion && renderCompanion()}
-            </div>
+            {renderCompanion && <div className="CompanionBar">
+                {renderCompanion()}
+            </div>}
             {isOpen && <div className="NavigationBarContentWrapper">
                 {renderContent && renderContent()}
             </div>}

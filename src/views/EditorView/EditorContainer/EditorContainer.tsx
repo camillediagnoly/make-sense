@@ -1,4 +1,4 @@
-import React, {useEffect, useState} from 'react';
+import React, {useEffect} from 'react';
 import {connect} from 'react-redux';
 import {Direction} from '../../../data/enums/Direction';
 import {ISize} from '../../../interfaces/ISize';
@@ -8,7 +8,6 @@ import {ImageData} from '../../../store/labels/types';
 import ImagesList from '../SideNavigationBar/ImagesList/ImagesList';
 import LabelsToolkit from '../SideNavigationBar/LabelsToolkit/LabelsToolkit';
 import {SideNavigationBar} from '../SideNavigationBar/SideNavigationBar';
-import {VerticalEditorButton} from '../VerticalEditorButton/VerticalEditorButton';
 import './EditorContainer.scss';
 import Editor from '../Editor/Editor';
 import {ContextManager} from '../../../logic/context/ContextManager';
@@ -33,8 +32,6 @@ const EditorContainer: React.FC<IProps> = (
         activeContext,
         updateImageDataByIdAction
     }) => {
-    const [leftTabStatus, setLeftTabStatus] = useState(true);
-    const [rightTabStatus, setRightTabStatus] = useState(true);
     const activeImageData = activeImageIndex === null ? null : imagesData[activeImageIndex];
 
     // The review progress: an image shown in the editor is seen
@@ -47,11 +44,10 @@ const EditorContainer: React.FC<IProps> = (
 
     const calculateEditorSize = (): ISize => {
         if (windowSize) {
-            const leftTabWidth = leftTabStatus ? Settings.LEFT_SIDE_NAVIGATION_BAR_WIDTH_OPEN_PX : Settings.SIDE_NAVIGATION_BAR_WIDTH_CLOSED_PX;
-            const rightTabWidth = rightTabStatus ? Settings.RIGHT_SIDE_NAVIGATION_BAR_WIDTH_OPEN_PX : Settings.SIDE_NAVIGATION_BAR_WIDTH_CLOSED_PX;
-            // The tools are in the bottom bar: no editor top bar
+            // The side panels are always open; the tools are in the top bar
             return {
-                width: windowSize.width - leftTabWidth - rightTabWidth,
+                width: windowSize.width - Settings.LEFT_SIDE_NAVIGATION_BAR_WIDTH_PX
+                    - Settings.RIGHT_SIDE_NAVIGATION_BAR_WIDTH_PX,
                 height: windowSize.height - Settings.TOP_NAVIGATION_BAR_HEIGHT_PX
                     - Settings.EDITOR_BOTTOM_NAVIGATION_BAR_HEIGHT_PX,
             }
@@ -60,50 +56,8 @@ const EditorContainer: React.FC<IProps> = (
             return null;
     };
 
-    const leftSideBarButtonOnClick = () => {
-        if (!leftTabStatus)
-            ContextManager.switchCtx(ContextType.LEFT_NAVBAR);
-        else if (leftTabStatus && activeContext === ContextType.LEFT_NAVBAR)
-            ContextManager.restoreCtx();
-
-        setLeftTabStatus(!leftTabStatus);
-    };
-
-    const leftSideBarCompanionRender = () => {
-        return <>
-            <VerticalEditorButton
-                label='Images'
-                image={'/ico/camera.png'}
-                imageAlt={'images'}
-                onClick={leftSideBarButtonOnClick}
-                isActive={leftTabStatus}
-            />
-        </>
-    };
-
     const leftSideBarRender = () => {
         return <ImagesList/>
-    };
-
-    const rightSideBarButtonOnClick = () => {
-        if (!rightTabStatus)
-            ContextManager.switchCtx(ContextType.RIGHT_NAVBAR);
-        else if (rightTabStatus && activeContext === ContextType.RIGHT_NAVBAR)
-            ContextManager.restoreCtx();
-
-        setRightTabStatus(!rightTabStatus);
-    };
-
-    const rightSideBarCompanionRender = () => {
-        return <>
-            <VerticalEditorButton
-                label='Annotations'
-                image={'/ico/tags.png'}
-                imageAlt={'annotations'}
-                onClick={rightSideBarButtonOnClick}
-                isActive={rightTabStatus}
-            />
-        </>
     };
 
     const rightSideBarRender = () => {
@@ -114,9 +68,8 @@ const EditorContainer: React.FC<IProps> = (
         <div className='EditorContainer'>
             <SideNavigationBar
                 direction={Direction.LEFT}
-                isOpen={leftTabStatus}
+                isOpen={true}
                 isWithContext={activeContext === ContextType.LEFT_NAVBAR}
-                renderCompanion={leftSideBarCompanionRender}
                 renderContent={leftSideBarRender}
                 key='left-side-navigation-bar'
             />
@@ -139,9 +92,8 @@ const EditorContainer: React.FC<IProps> = (
             </div>
             <SideNavigationBar
                 direction={Direction.RIGHT}
-                isOpen={rightTabStatus}
+                isOpen={true}
                 isWithContext={activeContext === ContextType.RIGHT_NAVBAR}
-                renderCompanion={rightSideBarCompanionRender}
                 renderContent={rightSideBarRender}
                 key='right-side-navigation-bar'
             />

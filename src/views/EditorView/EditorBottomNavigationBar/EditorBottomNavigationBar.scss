@@ -37,8 +37,21 @@
     gap: 12px;
   }
 
+  .NavigationControl {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+
+    .KeyHint {
+      font-size: 11px;
+      line-height: 1;
+      color: rgba(255, 255, 255, 0.55);
+    }
+  }
+
   .NavigationButton {
-    height: 44px;
+    height: 38px;
     min-width: 116px;
     padding: 0 16px;
     border: none;

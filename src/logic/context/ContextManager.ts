@@ -45,7 +45,11 @@ export class ContextManager {
     private static updateCtx(context: ContextType): void {
         store.dispatch(updateActiveContext(context));
         switch (context) {
+            // The side panels keep the editor shortcuts: after clicking an image of the list, the
+            // arrows still go to the previous / next image
             case ContextType.EDITOR:
+            case ContextType.LEFT_NAVBAR:
+            case ContextType.RIGHT_NAVBAR:
                 ContextManager.actions = EditorContext.getActions();
                 break;
             case ContextType.POPUP:

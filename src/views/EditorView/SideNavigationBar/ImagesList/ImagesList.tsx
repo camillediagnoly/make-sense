@@ -58,7 +58,8 @@ interface IState {
 }
 
 // One column of thumbnails, so the list stays narrow
-const PREVIEW_SIZE: ISize = {width: 170, height: 140};
+// Narrow enough to leave the scrollbar its own room on the right
+const PREVIEW_SIZE: ISize = {width: 156, height: 140};
 
 class ImagesList extends React.Component<IProps, IState> {
     private imagesListRef: HTMLDivElement;
