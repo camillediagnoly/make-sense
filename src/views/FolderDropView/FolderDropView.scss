@@ -4,19 +4,72 @@
   position: absolute;
   inset: 0;
   display: flex;
-  justify-content: center;
-  align-items: center;
   overflow-y: auto;
   background-color: $darkThemeSecondColor;
   color: white;
 
   .FolderDropViewContent {
-    width: 520px;
+    // margin auto rather than centering the parent, so a tall content still scrolls from its top
+    margin: auto;
+    width: 560px;
     max-width: calc(100% - 32px);
     padding: 32px 0;
     display: flex;
     flex-direction: column;
-    gap: 16px;
+    gap: 20px;
+    font-size: 16px;
+    line-height: 1.5;
+  }
+
+  .Logo {
+    align-self: center;
+    width: 280px;
+    max-width: 100%;
+    user-select: none;
+  }
+
+  .Explanation {
+    text-align: center;
+
+    > p {
+      margin: 0 0 6px;
+    }
+
+    > .Hint {
+      margin: 12px 0 0;
+      color: rgba(255, 255, 255, 0.75);
+    }
+  }
+
+  .FolderStructure {
+    margin-top: 12px;
+    padding: 16px;
+    border-radius: 6px;
+    background-color: $darkThemeFirstColor;
+    display: flex;
+    justify-content: center;
+    gap: 48px;
+
+    .StructureItem {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 4px;
+
+      > span {
+        font-size: 17px;
+        font-weight: 600;
+      }
+
+      > small {
+        font-size: 14px;
+        color: rgba(255, 255, 255, 0.7);
+      }
+    }
+
+    .StructureIcon {
+      height: 64px;
+    }
   }
 
   .FolderDropZone {
@@ -65,7 +118,7 @@
     border-radius: 6px;
     background-color: rgba(255, 107, 107, 0.12);
     box-shadow: #ff6b6b 0 0 0 1px inset;
-    font-size: 14px;
+    font-size: 16px;
 
     > p {
       margin: 10px 0 0;
@@ -77,18 +130,10 @@
     }
 
     > ul {
-      margin: 0;
+      margin: 6px 0 0;
       padding-left: 20px;
       line-height: 1.5;
       overflow-wrap: anywhere;
-    }
-
-    > pre {
-      margin: 6px 0 0;
-      padding: 10px 14px;
-      border-radius: 6px;
-      background-color: $darkThemeFirstColor;
-      overflow-x: auto;
     }
   }
 }

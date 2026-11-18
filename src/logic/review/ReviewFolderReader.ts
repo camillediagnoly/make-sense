@@ -9,20 +9,6 @@ import {
 //   <folder>/                          <folder>/
 //       images/      - the images          images/    - the images
 //       <name>.json  - COCO annotations    labels/    - one Pascal VOC .xml per image
-export const EXPECTED_FOLDER_STRUCTURE: string[] = [
-    '<your-folder>/',
-    '    images/          only .jpg, .jpeg or .png images',
-    '    <name>.json      the COCO annotations of these images',
-    '    <name>_reviewed.json   (optional) written by "Export current folder"',
-    '',
-    'or',
-    '',
-    '<your-folder>/',
-    '    images/          only .jpg, .jpeg or .png images',
-    '    labels/          one Pascal VOC .xml file per image',
-    '    labels_reviewed/ (optional) written by "Export current folder"',
-];
-
 export const REVIEWED_SUFFIX = '_reviewed';
 
 export const IMAGES_FOLDER_NAME = 'images';
@@ -109,20 +95,39 @@ export class ReviewFolderReader {
             && typeof (window as FileSystemAccessWindow).showDirectoryPicker === 'function';
     }
 
+    // Accepts the folder itself, or what it holds (the "images" folder and the .json file) dropped together
     public static async readFromDroppedItems(items: DroppedItem[]): Promise<ReviewFolder> {
-        if (items.length !== 1) {
-            throw new ReviewFolderError([
-                items.length === 0
-                    ? 'Nothing was dropped. Drop a single folder.'
-                    : `${items.length} items were dropped. Drop a single folder.`
-            ]);
+        if (items.length === 0) {
+            throw new ReviewFolderError(['Nothing was dropped. Drag the folder from your computer onto the box.']);
         }
 
-        const root: FolderEntry | null = await ReviewFolderReader.toRootEntry(items[0]);
-        if (!root || root.kind !== 'directory') {
-            throw new ReviewFolderError(['A file was dropped. Drop the folder that contains it instead.']);
+        const entries: FolderEntry[] = (await Promise.all(items.map(ReviewFolderReader.toRootEntry)))
+            .filter((entry: FolderEntry | null): entry is FolderEntry => !!entry);
+        if (entries.length === 0) {
+            throw new ReviewFolderError(['What was dropped could not be read. Drag the folder from your computer '
+                + 'onto the box.']);
         }
-        return ReviewFolderReader.readFolder(root);
+
+        if (entries.length === 1 && entries[0].kind === 'directory') {
+            return ReviewFolderReader.readFolder(entries[0]);
+        }
+        if (entries.length === 1) {
+            const [file] = entries;
+            throw new ReviewFolderError([file.name.toLowerCase().endsWith('.json')
+                ? `Only the file "${file.name}" was dropped: the "${IMAGES_FOLDER_NAME}" folder is missing. `
+                    + `Drop the folder that holds both of them, or drop them together.`
+                : `Only the file "${file.name}" was dropped. Drop the folder that holds the "${IMAGES_FOLDER_NAME}" `
+                    + `folder and the .json file.`]);
+        }
+
+        // Several items: they are read as the content of their folder, which the browser does not give, so
+        // "Export current folder" downloads its result instead of saving it next to them
+        return ReviewFolderReader.readFolder({
+            name: '',
+            kind: 'directory',
+            getFile: () => Promise.reject(new Error('The dropped items are not a file')),
+            listChildren: async () => entries,
+        });
     }
 
     public static async readFromDirectoryPicker(): Promise<ReviewFolder> {
@@ -142,9 +147,11 @@ export class ReviewFolderReader {
         return item.entry ? ReviewFolderReader.fromEntry(item.entry) : null;
     }
 
-    private static async readFolder(root: FolderEntry): Promise<ReviewFolder> {
+    // root.name is empty when it stands for several dropped items rather than a folder
+    private static async readFolder(root: FolderEntry, canOpenSubfolder: boolean = true): Promise<ReviewFolder> {
         const children: FolderEntry[] = ReviewFolderReader.withoutIgnoredFiles(await root.listChildren());
         const problems: string[] = [];
+        const where = root.name ? `The folder "${root.name}"` : 'What you dropped';
 
         const isDirectoryNamed = (child: FolderEntry, name: string) =>
             child.kind === 'directory' && child.name.toLowerCase() === name;
@@ -158,27 +165,46 @@ export class ReviewFolderReader {
         const unexpected = children.filter((child: FolderEntry) =>
             !imagesFolders.includes(child) && !labelsFolders.includes(child) && !jsonFiles.includes(child));
 
-        if (imagesFolders.length === 0) {
-            problems.push(`The folder "${root.name}" has no "${IMAGES_FOLDER_NAME}" folder.`);
+        // A folder that only wraps the right one, as unzipping often makes: the right one is opened instead
+        const [onlyChild] = children;
+        if (canOpenSubfolder && children.length === 1 && onlyChild.kind === 'directory'
+            && imagesFolders.length === 0 && labelsFolders.length === 0) {
+            return ReviewFolderReader.readFolder(onlyChild, false);
+        }
+
+        const looseImages = children.filter((child: FolderEntry) => ReviewFolderReader.isImageEntry(child));
+        if (imagesFolders.length === 0 && root.name.toLowerCase() === IMAGES_FOLDER_NAME && looseImages.length > 0) {
+            throw new ReviewFolderError([`This is the "${IMAGES_FOLDER_NAME}" folder itself. Choose the folder `
+                + `one level up instead: the one that holds both the "${IMAGES_FOLDER_NAME}" folder and the .json file.`]);
+        }
+
+        if (imagesFolders.length === 0 && looseImages.length > 0) {
+            problems.push(`${where} holds pictures directly (${ReviewFolderReader.listNames(looseImages)}). `
+                + `The pictures must be inside a folder named "${IMAGES_FOLDER_NAME}".`);
+        } else if (imagesFolders.length === 0) {
+            problems.push(`${where} has no folder named "${IMAGES_FOLDER_NAME}". The pictures must be inside `
+                + `a folder named exactly "${IMAGES_FOLDER_NAME}".`);
         }
 
         const isVOC = labelsFolders.length > 0;
         const jsonPair = ReviewFolderReader.getJsonPair(jsonFiles);
         if (isVOC && jsonFiles.length > 0) {
-            problems.push(`The folder "${root.name}" holds both a "${LABELS_FOLDER_NAME}" folder and .json `
-                + `annotations (${ReviewFolderReader.listNames(jsonFiles)}): keep only one of them.`);
+            problems.push(`${where} holds both a "${LABELS_FOLDER_NAME}" folder and a .json file `
+                + `(${ReviewFolderReader.listNames(jsonFiles)}). Keep only one of them.`);
         } else if (!isVOC && jsonFiles.length === 0) {
-            problems.push(`The folder "${root.name}" has no annotations: neither a .json file nor a `
-                + `"${LABELS_FOLDER_NAME}" folder of .xml files.`);
+            problems.push(`${where} has no .json file. The .json file holds the annotations to review: `
+                + `it must be next to the "${IMAGES_FOLDER_NAME}" folder.`);
         } else if (!isVOC && !jsonPair) {
-            problems.push(`The folder "${root.name}" has ${jsonFiles.length} .json files `
-                + `(${ReviewFolderReader.listNames(jsonFiles)}): it must have only one, plus `
-                + `optionally its "${REVIEWED_SUFFIX}" version.`);
+            problems.push(`${where} holds ${jsonFiles.length} .json files `
+                + `(${ReviewFolderReader.listNames(jsonFiles)}). There must be only one `
+                + `(plus, if the folder was already reviewed, its "${REVIEWED_SUFFIX}" copy).`);
         }
-        if (unexpected.length > 0) {
-            problems.push(`The folder "${root.name}" must only hold the "${IMAGES_FOLDER_NAME}" folder and `
+        const otherItems = unexpected.filter((child: FolderEntry) => !looseImages.includes(child));
+        if (otherItems.length > 0) {
+            problems.push(`${where} holds things that do not belong there: `
+                + `${ReviewFolderReader.listNames(otherItems)}. Only the "${IMAGES_FOLDER_NAME}" folder and `
                 + (isVOC ? `the "${LABELS_FOLDER_NAME}" folder` : 'the .json file')
-                + `, but it also holds: ${ReviewFolderReader.listNames(unexpected)}.`);
+                + ' may be there: move the rest out, then try again.');
         }
 
         let imageEntries: FolderEntry[] = [];
@@ -188,10 +214,10 @@ export class ReviewFolderReader {
             imageEntries = entries.filter((entry: FolderEntry) => ReviewFolderReader.isImageEntry(entry));
 
             if (notImages.length > 0) {
-                problems.push(`The "${IMAGES_FOLDER_NAME}" folder must only hold .jpg, .jpeg or .png images, `
-                    + `but it also holds: ${ReviewFolderReader.listNames(notImages)}.`);
+                problems.push(`The "${IMAGES_FOLDER_NAME}" folder must only hold pictures (.jpg, .jpeg or .png), `
+                    + `but it also holds: ${ReviewFolderReader.listNames(notImages)}. Move them out, then try again.`);
             } else if (imageEntries.length === 0) {
-                problems.push(`The "${IMAGES_FOLDER_NAME}" folder has no image.`);
+                problems.push(`The "${IMAGES_FOLDER_NAME}" folder is empty: it has no picture.`);
             }
         }
 
@@ -205,7 +231,7 @@ export class ReviewFolderReader {
 
             if (notLabels.length > 0) {
                 problems.push(`The "${loadedLabelsFolder.name}" folder must only hold .xml files, `
-                    + `but it also holds: ${ReviewFolderReader.listNames(notLabels)}.`);
+                    + `but it also holds: ${ReviewFolderReader.listNames(notLabels)}. Move them out, then try again.`);
             } else if (labelEntries.length === 0) {
                 problems.push(`The "${loadedLabelsFolder.name}" folder has no .xml file.`);
             }
@@ -216,7 +242,8 @@ export class ReviewFolderReader {
         }
 
         const base: ReviewFolderBase = {
-            name: root.name,
+            // Named after the .json file or the labels folder when several items were dropped
+            name: root.name || (isVOC ? loadedLabelsFolder.name : jsonPair.original.name.replace(/\.json$/i, '')),
             directoryHandle: root.directoryHandle,
             imageFiles: await Promise.all(imageEntries.map((entry: FolderEntry) => entry.getFile())),
         };

@@ -190,7 +190,7 @@ describe('ReviewFolderReader with a labels folder', () => {
     it.each([
         ['both a labels folder and a json file',
             [fakeDirectory('images', [fakeFile('a.jpg')]), fakeDirectory('labels', [fakeFile('a.xml')]), fakeFile('a.json')],
-            /holds both a "labels" folder and .json annotations/],
+            /holds both a "labels" folder and a .json file/],
         ['a non xml file in labels',
             [fakeDirectory('images', [fakeFile('a.jpg')]), fakeDirectory('labels', [fakeFile('a.xml'), fakeFile('a.txt')])],
             /"labels" folder must only hold .xml files, but it also holds: "a.txt"/],
@@ -199,7 +199,7 @@ describe('ReviewFolderReader with a labels folder', () => {
             /"labels" folder has no .xml file/],
         ['another folder',
             [fakeDirectory('images', [fakeFile('a.jpg')]), fakeDirectory('labels', [fakeFile('a.xml')]), fakeDirectory('masks', [])],
-            /only hold the "images" folder and the "labels" folder, but it also holds: "masks\/"/],
+            /do not belong there: "masks\/"\. Only the "images" folder and the "labels" folder/],
     ])('rejects a folder with %s', async (_, children, message) => {
         await expect(drop(fakeDirectory('update_testset', children))).rejects.toThrow(message);
     });

@@ -140,12 +140,12 @@ describe('ReviewFolderReader.readFromDroppedItems', () => {
     });
 
     it.each([
-        ['no images folder', [fakeFile('annotations.json')], /has no "images" folder/],
-        ['no json file', [fakeDirectory('images', [fakeFile('a.png')])], /has no annotations/],
+        ['no images folder', [fakeFile('annotations.json')], /has no folder named "images"/],
+        ['no json file', [fakeDirectory('images', [fakeFile('a.png')])], /has no \.json file/],
         ['two json files', [fakeDirectory('images', [fakeFile('a.png')]), fakeFile('a.json'), fakeFile('b.json')], /2 \.json files/],
-        ['another file', [fakeDirectory('images', [fakeFile('a.png')]), fakeFile('a.json'), fakeFile('notes.txt')], /also holds: "notes.txt"/],
-        ['an empty images folder', [fakeDirectory('images', []), fakeFile('a.json')], /has no image/],
-        ['a non image in images', [fakeDirectory('images', [fakeFile('a.png'), fakeFile('a.txt')]), fakeFile('a.json')], /only hold .jpg/],
+        ['another file', [fakeDirectory('images', [fakeFile('a.png')]), fakeFile('a.json'), fakeFile('notes.txt')], /do not belong there: "notes.txt"/],
+        ['an empty images folder', [fakeDirectory('images', []), fakeFile('a.json')], /is empty/],
+        ['a non image in images', [fakeDirectory('images', [fakeFile('a.png'), fakeFile('a.txt')]), fakeFile('a.json')], /only hold pictures/],
     ])('rejects a folder with %s', async (_, children, message) => {
         await expect(drop(fakeDirectory('study-1', children))).rejects.toThrow(message);
     });
@@ -181,14 +181,46 @@ describe('ReviewFolderReader.readFromDroppedItems', () => {
         ]))).rejects.toThrow(/2 \.json files/);
     });
 
-    it('rejects a dropped file', async () => {
-        await expect(drop(fakeFile('annotations.json'))).rejects.toThrow(/A file was dropped/);
+    it('rejects a lone dropped json file, naming the missing images folder', async () => {
+        await expect(drop(fakeFile('annotations.json'))).rejects.toThrow(/Only the file "annotations.json".*"images" folder is missing/);
     });
 
-    it('rejects several dropped items', async () => {
+    it('reads the images folder and the json file dropped together', async () => {
+        const result = await ReviewFolderReader.readFromDroppedItems([
+            { handle: Promise.resolve(fakeDirectory('images', [fakeFile('a.png')]) as any), entry: null },
+            { handle: Promise.resolve(fakeFile('labels_CH.json') as any), entry: null },
+        ]) as COCOReviewFolder;
+
+        expect(result.name).toBe('labels_CH');
+        expect(result.directoryHandle).toBeUndefined();
+        expect(result.jsonFile.name).toBe('labels_CH.json');
+        expect(result.imageFiles.map((file) => file.name)).toEqual(['a.png']);
+    });
+
+    it('explains what is wrong with items dropped together', async () => {
         await expect(ReviewFolderReader.readFromDroppedItems([
-            { handle: null, entry: null }, { handle: null, entry: null },
-        ])).rejects.toThrow(/2 items were dropped/);
+            { handle: Promise.resolve(fakeFile('a.png') as any), entry: null },
+            { handle: Promise.resolve(fakeFile('labels_CH.json') as any), entry: null },
+        ])).rejects.toThrow(/What you dropped holds pictures directly.*inside a folder named "images"/);
+    });
+
+    it('opens the folder inside a folder that only wraps it', async () => {
+        const result = await drop(fakeDirectory('download', [fakeDirectory('study-1', [
+            fakeDirectory('images', [fakeFile('a.png')]),
+            fakeFile('annotations.json'),
+        ])]));
+
+        expect(result.name).toBe('study-1');
+        expect(result.jsonFile.name).toBe('annotations.json');
+    });
+
+    it('tells to go one level up when the images folder itself is given', async () => {
+        await expect(drop(fakeDirectory('images', [fakeFile('a.png')])))
+            .rejects.toThrow(/This is the "images" folder itself/);
+    });
+
+    it('rejects an empty drop', async () => {
+        await expect(ReviewFolderReader.readFromDroppedItems([])).rejects.toThrow(/Nothing was dropped/);
     });
 });
 
