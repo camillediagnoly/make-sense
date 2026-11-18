@@ -18,6 +18,7 @@ const initialState: LabelsState = {
     activeImageIndex: null,
     activeLabelNameId: null,
     activeLabelType: null,
+    annotationMode: null,
     activeLabelId: null,
     highlightedLabelId: null,
     imagesData: [],
@@ -182,6 +183,14 @@ export function labelsReducer(
             return {
                 ...state,
                 activeLabelType: action.payload.activeLabelType
+            }
+        }
+        case Action.UPDATE_ANNOTATION_MODE: {
+            return {
+                ...state,
+                annotationMode: action.payload.annotationMode,
+                activeLabelType: action.payload.annotationMode ?? state.activeLabelType,
+                activeLabelId: null
             }
         }
         case Action.UPDATE_IMAGE_DATA_BY_ID: {

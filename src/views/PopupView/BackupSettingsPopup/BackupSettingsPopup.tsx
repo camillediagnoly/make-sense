@@ -37,12 +37,6 @@ const BackupSettingsPopup: React.FC<IProps> = ({
     updateBackupEnabled,
     updateBackupFrequency,
 }) => {
-    // DEBUG: Log browser support
-    console.log('=== BACKUP SETTINGS DEBUG ===');
-    console.log('Browser supports File System Access API:', BrowserDetection.supportsFileSystemAccess());
-    console.log('Browser name:', BrowserDetection.getBrowserName());
-    console.log('showDirectoryPicker available:', 'showDirectoryPicker' in window);
-
     // Initialize from existing BackupManager settings
     const existingDirectoryHandle = BackupManager.getDirectoryHandle();
     const existingExportType = BackupManager.getExportLabelType();

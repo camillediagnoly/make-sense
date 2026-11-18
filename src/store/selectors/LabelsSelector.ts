@@ -1,5 +1,5 @@
 import {store} from '../..';
-import {ImageData, LabelLine, LabelName, LabelPoint, LabelPolygon, LabelRect, TagConfig, TagName} from '../labels/types';
+import {AnnotationMode, ImageData, LabelLine, LabelName, LabelPoint, LabelPolygon, LabelRect, TagConfig, TagName} from '../labels/types';
 import {find} from 'lodash';
 import {LabelType} from '../../data/enums/LabelType';
 import {ImageDataUtil} from '../../utils/ImageDataUtil';
@@ -28,6 +28,10 @@ export class LabelsSelector {
 
     public static getActiveLabelType(): LabelType {
         return store.getState().labels.activeLabelType;
+    }
+
+    public static getAnnotationMode(): AnnotationMode | null {
+        return store.getState().labels.annotationMode;
     }
 
     public static getImagesData(): ImageData[] {

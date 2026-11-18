@@ -3,15 +3,13 @@ import './PopupView.scss';
 import { PopupWindowType } from '../../data/enums/PopupWindowType';
 import { AppState } from '../../store';
 import { connect } from 'react-redux';
-import LoadLabelsPopup from './LoadLabelNamesPopup/LoadLabelNamesPopup';
 import InsertLabelNamesPopup from './InsertLabelNamesPopup/InsertLabelNamesPopup';
 import ExitProjectPopup from './ExitProjectPopup/ExitProjectPopup';
 import LoadMoreImagesPopup from './LoadMoreImagesPopup/LoadMoreImagesPopup';
 import SuggestLabelNamesPopup from './SuggestLabelNamesPopup/SuggestLabelNamesPopup';
 import { CSSHelper } from '../../logic/helpers/CSSHelper';
 import { ClipLoader } from 'react-spinners';
-import ImportLabelPopup from './ImportLabelPopup/ImportLabelPopup';
-import ExportLabelPopup from './ExportLabelsPopup/ExportLabelPopup';
+import ImportAnnotationsConfirmPopup from './ImportAnnotationsConfirmPopup/ImportAnnotationsConfirmPopup';
 import LoadModelPopup from './LoadModelPopup/LoadModelPopup';
 import LoadYOLOv5ModelPopup from './LoadYOLOv5ModelPopup/LoadYOLOv5ModelPopup';
 import ConnectInferenceServerPopup from './ConnectInferenceServerPopup/ConnectInferenceServerPopup';
@@ -31,20 +29,10 @@ const PopupView: React.FC<IProps> = ({ activePopupType }) => {
 
     const selectPopup = () => {
         switch (activePopupType) {
-            case PopupWindowType.LOAD_LABEL_NAMES:
-                return <LoadLabelsPopup />;
-            case PopupWindowType.EXPORT_ANNOTATIONS:
-                return <ExportLabelPopup />;
             case PopupWindowType.IMPORT_ANNOTATIONS:
-                return <ImportLabelPopup />;
-            case PopupWindowType.INSERT_LABEL_NAMES:
-                return <InsertLabelNamesPopup
-                    isUpdate={false}
-                />;
+                return <ImportAnnotationsConfirmPopup />;
             case PopupWindowType.UPDATE_LABEL:
-                return <InsertLabelNamesPopup
-                    isUpdate={true}
-                />;
+                return <InsertLabelNamesPopup />;
             case PopupWindowType.EXIT_PROJECT:
                 return <ExitProjectPopup />;
             case PopupWindowType.IMPORT_IMAGES:

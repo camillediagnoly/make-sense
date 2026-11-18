@@ -6,8 +6,7 @@ import {connect} from 'react-redux';
 import {addImageData, updateActiveImageIndex} from '../../../store/labels/actionCreators';
 import {AppState} from '../../../store';
 import {ProjectType} from '../../../data/enums/ProjectType';
-import {PopupWindowType} from '../../../data/enums/PopupWindowType';
-import {updateActivePopupType, updateProjectData} from '../../../store/general/actionCreators';
+import {updatePerClassColorationStatus, updateProjectData} from '../../../store/general/actionCreators';
 import {ProjectData} from '../../../store/general/types';
 import {ImageDataUtil} from '../../../utils/ImageDataUtil';
 import {FileSystemAccessUtil} from '../../../utils/FileSystemAccessUtil';
@@ -17,7 +16,7 @@ interface IProps {
     updateActiveImageIndexAction: (activeImageIndex: number) => any;
     addImageDataAction: (imageData: ImageData[]) => any;
     updateProjectDataAction: (projectData: ProjectData) => any;
-    updateActivePopupTypeAction: (activePopupType: PopupWindowType) => any;
+    updatePerClassColorationStatusAction: (enablePerClassColoration: boolean) => any;
     projectData: ProjectData;
 }
 
@@ -38,7 +37,8 @@ const ImagesDropZone: React.FC<IProps> = (props: PropsWithChildren<IProps>) => {
     const droppedFileSystemSelections = useRef<Promise<LocalFileSelection[]> | null>(null);
     const supportsFilePicker = FileSystemAccessUtil.supportsFilePicker();
 
-    // Only object detection is used: the editor starts as soon as images are dropped or picked
+    // Only object detection is used: the editor starts as soon as images are dropped or picked, with
+    // no label yet - labels are created from the Labels button as the work goes.
     const startEditor = (selectedFiles: LocalFileSelection[]) => {
         if (selectedFiles.length === 0) {
             return;
@@ -57,7 +57,7 @@ const ImagesDropZone: React.FC<IProps> = (props: PropsWithChildren<IProps>) => {
                 selection.directoryHandle,
                 selection.directoryId
             )));
-        props.updateActivePopupTypeAction(PopupWindowType.INSERT_LABEL_NAMES);
+        props.updatePerClassColorationStatusAction(true);
     };
 
     const captureDroppedFileSystemSelections = (event: any) => {
@@ -134,7 +134,7 @@ const mapDispatchToProps = {
     updateActiveImageIndexAction: updateActiveImageIndex,
     addImageDataAction: addImageData,
     updateProjectDataAction: updateProjectData,
-    updateActivePopupTypeAction: updateActivePopupType
+    updatePerClassColorationStatusAction: updatePerClassColorationStatus
 };
 
 const mapStateToProps = (state: AppState) => ({

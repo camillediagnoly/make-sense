@@ -28,7 +28,6 @@ interface IProps {
     updateLabelNamesAction: (labels: LabelName[]) => any;
     updatePerClassColorationStatusAction: (updatePerClassColoration: boolean) => any;
     submitNewNotificationAction: (notification: INotification) => any;
-    isUpdate: boolean;
     projectType: ProjectType;
     enablePerClassColoration: boolean;
 }
@@ -39,7 +38,6 @@ const InsertLabelNamesPopup: React.FC<IProps> = (
         updateLabelNamesAction,
         updatePerClassColorationStatusAction,
         submitNewNotificationAction,
-        isUpdate,
         projectType,
         enablePerClassColoration
     }) => {
@@ -110,10 +108,6 @@ const InsertLabelNamesPopup: React.FC<IProps> = (
     // list, so the count is shown upfront - there is no undo.
     const pendingRemoval = useMemo(
         () => {
-            if (!isUpdate) {
-                return { labelNamesCount: 0, instancesCount: 0 };
-            }
-
             const removedLabelNamesIds = LabelUtil.labelNamesIdsDiff(
                 LabelsSelector.getLabelNames(),
                 labelNames
@@ -126,7 +120,7 @@ const InsertLabelNamesPopup: React.FC<IProps> = (
                 )
             };
         },
-        [isUpdate, labelNames]
+        [labelNames]
     );
 
     const hasLabels = labelNames.length > 0;
@@ -215,18 +209,6 @@ const InsertLabelNamesPopup: React.FC<IProps> = (
     });
 
 
-    const onCreateAcceptCallback = () => {
-        const nonEmptyLabelNames: LabelName[] = reject(labelNames,
-            (labelName: LabelName) => labelName.name.length === 0)
-            .map(normalizeLabelName);
-        if (labelNames.length > 0) {
-            updateLabelNamesAction(nonEmptyLabelNames);
-        }
-        updateActivePopupTypeAction(null);
-    };
-
-    const safeOnCreateAcceptCallback = () => callbackWithLabelNamesValidation(onCreateAcceptCallback)();
-
     const onUpdateAcceptCallback = () => {
         const nonEmptyLabelNames: LabelName[] = reject(labelNames,
             (labelName: LabelName) => labelName.name.length === 0)
@@ -238,10 +220,6 @@ const InsertLabelNamesPopup: React.FC<IProps> = (
     };
 
     const safeOnUpdateAcceptCallback = () => callbackWithLabelNamesValidation(onUpdateAcceptCallback)();
-
-    const onCreateRejectCallback = () => {
-        updateActivePopupTypeAction(PopupWindowType.LOAD_LABEL_NAMES);
-    };
 
     const onUpdateRejectCallback = () => {
         updateActivePopupTypeAction(null);
@@ -272,13 +250,8 @@ const InsertLabelNamesPopup: React.FC<IProps> = (
             </div>
             <div className='RightContainer'>
                 <div className='Message'>
-                    {
-                        isUpdate ?
-                            'You can now edit the label names you use to describe the objects in the photos. Use the ' +
-                            '+ button to add a new empty text field.' :
-                            'Before you start, you can create a list of labels you plan to assign to objects in your ' +
-                            'project. You can also choose to skip that part for now and define label names as you go.'
-                    }
+                    You can now edit the label names you use to describe the objects in the photos. Use the
+                    + button to add a new empty text field.
                 </div>
                 {pendingRemoval.instancesCount > 0 && <div className='RemovedInstancesWarning'>
                     {`Accepting will also delete the ${pendingRemoval.instancesCount} `}
@@ -314,12 +287,12 @@ const InsertLabelNamesPopup: React.FC<IProps> = (
 
     return (
         <GenericYesNoPopup
-            title={isUpdate ? 'Edit labels' : 'Create labels'}
+            title={'Edit labels'}
             renderContent={renderContent}
-            acceptLabel={isUpdate ? 'Accept' : 'Start project'}
-            onAccept={isUpdate ? safeOnUpdateAcceptCallback : safeOnCreateAcceptCallback}
-            rejectLabel={isUpdate ? 'Cancel' : 'Load labels from file'}
-            onReject={isUpdate ? onUpdateRejectCallback : onCreateRejectCallback}
+            acceptLabel={'Accept'}
+            onAccept={safeOnUpdateAcceptCallback}
+            rejectLabel={'Cancel'}
+            onReject={onUpdateRejectCallback}
         />);
 };
 

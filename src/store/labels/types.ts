@@ -94,10 +94,15 @@ export type ImageDataHistory = {
     future: ImageData[];
 }
 
+export type AnnotationMode = LabelType.RECT | LabelType.POLYGON;
+
 export type LabelsState = {
     activeImageIndex: number | null;
     activeLabelNameId: string;
     activeLabelType: LabelType;
+    // Rectangles or polygons once annotations of that type were imported: the project then only
+    // works with that type. null until then, and both types are offered.
+    annotationMode: AnnotationMode | null;
     activeLabelId: string | null;
     highlightedLabelId: string;
     imagesData: ImageData[];
@@ -139,6 +144,13 @@ interface UpdateActiveLabelType {
     type: typeof Action.UPDATE_ACTIVE_LABEL_TYPE;
     payload: {
         activeLabelType: LabelType;
+    }
+}
+
+interface UpdateAnnotationMode {
+    type: typeof Action.UPDATE_ANNOTATION_MODE;
+    payload: {
+        annotationMode: AnnotationMode | null;
     }
 }
 
@@ -211,6 +223,7 @@ interface RedoActiveImageAction {
 export type LabelsActionTypes = UpdateActiveImageIndex
     | UpdateActiveLabelNameId
     | UpdateActiveLabelType
+    | UpdateAnnotationMode
     | UpdateImageDataById
     | AddImageData
     | UpdateImageData
