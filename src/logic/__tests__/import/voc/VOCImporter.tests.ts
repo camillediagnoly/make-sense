@@ -7,6 +7,7 @@ import { isEqual } from 'lodash';
 import { LabelsSelector } from '../../../../store/selectors/LabelsSelector';
 import { LabelType } from '../../../../data/enums/LabelType';
 import { FileUtil } from '../../../../utils/FileUtil';
+import { LabelUtil } from '../../../../utils/LabelUtil';
 
 const getDummyImageData = (fileName: string): ImageData => {
     return {
@@ -199,6 +200,43 @@ describe('VOCImporter import method', () => {
                     }
                 });
         });
+    });
+});
+
+describe('VOCImporter import method with existing annotations', () => {
+    afterEach(() => {
+        jest.restoreAllMocks();
+    });
+
+    it('should leave the project images untouched and return them without their annotations', async () => {
+        // given
+        const existingRect: LabelRect = LabelUtil.createLabelRect('existing', { x: 0, y: 0, width: 5, height: 5 });
+        const existingPolygon = LabelUtil.createLabelPolygon('existing', [{ x: 0, y: 0 }, { x: 5, y: 0 }, { x: 5, y: 5 }]);
+        const described: ImageData = { ...getDummyImageData('a.jpg'), labelRects: [existingRect] };
+        const notDescribed: ImageData = { ...getDummyImageData('b.jpg'), labelPolygons: [existingPolygon] };
+        jest.spyOn(LabelsSelector, 'getImagesData').mockReturnValue([described, notDescribed]);
+        jest.spyOn(LabelsSelector, 'getTagConfig').mockReturnValue({ tags: [], groupNames: [] });
+        jest.spyOn(FileUtil, 'readFile').mockResolvedValue(`
+            <annotation>
+                <filename>a.jpg</filename>
+                <object>
+                    <name>imported</name>
+                    <bndbox><xmin>10</xmin><ymin>20</ymin><xmax>30</xmax><ymax>50</ymax></bndbox>
+                </object>
+            </annotation>
+        `);
+
+        // when
+        const importedImagesData = await new Promise<ImageData[]>((resolve, reject) =>
+            new VOCImporter([LabelType.RECT]).import([getDummyFileData('a.xml')], resolve, reject)
+        );
+
+        // then
+        expect(described.labelRects).toEqual([existingRect]);
+        expect(notDescribed.labelPolygons).toEqual([existingPolygon]);
+        expect(importedImagesData[0].labelRects.map((rect: LabelRect) => rect.rect))
+            .toEqual([{ x: 10, y: 20, width: 20, height: 30 }]);
+        expect(importedImagesData[1].labelPolygons).toEqual([]);
     });
 });
 

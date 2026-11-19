@@ -9,12 +9,12 @@ import { DirectoryFileCopy, FileSystemAccessUtil } from '../../utils/FileSystemA
 import { NotificationUtil } from '../../utils/NotificationUtil';
 
 export class ImageExportActions {
-    // Asked for on the first copy of a project, then reused until it is changed or the project is
+    // Asked for on the first copy of a project, then reused until a copy fails or the project is
     // closed.
     private static exportDirectoryHandle: LocalFileSystemDirectoryHandle | null = null;
 
-    // Copies and folder changes run one after another, so pressing again while the folder picker
-    // is open or a copy is still writing neither opens a second picker nor races for a file name.
+    // Copies run one after another, so pressing again while the folder picker is open or a copy is
+    // still writing neither opens a second picker nor races for a file name.
     private static pendingTask: Promise<void> = Promise.resolve();
 
     public static copyActiveImageToExportFolder(): Promise<void> {
@@ -27,45 +27,8 @@ export class ImageExportActions {
         return ImageExportActions.pendingTask;
     }
 
-    public static changeExportFolder(): Promise<void> {
-        ImageExportActions.pendingTask = ImageExportActions.pendingTask.then(
-            ImageExportActions.chooseExportFolder
-        );
-        return ImageExportActions.pendingTask;
-    }
-
     public static forgetExportFolder(): void {
         ImageExportActions.exportDirectoryHandle = null;
-    }
-
-    private static async chooseExportFolder(): Promise<void> {
-        if (!FileSystemAccessUtil.supportsDirectoryPicker()) {
-            store.dispatch(submitNewNotification(NotificationUtil.createWarningNotification({
-                header: 'No export folder to change',
-                description: 'This browser cannot write to folders, so images are downloaded.',
-            })));
-            return;
-        }
-
-        try {
-            const directoryHandle = await FileSystemAccessUtil.showExportDirectoryPicker();
-            ImageExportActions.exportDirectoryHandle = directoryHandle;
-            store.dispatch(submitNewNotification(NotificationUtil.createSuccessNotification({
-                header: 'Export folder changed',
-                description: `Images will now be copied to the "${directoryHandle.name}" folder.`,
-            })));
-        } catch (error) {
-            // dismissing the picker keeps the current folder
-            if (error instanceof Error && error.name === 'AbortError') {
-                return;
-            }
-
-            const reason = error instanceof Error ? error.message : String(error);
-            store.dispatch(submitNewNotification(NotificationUtil.createErrorNotification({
-                header: 'Export folder not changed',
-                description: `The chosen folder cannot be used: ${reason}`,
-            })));
-        }
     }
 
     private static async copyFileToExportFolder(file: File): Promise<void> {

@@ -1,7 +1,6 @@
 import {updateActivePopupType} from '../../store/general/actionCreators';
 import {PopupWindowType} from '../enums/PopupWindowType';
 import {store} from '../../index';
-import {ImageExportActions} from '../../logic/actions/ImageExportActions';
 
 export type DropDownMenuNode = {
     name: string
@@ -52,20 +51,12 @@ export const DropDownMenuData: DropDownMenuNode[] = [
                 onClick: () => store.dispatch(updateActivePopupType(PopupWindowType.IMPORT_IMAGES))
             },
             {
-                name: 'Import Annotations',
-                description: 'Import annotations from file',
-                imageSrc: 'ico/import-labels.png',
-                imageAlt: 'import-labels',
+                name: 'Backup Settings',
+                description: 'Automatic backups of the annotations',
+                imageSrc: 'ico/gears.png',
+                imageAlt: 'backup-settings',
                 disabled: false,
-                onClick: () => store.dispatch(updateActivePopupType(PopupWindowType.IMPORT_ANNOTATIONS))
-            },
-            {
-                name: 'Export Annotations',
-                description: 'Export annotations to file',
-                imageSrc: 'ico/export-labels.png',
-                imageAlt: 'export-labels',
-                disabled: false,
-                onClick: () => store.dispatch(updateActivePopupType(PopupWindowType.EXPORT_ANNOTATIONS))
+                onClick: () => store.dispatch(updateActivePopupType(PopupWindowType.BACKUP_SETTINGS))
             },
             {
                 name: 'Labels Filter',
@@ -84,13 +75,5 @@ export const DropDownMenuData: DropDownMenuNode[] = [
                 onClick: () => store.dispatch(updateActivePopupType(PopupWindowType.EDIT_KEYPOINTS))
             },
         ]
-    },
-    {
-        name: 'Export location',
-        description: 'Choose the folder images are copied to',
-        imageSrc: 'ico/files.png',
-        imageAlt: 'export location',
-        disabled: false,
-        onClick: () => ImageExportActions.changeExportFolder()
     }
 ]

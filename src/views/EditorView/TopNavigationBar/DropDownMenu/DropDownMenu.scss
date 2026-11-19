@@ -81,8 +81,10 @@
     font-weight: 700;
     transition: 0.3s ease-in-out;
 
-    &:not(:last-child) {
-      margin-right: 4px;
+    // Spacing between tabs only: a ":not(:last-child)" rule would also count the dropdown,
+    // inserted after the tabs when it opens, and shift the whole bar by the margin.
+    & + .DropDownMenuTab {
+      margin-left: 4px;
     }
 
     img {

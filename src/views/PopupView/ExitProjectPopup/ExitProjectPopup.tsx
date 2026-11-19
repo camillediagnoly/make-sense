@@ -4,6 +4,8 @@ import { GenericYesNoPopup } from "../GenericYesNoPopup/GenericYesNoPopup";
 import {
     updateActiveImageIndex as storeUpdateActiveImageIndex,
     updateActiveLabelNameId as storeUpdateActiveLabelNameId,
+    updateActiveLabelType as storeUpdateActiveLabelType,
+    updateAnnotationMode as storeUpdateAnnotationMode,
     updateFirstLabelCreatedFlag as storeUpdateFirstLabelCreatedFlag,
     updateImageData as storeUpdateImageData,
     updateLabelNames as storeUpdateLabelNames,
@@ -11,7 +13,8 @@ import {
 } from "../../../store/labels/actionCreators";
 import { AppState } from "../../../store";
 import { connect } from "react-redux";
-import { ImageData, LabelName, TagConfig } from "../../../store/labels/types";
+import { AnnotationMode, ImageData, LabelName, TagConfig } from "../../../store/labels/types";
+import { LabelType } from "../../../data/enums/LabelType";
 import { PopupActions } from "../../../logic/actions/PopupActions";
 import { ProjectData } from "../../../store/general/types";
 import { updateProjectData as storeUpdateProjectData } from "../../../store/general/actionCreators";
@@ -25,6 +28,8 @@ interface IProps {
     updateTagConfig: (tagConfig: TagConfig) => any;
     updateImageData: (imageData: ImageData[]) => any;
     updateFirstLabelCreatedFlag: (firstLabelCreatedFlag: boolean) => any;
+    updateAnnotationMode: (annotationMode: AnnotationMode | null) => any;
+    updateActiveLabelType: (activeLabelType: LabelType | null) => any;
     updateProjectData: (projectData: ProjectData) => any;
 }
 
@@ -35,6 +40,8 @@ const ExitProjectPopup: React.FC<IProps> = ({
     updateActiveImageIndex,
     updateImageData,
     updateFirstLabelCreatedFlag,
+    updateAnnotationMode,
+    updateActiveLabelType,
     updateProjectData
 }: IProps) => {
 
@@ -59,6 +66,9 @@ const ExitProjectPopup: React.FC<IProps> = ({
         LocalImageDirectoryRegistry.clear();
         ImageExportActions.forgetExportFolder();
         updateFirstLabelCreatedFlag(false);
+        // the next project offers rectangles and polygons again
+        updateAnnotationMode(null);
+        updateActiveLabelType(null);
         PopupActions.close();
     };
 
@@ -84,7 +94,9 @@ const mapDispatchToProps = {
     updateProjectData: storeUpdateProjectData,
     updateActiveImageIndex: storeUpdateActiveImageIndex,
     updateImageData: storeUpdateImageData,
-    updateFirstLabelCreatedFlag: storeUpdateFirstLabelCreatedFlag
+    updateFirstLabelCreatedFlag: storeUpdateFirstLabelCreatedFlag,
+    updateAnnotationMode: storeUpdateAnnotationMode,
+    updateActiveLabelType: storeUpdateActiveLabelType
 };
 
 const mapStateToProps = (state: AppState) => ({});

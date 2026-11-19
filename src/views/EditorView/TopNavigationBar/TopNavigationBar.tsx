@@ -10,6 +10,7 @@ import {ImageButton} from '../../Common/ImageButton/ImageButton';
 import {Settings} from '../../../settings/Settings';
 import {ProjectData} from '../../../store/general/types';
 import DropDownMenu from './DropDownMenu/DropDownMenu';
+import AnnotationsMenu from './AnnotationsMenu/AnnotationsMenu';
 
 interface IProps {
     updateActivePopupTypeAction: (activePopupType: PopupWindowType) => any;
@@ -39,6 +40,9 @@ const TopNavigationBar: React.FC<IProps> = (props) => {
             <div className='TopNavigationBarWrapper'>
                 <div className='NavigationBarGroupWrapper'>
                     <DropDownMenu/>
+                </div>
+                <div className='NavigationBarGroupWrapper'>
+                    <AnnotationsMenu/>
                 </div>
                 <div className='NavigationBarGroupWrapper middle'>
                     <div className='ProjectName'>Project Name:</div>

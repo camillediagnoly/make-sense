@@ -215,45 +215,4 @@ describe('ImageExportActions.copyActiveImageToExportFolder', () => {
 
         expect(saveAs).toHaveBeenCalledWith(file, 'image.jpg');
     });
-
-    it('copies into the newly chosen folder once the export folder is changed', async () => {
-        const firstDirectory = createExportDirectory();
-        const secondDirectory = createExportDirectory();
-        const showDirectoryPicker = jest.fn()
-            .mockResolvedValueOnce(firstDirectory.directoryHandle)
-            .mockResolvedValueOnce(secondDirectory.directoryHandle);
-        fileSystemWindow.showDirectoryPicker = showDirectoryPicker;
-        showActiveImage(createImageFile('image.jpg', 'one'));
-
-        await ImageExportActions.copyActiveImageToExportFolder();
-        await ImageExportActions.changeExportFolder();
-        await ImageExportActions.copyActiveImageToExportFolder();
-
-        expect(showDirectoryPicker).toHaveBeenCalledTimes(2);
-        expect(showDirectoryPicker).toHaveBeenLastCalledWith(
-            expect.objectContaining({ mode: 'readwrite', id: expect.any(String) })
-        );
-        expect(Array.from(firstDirectory.files.keys())).toEqual(['image.jpg']);
-        expect(Array.from(secondDirectory.files.keys())).toEqual(['image.jpg']);
-        expect(getNotifications()[1].header).toBe('Export folder changed');
-    });
-
-    it('keeps the current export folder when the change is dismissed', async () => {
-        const { directoryHandle, files } = createExportDirectory();
-        const abortError = new Error('The user aborted a request.');
-        abortError.name = 'AbortError';
-        const showDirectoryPicker = jest.fn()
-            .mockResolvedValueOnce(directoryHandle)
-            .mockRejectedValueOnce(abortError);
-        fileSystemWindow.showDirectoryPicker = showDirectoryPicker;
-
-        showActiveImage(createImageFile('first.jpg', 'one'));
-        await ImageExportActions.copyActiveImageToExportFolder();
-        await ImageExportActions.changeExportFolder();
-        showActiveImage(createImageFile('second.jpg', 'two'));
-        await ImageExportActions.copyActiveImageToExportFolder();
-
-        expect(showDirectoryPicker).toHaveBeenCalledTimes(2);
-        expect(Array.from(files.keys())).toEqual(['first.jpg', 'second.jpg']);
-    });
 });

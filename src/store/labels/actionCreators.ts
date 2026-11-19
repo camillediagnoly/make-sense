@@ -1,4 +1,4 @@
-import {LabelsActionTypes, ImageData, LabelName, TagConfig} from './types';
+import {LabelsActionTypes, ImageData, LabelName, TagConfig, AnnotationMode} from './types';
 import {Action} from '../Actions';
 import {LabelType} from '../../data/enums/LabelType';
 
@@ -34,6 +34,16 @@ export function updateHighlightedLabelId(highlightedLabelId: string): LabelsActi
         type: Action.UPDATE_HIGHLIGHTED_LABEL_ID,
         payload: {
             highlightedLabelId,
+        },
+    };
+}
+
+// Also makes the mode the active label type
+export function updateAnnotationMode(annotationMode: AnnotationMode | null): LabelsActionTypes {
+    return {
+        type: Action.UPDATE_ANNOTATION_MODE,
+        payload: {
+            annotationMode,
         },
     };
 }

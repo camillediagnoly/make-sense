@@ -7,6 +7,7 @@ import { TagUtil } from '../../../utils/TagUtil';
 import { ArrayUtil } from '../../../utils/ArrayUtil';
 import { Settings } from '../../../settings/Settings';
 import { MeasurementFunctionByName } from '../../../data/measurements/MeasurementFunctionData';
+import { ImageDataUtil } from '../../../utils/ImageDataUtil';
 
 // A tag read from the <tags> element of a file, with its group when the file gives one
 type ParsedTag = {
@@ -235,10 +236,13 @@ export class VOCImporter extends AnnotationImporter {
         };
     }
 
+    // Works on copies without annotations, like the other importers: the project is left untouched
+    // until the import is applied, and adding the result to the current annotations does not count
+    // the ones already there twice. The image tags are kept for the images no file describes.
     private static mapImageData(): Record<string, ImageData> {
         return LabelsSelector.getImagesData().reduce(
             (imageDataMap: Record<string, ImageData>, imageData: ImageData) => {
-                imageDataMap[imageData.fileData.name] = imageData;
+                imageDataMap[imageData.fileData.name] = ImageDataUtil.cleanAnnotations(imageData);
                 return imageDataMap;
             }, {}
         );

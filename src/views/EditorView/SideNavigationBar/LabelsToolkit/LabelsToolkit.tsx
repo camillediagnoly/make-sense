@@ -1,6 +1,6 @@
 import React from "react";
 import './LabelsToolkit.scss';
-import {ImageData} from "../../../../store/labels/types";
+import {AnnotationMode, ImageData} from "../../../../store/labels/types";
 import {updateActiveLabelId, updateActiveLabelType, updateImageDataById} from "../../../../store/labels/actionCreators";
 import {AppState} from "../../../../store";
 import {connect} from "react-redux";
@@ -23,6 +23,7 @@ import TagLabelsList from "../TagLabelsList/TagLabelsList";
 interface IProps {
     activeImageIndex: number | null,
     activeLabelType: LabelType;
+    annotationMode: AnnotationMode | null;
     imagesData: ImageData[];
     projectType: ProjectType;
     updateImageDataById: (id: string, newImageData: ImageData) => any;
@@ -36,7 +37,6 @@ interface IState {
 
 class LabelsToolkit extends React.Component<IProps, IState> {
     private labelsToolkitRef: HTMLDivElement;
-    private readonly tabs: LabelType[];
 
     constructor(props) {
         super(props);
@@ -44,25 +44,34 @@ class LabelsToolkit extends React.Component<IProps, IState> {
         this.state = {
             size: null,
         };
+    }
 
-        this.tabs = props.projectType === ProjectType.IMAGE_RECOGNITION ?
-            [
-                LabelType.IMAGE_RECOGNITION
-            ] :
-            [
-                LabelType.RECT,
-                LabelType.POINT,
-                LabelType.LINE,
-                LabelType.POLYGON
-            ];
+    // A project works with rectangles or polygons: only the imported type once annotations were
+    // imported, both until then.
+    private getTabs(): LabelType[] {
+        const {projectType, annotationMode} = this.props;
+        if (projectType === ProjectType.IMAGE_RECOGNITION) {
+            return [LabelType.IMAGE_RECOGNITION];
+        }
+        return annotationMode ? [annotationMode] : [LabelType.RECT, LabelType.POLYGON];
+    }
 
-        const activeTab: LabelType = props.activeLabelType ? props.activeLabelType : this.tabs[0];
-        props.updateActiveLabelType(activeTab);
+    // The active label type is always one of the tabs shown
+    private ensureActiveTabIsShown(): void {
+        const tabs = this.getTabs();
+        if (!tabs.includes(this.props.activeLabelType)) {
+            this.props.updateActiveLabelType(tabs[0]);
+        }
     }
 
     public componentDidMount(): void {
+        this.ensureActiveTabIsShown();
         this.updateToolkitSize();
         window.addEventListener(EventType.RESIZE, this.updateToolkitSize);
+    }
+
+    public componentDidUpdate(): void {
+        this.ensureActiveTabIsShown();
     }
 
     public componentWillUnmount(): void {
@@ -96,10 +105,11 @@ class LabelsToolkit extends React.Component<IProps, IState> {
             return [];
         }
 
-        return this.tabs.reduce((children, labelType: LabelType, index: number) => {
+        const tabs = this.getTabs();
+        return tabs.reduce((children, labelType: LabelType, index: number) => {
             const isActive: boolean = labelType === activeLabelType;
             const tabData: ILabelToolkit = find(LabelToolkitData, {labelType});
-            const activeTabContentHeight: number = size.height - this.tabs.length * Settings.TOOLKIT_TAB_HEIGHT_PX;
+            const activeTabContentHeight: number = size.height - tabs.length * Settings.TOOLKIT_TAB_HEIGHT_PX;
             const getClassName = (baseClass: string) => classNames(
                 baseClass,
                 {
@@ -204,6 +214,7 @@ const mapDispatchToProps = {
 const mapStateToProps = (state: AppState) => ({
     activeImageIndex: state.labels.activeImageIndex,
     activeLabelType: state.labels.activeLabelType,
+    annotationMode: state.labels.annotationMode,
     imagesData: state.labels.imagesData,
     projectType: state.general.projectData.type,
 });
