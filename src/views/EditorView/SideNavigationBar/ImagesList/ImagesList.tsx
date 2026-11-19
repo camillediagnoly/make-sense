@@ -221,7 +221,7 @@ class ImagesList extends React.Component<IProps, IState> {
         return <ImagePreview
             key={actualIndex}
             style={style}
-            size={{width: 150, height: 150}}
+            size={{width: 140, height: 112}}
             isScrolling={isScrolling}
             isChecked={this.isImageChecked(actualIndex)}
             isInvalid={this.props.classSanityCheckViolationImageIds.includes(this.props.imagesData[actualIndex].id)}
@@ -395,7 +395,7 @@ class ImagesList extends React.Component<IProps, IState> {
                     <VirtualList
                         key={key}
                         size={size}
-                        childSize={{width: 150, height: 150}}
+                        childSize={{width: 140, height: 112}}
                         childCount={filteredIndices.length}
                         childRender={this.renderImagePreview}
                         overScanHeight={200}

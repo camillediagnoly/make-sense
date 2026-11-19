@@ -2,6 +2,7 @@ import React from 'react';
 import {ISize} from "../../../interfaces/ISize";
 import {IRect} from "../../../interfaces/IRect";
 import Scrollbars from 'react-custom-scrollbars-2';
+import './VirtualList.scss';
 import {VirtualListUtil} from "../../../utils/VirtualListUtil";
 import {IPoint} from "../../../interfaces/IPoint";
 import {RectUtil} from "../../../utils/RectUtil";
@@ -20,7 +21,15 @@ interface IState {
     isScrolling: boolean;
 }
 
+const SCROLLBAR_WIDTH_PX = 10;
+// The strip on the right kept free for the scrollbar, so it never covers a child
+const SCROLLBAR_ROOM_PX = SCROLLBAR_WIDTH_PX + 4;
+
 export class VirtualList extends React.Component<IProps, IState> {
+    private static getLayoutSize(size: ISize): ISize {
+        return size && {width: Math.max(size.width - SCROLLBAR_ROOM_PX, 0), height: size.height};
+    }
+
     private gridSize: ISize;
     private contentSize: ISize;
     private childAnchors: IPoint[];
@@ -36,7 +45,7 @@ export class VirtualList extends React.Component<IProps, IState> {
 
     public componentDidMount(): void {
         const {size, childSize, childCount} = this.props;
-        this.calculate(size, childSize, childCount);
+        this.calculate(VirtualList.getLayoutSize(size), childSize, childCount);
         this.setState({
             viewportRect: {
                 x: 0,
@@ -51,7 +60,7 @@ export class VirtualList extends React.Component<IProps, IState> {
         const {size, childSize, childCount} = nextProps;
         if (this.props.size.height !== size.height || this.props.size.width !== size.width ||
             this.props.childCount !== childCount) {
-            this.calculate(size, childSize, childCount);
+            this.calculate(VirtualList.getLayoutSize(size), childSize, childCount);
             this.setState({
                 viewportRect: {
                     x: this.scrollbars.getValues().scrollLeft,
@@ -160,7 +169,18 @@ export class VirtualList extends React.Component<IProps, IState> {
                     onScrollFrame={this.onScroll}
                     onScrollStart={this.onScrollStart}
                     onScrollStop={this.onScrollStop}
-                    autoHide={true}
+                    // Always shown and easy to grab: a thin bar fading away is easily missed
+                    autoHide={false}
+                    renderTrackVertical={({style, ...props}) => <div
+                        {...props}
+                        className="VirtualListTrack"
+                        style={{...style, width: SCROLLBAR_WIDTH_PX, right: 2, top: 2, bottom: 2}}
+                    />}
+                    renderThumbVertical={({style, ...props}) => <div
+                        {...props}
+                        className="VirtualListThumb"
+                        style={style}
+                    />}
                 >
                     {displayContent && <div
                         className="VirtualListContent"

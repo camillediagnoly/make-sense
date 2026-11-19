@@ -11,6 +11,8 @@ import { updateImageDataById } from "../../../../store/labels/actionCreators";
 import { ImageData } from "../../../../store/labels/types";
 import { RectUtil } from "../../../../utils/RectUtil";
 import './ImagePreview.scss';
+
+const THUMBNAIL_MARGIN_PX = 12;
 import { CSSHelper } from "../../../../logic/helpers/CSSHelper";
 
 interface IProps {
@@ -106,11 +108,12 @@ class ImagePreview extends React.Component<IProps, IState> {
     private getStyle = () => {
         const { size } = this.props;
 
+        // A thin margin, just enough for the tick drawn over the bottom left corner
         const containerRect: IRect = {
-            x: 0.15 * size.width,
-            y: 0.15 * size.height,
-            width: 0.7 * size.width,
-            height: 0.7 * size.height
+            x: THUMBNAIL_MARGIN_PX,
+            y: THUMBNAIL_MARGIN_PX,
+            width: size.width - 2 * THUMBNAIL_MARGIN_PX,
+            height: size.height - 2 * THUMBNAIL_MARGIN_PX
         };
 
         const imageRect: IRect = {
