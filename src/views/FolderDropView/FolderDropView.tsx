@@ -4,8 +4,9 @@ import { ClipLoader } from 'react-spinners';
 import './FolderDropView.scss';
 import {
     DroppedItem,
+    DropResult,
     IMAGES_FOLDER_NAME,
-    ReviewFolder,
+    PartialDrop,
     ReviewFolderError,
     ReviewFolderReader,
 } from '../../logic/review/ReviewFolderReader';
@@ -46,14 +47,24 @@ const FolderDropView: React.FC = () => {
     const [isDragOver, setIsDragOver] = useState(false);
     const [isLoading, setIsLoading] = useState(false);
     const [problems, setProblems] = useState<string[]>([]);
+    // The "images" folder or the .json file, dropped on its own, waiting for the other one
+    const [partialDrop, setPartialDrop] = useState<PartialDrop | null>(null);
     const canPickFolder = ReviewFolderReader.supportsDirectoryPicker();
 
-    const loadFolder = async (readFolder: () => Promise<ReviewFolder>) => {
+    const loadFolder = async (read: () => Promise<DropResult>) => {
         setIsLoading(true);
         setProblems([]);
         try {
-            await ReviewActions.startProject(await readFolder());
+            const result: DropResult = await read();
+            if (result.kind === 'partial') {
+                setPartialDrop(result.partialDrop);
+                setIsLoading(false);
+                return;
+            }
+            setPartialDrop(null);
+            await ReviewActions.startProject(result.folder);
         } catch (error) {
+            setPartialDrop(null);
             if (error instanceof Error && error.name === 'AbortError') {
                 setIsLoading(false);
                 return;
@@ -73,7 +84,7 @@ const FolderDropView: React.FC = () => {
         }
         // The dropped items have to be read before this handler returns
         const items: DroppedItem[] = ReviewFolderReader.captureDroppedItems(event.dataTransfer);
-        loadFolder(() => ReviewFolderReader.readFromDroppedItems(items));
+        loadFolder(() => ReviewFolderReader.readDrop(items, partialDrop));
     };
 
     const onDragOver = (event: React.DragEvent<HTMLDivElement>) => {
@@ -86,7 +97,7 @@ const FolderDropView: React.FC = () => {
 
     const onClick = () => {
         if (canPickFolder && !isLoading) {
-            loadFolder(() => ReviewFolderReader.readFromDirectoryPicker());
+            loadFolder(async () => ({kind: 'folder', folder: await ReviewFolderReader.readFromDirectoryPicker()}));
         }
     };
 
@@ -97,11 +108,39 @@ const FolderDropView: React.FC = () => {
                 <p className='extraBold'>Opening the folder, please wait…</p>
             </>;
         }
+        if (partialDrop) {
+            return <>
+                <img draggable={false} alt={''} src={'ico/box-opened.png'}/>
+                <p className='extraBold'>
+                    {partialDrop.imagesFolder
+                        ? 'Now drop the .json file here'
+                        : `Now drop the "${IMAGES_FOLDER_NAME}" folder here`}
+                </p>
+            </>;
+        }
         return <>
             <img draggable={false} alt={''} src={'ico/box-opened.png'}/>
             <p className='extraBold'>Drop them here</p>
             {canPickFolder && <p className='Secondary'>or click here to choose the folder that contains them</p>}
         </>;
+    };
+
+    const renderPartialDrop = () => {
+        const pictures = (count: number) => count === 1 ? '1 picture' : `${count} pictures`;
+        return <div className='PartialDrop' role='status'>
+            <p>
+                {partialDrop.imagesFolder
+                    ? <>✓ The &quot;{partialDrop.imagesFolder.name}&quot; folder is here
+                        ({pictures(partialDrop.imageCount)}).</>
+                    : <>✓ &quot;{partialDrop.annotationsFile.name}&quot; is here.</>}
+            </p>
+            <p className='extraBold'>
+                {partialDrop.imagesFolder
+                    ? 'Now drag and drop the .json file.'
+                    : `Now drag and drop the "${IMAGES_FOLDER_NAME}" folder.`}
+            </p>
+            <button type='button' className='StartOver' onClick={() => setPartialDrop(null)}>Start over</button>
+        </div>;
     };
 
     return (
@@ -110,8 +149,9 @@ const FolderDropView: React.FC = () => {
                 <img className='Logo' draggable={false} alt={'Diagnoly'} src={'diagnoly-logo-blue.png'}/>
                 <div className='Explanation'>
                     <p className='extraBold'>
-                        Drag and drop both the &quot;{IMAGES_FOLDER_NAME}&quot; folder and the .json file
+                        Drag and drop the &quot;{IMAGES_FOLDER_NAME}&quot; folder and the .json file
                     </p>
+                    <p className='Secondary'>Together, or one after the other</p>
                     <FolderStructure/>
                     <p className='Secondary'>You can also drag and drop the folder that contains them.</p>
                 </div>
@@ -119,15 +159,17 @@ const FolderDropView: React.FC = () => {
                     className={classNames('FolderDropZone', {
                         'dragOver': isDragOver,
                         'withError': problems.length > 0,
-                        'clickable': canPickFolder && !isLoading,
+                        'clickable': canPickFolder && !isLoading && !partialDrop,
+                        'waiting': !!partialDrop,
                     })}
                     onDrop={onDrop}
                     onDragOver={onDragOver}
                     onDragLeave={() => setIsDragOver(false)}
-                    onClick={onClick}
+                    onClick={partialDrop ? undefined : onClick}
                 >
                     {renderDropZoneContent()}
                 </div>
+                {partialDrop && !isLoading && renderPartialDrop()}
                 {!canPickFolder && <p className='BrowserTip'>
                     Tip: for the best experience, please use Google Chrome or Microsoft Edge. Your review can then
                     be saved directly into the folder, instead of being downloaded.

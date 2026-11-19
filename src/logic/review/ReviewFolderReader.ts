@@ -15,7 +15,8 @@ export const IMAGES_FOLDER_NAME = 'images';
 export const LABELS_FOLDER_NAME = 'labels';
 export const REVIEWED_LABELS_FOLDER_NAME = `${LABELS_FOLDER_NAME}${REVIEWED_SUFFIX}`;
 // What to do, ending most errors
-const DROP_BOTH = `Please drag and drop both the "${IMAGES_FOLDER_NAME}" folder and the .json file.`;
+const DROP_BOTH = `Please drag and drop the "${IMAGES_FOLDER_NAME}" folder and the .json file, together or one `
+    + 'after the other.';
 const IMAGE_EXTENSIONS: string[] = ['.jpg', '.jpeg', '.png'];
 // Files the operating system drops in folders on its own: they are not part of the folder layout
 const IGNORED_FILE_NAMES: string[] = ['thumbs.db', 'desktop.ini'];
@@ -72,6 +73,18 @@ type FolderEntry = {
     directoryHandle?: LocalFileSystemDirectoryHandle;
 };
 
+// The "images" folder or the .json file, dropped on its own: kept until the other one is dropped
+export type PartialDrop = {
+    imagesFolder: FolderEntry | null;
+    // The images of imagesFolder
+    imageCount: number;
+    annotationsFile: FolderEntry | null;
+};
+
+export type DropResult =
+    | { kind: 'folder'; folder: ReviewFolder }
+    | { kind: 'partial'; partialDrop: PartialDrop };
+
 // What a dropped item gives, read synchronously during the drop event: the browser forgets the
 // dropped items as soon as the event handler returns.
 export type DroppedItem = {
@@ -97,8 +110,23 @@ export class ReviewFolderReader {
             && typeof (window as FileSystemAccessWindow).showDirectoryPicker === 'function';
     }
 
-    // Accepts the folder itself, or what it holds (the "images" folder and the .json file) dropped together
+    // Accepts the folder itself, or what it holds (the "images" folder and the .json file) dropped together.
+    // Dropping only one of them is refused here: see readDrop to accept them one at a time.
     public static async readFromDroppedItems(items: DroppedItem[]): Promise<ReviewFolder> {
+        const result: DropResult = await ReviewFolderReader.readDrop(items, null);
+        if (result.kind === 'folder') {
+            return result.folder;
+        }
+        const { imagesFolder, annotationsFile } = result.partialDrop;
+        throw new ReviewFolderError([annotationsFile
+            ? `Only the file "${annotationsFile.name}" was dropped. Please drag and drop it together with the `
+                + `"${IMAGES_FOLDER_NAME}" folder.`
+            : `Only the "${imagesFolder.name}" folder was dropped. ${DROP_BOTH}`]);
+    }
+
+    // Like readFromDroppedItems, but the "images" folder and the .json file can also come one drop at a
+    // time: a drop bringing only one of them gives a partial drop, to pass along with the next drop.
+    public static async readDrop(items: DroppedItem[], previous: PartialDrop | null): Promise<DropResult> {
         if (items.length === 0) {
             throw new ReviewFolderError([`Nothing was dropped. ${DROP_BOTH}`]);
         }
@@ -108,20 +136,53 @@ export class ReviewFolderReader {
         if (entries.length === 0) {
             throw new ReviewFolderError([`What was dropped could not be read. ${DROP_BOTH}`]);
         }
-
-        if (entries.length === 1 && entries[0].kind === 'directory') {
-            return ReviewFolderReader.readFolder(entries[0]);
-        }
-        if (entries.length === 1) {
-            const [file] = entries;
-            throw new ReviewFolderError([file.name.toLowerCase().endsWith('.json')
-                ? `Only the file "${file.name}" was dropped. Please drag and drop it together with the `
-                    + `"${IMAGES_FOLDER_NAME}" folder.`
-                : `Only the file "${file.name}" was dropped. ${DROP_BOTH}`]);
+        if (entries.length > 1) {
+            return { kind: 'folder', folder: await ReviewFolderReader.readDroppedEntries(entries) };
         }
 
-        // Several items: they are read as the content of their folder, which the browser does not give, so
-        // "Export current folder" downloads its result instead of saving it next to them
+        const [entry] = entries;
+        let partialDrop: PartialDrop;
+        if (entry.kind === 'file' && entry.name.toLowerCase().endsWith('.json')) {
+            partialDrop = { imagesFolder: previous?.imagesFolder ?? null, imageCount: previous?.imageCount ?? 0,
+                annotationsFile: entry };
+        } else if (entry.kind === 'file') {
+            throw new ReviewFolderError([`"${entry.name}" is neither the "${IMAGES_FOLDER_NAME}" folder nor a .json `
+                + `file. ${DROP_BOTH}`]);
+        } else {
+            const imageCount = await ReviewFolderReader.countImagesOfLoneImagesFolder(entry);
+            if (imageCount === null) {
+                return { kind: 'folder', folder: await ReviewFolderReader.readFolder(entry) };
+            }
+            partialDrop = { imagesFolder: entry, imageCount, annotationsFile: previous?.annotationsFile ?? null };
+        }
+
+        if (partialDrop.imagesFolder && partialDrop.annotationsFile) {
+            return {
+                kind: 'folder',
+                folder: await ReviewFolderReader.readDroppedEntries([partialDrop.imagesFolder, partialDrop.annotationsFile]),
+            };
+        }
+        return { kind: 'partial', partialDrop };
+    }
+
+    // The number of images of a dropped "images" folder, or null when the dropped folder is not one: it
+    // is named otherwise, or holds an "images" folder or a .json file of its own
+    private static async countImagesOfLoneImagesFolder(entry: FolderEntry): Promise<number | null> {
+        if (entry.name.toLowerCase() !== IMAGES_FOLDER_NAME) {
+            return null;
+        }
+        const children: FolderEntry[] = ReviewFolderReader.withoutIgnoredFiles(await entry.listChildren());
+        const holdsAFolderLayout = children.some((child: FolderEntry) =>
+            (child.kind === 'directory' && child.name.toLowerCase() === IMAGES_FOLDER_NAME)
+            || (child.kind === 'file' && child.name.toLowerCase().endsWith('.json')));
+        return holdsAFolderLayout
+            ? null
+            : children.filter((child: FolderEntry) => ReviewFolderReader.isImageEntry(child)).length;
+    }
+
+    // Several dropped items, read as the content of their folder, which the browser does not give, so
+    // "Save my review" asks for it, or downloads its result
+    private static readDroppedEntries(entries: FolderEntry[]): Promise<ReviewFolder> {
         return ReviewFolderReader.readFolder({
             name: '',
             kind: 'directory',

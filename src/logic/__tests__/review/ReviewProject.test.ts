@@ -1,5 +1,5 @@
 import { ReviewProject } from '../../review/ReviewProject';
-import { COCOReviewFolder, ReviewFolder, ReviewFolderError, ReviewFolderReader } from '../../review/ReviewFolderReader';
+import { COCOReviewFolder, PartialDrop, ReviewFolder, ReviewFolderError, ReviewFolderReader } from '../../review/ReviewFolderReader';
 import { ImageData } from '../../../store/labels/types';
 import { COCOObject } from '../../../data/labels/COCO';
 
@@ -214,13 +214,68 @@ describe('ReviewFolderReader.readFromDroppedItems', () => {
         expect(result.jsonFile.name).toBe('annotations.json');
     });
 
-    it('tells to go one level up when the images folder itself is given', async () => {
+    it('rejects the images folder dropped alone', async () => {
         await expect(drop(fakeDirectory('images', [fakeFile('a.png')])))
-            .rejects.toThrow(/^This is the "images" folder itself\. Please drag and drop both the "images" folder and the \.json file\.$/);
+            .rejects.toThrow(/^Only the "images" folder was dropped\. Please drag and drop the "images" folder and the \.json file, together or one after the other\.$/);
+    });
+
+    it('tells that a folder named "images" holding the pictures and the json is the images folder itself', async () => {
+        await expect(drop(fakeDirectory('images', [fakeFile('a.png'), fakeFile('a.json')])))
+            .rejects.toThrow(/This is the "images" folder itself/);
     });
 
     it('rejects an empty drop', async () => {
         await expect(ReviewFolderReader.readFromDroppedItems([])).rejects.toThrow(/Nothing was dropped/);
+    });
+});
+
+describe('ReviewFolderReader.readDrop, one item at a time', () => {
+    const dropOne = (handle: FakeHandle, previous: PartialDrop | null = null) =>
+        ReviewFolderReader.readDrop([{ handle: Promise.resolve(handle as any), entry: null }], previous);
+    const imagesFolder = () => fakeDirectory('images', [fakeFile('a.png'), fakeFile('b.png'), fakeFile('.DS_Store')]);
+
+    it('keeps the images folder dropped alone, with its number of images', async () => {
+        const result = await dropOne(imagesFolder());
+
+        expect(result.kind).toBe('partial');
+        const { partialDrop } = result as { kind: 'partial'; partialDrop: PartialDrop };
+        expect(partialDrop.imagesFolder.name).toBe('images');
+        expect(partialDrop.imageCount).toBe(2);
+        expect(partialDrop.annotationsFile).toBeNull();
+    });
+
+    it.each([
+        ['the images folder first', imagesFolder, () => fakeFile('labels_CH.json')],
+        ['the json file first', () => fakeFile('labels_CH.json'), imagesFolder],
+    ])('opens the folder once both are dropped, %s', async (_, first, second) => {
+        const firstDrop = await dropOne(first());
+        const result = await dropOne(second(), (firstDrop as { kind: 'partial'; partialDrop: PartialDrop }).partialDrop);
+
+        expect(result.kind).toBe('folder');
+        const { folder } = result as { kind: 'folder'; folder: COCOReviewFolder };
+        expect(folder.name).toBe('labels_CH');
+        expect(folder.jsonFile.name).toBe('labels_CH.json');
+        expect(folder.imageFiles.map((file) => file.name)).toEqual(['a.png', 'b.png']);
+    });
+
+    it('replaces the kept json file by a newly dropped one', async () => {
+        const first = await dropOne(fakeFile('old.json')) as { kind: 'partial'; partialDrop: PartialDrop };
+        const second = await dropOne(fakeFile('new.json'), first.partialDrop) as { kind: 'partial'; partialDrop: PartialDrop };
+
+        expect(second.partialDrop.annotationsFile.name).toBe('new.json');
+    });
+
+    it('opens a whole folder dropped after a single item, forgetting it', async () => {
+        const first = await dropOne(fakeFile('old.json')) as { kind: 'partial'; partialDrop: PartialDrop };
+        const result = await dropOne(fakeDirectory('study-1', [imagesFolder(), fakeFile('annotations.json')]), first.partialDrop);
+
+        expect(result.kind).toBe('folder');
+        expect((result as { kind: 'folder'; folder: COCOReviewFolder }).folder.jsonFile.name).toBe('annotations.json');
+    });
+
+    it('rejects a file that is neither the images folder nor a json file', async () => {
+        await expect(dropOne(fakeFile('notes.txt')))
+            .rejects.toThrow(/"notes\.txt" is neither the "images" folder nor a \.json file/);
     });
 });
 
