@@ -14,6 +14,10 @@ interface IProps {
     childRender: (index: number, isScrolling: boolean, isVisible: boolean, style: React.CSSProperties) => any;
     overScanHeight?: number;
     scrollToIndex: number;
+    // Optional sections: ascending child indices opening a new row under a full width header
+    sectionStarts?: number[];
+    sectionHeaderHeight?: number;
+    sectionHeaderRender?: (sectionIndex: number, style: React.CSSProperties) => any;
 }
 
 interface IState {
@@ -33,6 +37,7 @@ export class VirtualList extends React.Component<IProps, IState> {
     private gridSize: ISize;
     private contentSize: ISize;
     private childAnchors: IPoint[];
+    private sectionHeaderTops: number[] = [];
     private scrollbars: Scrollbars;
 
     constructor(props) {
@@ -43,9 +48,14 @@ export class VirtualList extends React.Component<IProps, IState> {
         };
     }
 
+    private static areSameSections(sectionsA: number[] = [], sectionsB: number[] = []): boolean {
+        return sectionsA.length === sectionsB.length &&
+            sectionsA.every((start: number, index: number) => start === sectionsB[index]);
+    }
+
     public componentDidMount(): void {
         const {size, childSize, childCount} = this.props;
-        this.calculate(VirtualList.getLayoutSize(size), childSize, childCount);
+        this.calculate(VirtualList.getLayoutSize(size), childSize, childCount, this.props);
         this.setState({
             viewportRect: {
                 x: 0,
@@ -59,8 +69,10 @@ export class VirtualList extends React.Component<IProps, IState> {
     public componentWillUpdate(nextProps: Readonly<IProps>, nextState: Readonly<IState>, nextContext: any): void {
         const {size, childSize, childCount} = nextProps;
         if (this.props.size.height !== size.height || this.props.size.width !== size.width ||
-            this.props.childCount !== childCount) {
-            this.calculate(VirtualList.getLayoutSize(size), childSize, childCount);
+            this.props.childCount !== childCount ||
+            this.props.sectionHeaderHeight !== nextProps.sectionHeaderHeight ||
+            !VirtualList.areSameSections(this.props.sectionStarts, nextProps.sectionStarts)) {
+            this.calculate(VirtualList.getLayoutSize(size), childSize, childCount, nextProps);
             this.setState({
                 viewportRect: {
                     x: this.scrollbars.getValues().scrollLeft,
@@ -72,10 +84,21 @@ export class VirtualList extends React.Component<IProps, IState> {
         }
     }
 
-    private calculate = (size: ISize, childSize: ISize, childCount: number) => {
+    private calculate = (size: ISize, childSize: ISize, childCount: number, props: Readonly<IProps>) => {
         this.gridSize = VirtualListUtil.calculateGridSize(size, childSize, childCount);
-        this.contentSize = VirtualListUtil.calculateContentSize(size, childSize, this.gridSize);
-        this.childAnchors = VirtualListUtil.calculateAnchorPoints(size, childSize, childCount);
+        const {sectionStarts, sectionHeaderHeight} = props;
+        if (sectionStarts && sectionStarts.length > 0) {
+            const layout = VirtualListUtil.calculateSectionedLayout(
+                size, childSize, childCount, sectionStarts, sectionHeaderHeight || 0
+            );
+            this.contentSize = layout.contentSize;
+            this.childAnchors = layout.childAnchors;
+            this.sectionHeaderTops = layout.sectionHeaderTops;
+        } else {
+            this.contentSize = VirtualListUtil.calculateContentSize(size, childSize, this.gridSize);
+            this.childAnchors = VirtualListUtil.calculateAnchorPoints(size, childSize, childCount);
+            this.sectionHeaderTops = [];
+        }
     };
 
     private scrollToRequestedIndex = () => {
@@ -86,7 +109,13 @@ export class VirtualList extends React.Component<IProps, IState> {
             return;
         }
 
-        this.scrollbars.scrollTop(anchor.y);
+        // A child opening a section is scrolled to along with its header
+        const sectionIndex = this.sectionHeaderTops.length > 0
+            ? (this.props.sectionStarts || []).indexOf(scrollToIndex)
+            : -1;
+        this.scrollbars.scrollTop(sectionIndex !== -1
+            ? this.sectionHeaderTops[sectionIndex]
+            : anchor.y);
     };
 
     private getVirtualListStyle = ():React.CSSProperties => {
@@ -135,6 +164,21 @@ export class VirtualList extends React.Component<IProps, IState> {
             height: viewportRect.height + 2 * overScan
         };
 
+        const {sectionHeaderHeight, sectionHeaderRender} = this.props;
+        const headers = sectionHeaderRender ? this.sectionHeaderTops.reduce((visibleHeaders, top: number, sectionIndex: number) => {
+            const headerRect: IRect = {x: 0, y: top, width: this.contentSize.width, height: sectionHeaderHeight || 0};
+            if (!RectUtil.intersect(viewportRectWithOverScan, headerRect)) {
+                return visibleHeaders;
+            }
+            return visibleHeaders.concat(sectionHeaderRender(sectionIndex, {
+                position: "absolute",
+                left: 0,
+                top,
+                width: this.contentSize.width,
+                height: sectionHeaderHeight || 0
+            }));
+        }, []) : [];
+
         return this.childAnchors.reduce((children, anchor: IPoint, index: number) => {
             const childRect = Object.assign(anchor, childSize);
             const isVisible = RectUtil.intersect(viewportRectWithOverScan, childRect);
@@ -153,7 +197,7 @@ export class VirtualList extends React.Component<IProps, IState> {
             else {
                 return children;
             }
-        }, [])
+        }, headers)
     };
 
     public render() {

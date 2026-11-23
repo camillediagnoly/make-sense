@@ -13,7 +13,7 @@ import {ImageActions} from "../../../../logic/actions/ImageActions";
 import {EventType} from "../../../../data/enums/EventType";
 import {ImageFilterMode} from "../../../../data/enums/ImageFilterMode";
 import {ImageSortMode} from "../../../../data/enums/ImageSortMode";
-import {ImageFilterUtil} from "../../../../utils/ImageFilterUtil";
+import {ImageFilterUtil, ImagePatientGroup} from "../../../../utils/ImageFilterUtil";
 import {
     updateImageListFilterMode,
     updateImageListSearchText,
@@ -51,6 +51,9 @@ interface IProps {
         keptUnlabeledImageIds?: string[]
     ) => any;
 }
+
+const PATIENT_HEADER_HEIGHT_PX = 26;
+const DATE_SORT_MODES: ImageSortMode[] = [ImageSortMode.MODIFIED_DATE_ASC, ImageSortMode.MODIFIED_DATE_DESC];
 
 interface IState {
     size: ISize;
@@ -214,6 +217,31 @@ class ImagesList extends React.Component<IProps, IState> {
         this.lastFilteredIndices = currentFilteredIndices;
     }
 
+    // The patient groups of the list, shown as section headers - only when sorting by patient,
+    // and not while reviewing class sanity check violations, which go first whatever their patient.
+    private getPatientGroups = (filteredIndices: number[]): ImagePatientGroup[] => {
+        const {sortMode, classSanityCheckReviewMode, classSanityCheckViolationImageIds} = this.props;
+        const isReviewingViolations =
+            classSanityCheckReviewMode && classSanityCheckViolationImageIds.length > 0;
+        if (sortMode !== ImageSortMode.BY_PATIENT || isReviewingViolations) {
+            return [];
+        }
+        return ImageFilterUtil.getPatientGroups(this.props.imagesData, filteredIndices);
+    };
+
+    private renderPatientHeader = (group: ImagePatientGroup, style: React.CSSProperties) => {
+        const frameLabel = group.count === 1 ? 'frame' : 'frames';
+        return <div
+            key={`patient-${group.start}`}
+            className="PatientHeader"
+            style={style}
+            title={`${group.patient} - ${group.count} ${frameLabel}`}
+        >
+            <span className="PatientName">{group.patient}</span>
+            <span className="PatientCount">{group.count}</span>
+        </div>
+    };
+
     private renderImagePreview = (index: number, isScrolling: boolean, isVisible: boolean, style: React.CSSProperties) => {
         const filteredIndices = this.getFilteredImages();
         const actualIndex = filteredIndices[index];
@@ -293,7 +321,8 @@ class ImagesList extends React.Component<IProps, IState> {
             sortOrderLocked,
             keepLabeledInUnlabeled,
         } = this.props;
-        const isDateSortActive = sortMode !== ImageSortMode.DEFAULT;
+        // Only a date order can move by itself, so only it can be frozen
+        const isDateSortActive = DATE_SORT_MODES.includes(sortMode);
         const isUnlabeledFilterActive = filterMode === ImageFilterMode.UNLABELED;
         return (
             <div className="ImagesListControls" ref={(ref) => this.controlsRef = ref}>
@@ -318,6 +347,7 @@ class ImagesList extends React.Component<IProps, IState> {
                         <option value={ImageSortMode.DEFAULT}>Import order</option>
                         <option value={ImageSortMode.MODIFIED_DATE_ASC}>Modified date - oldest first</option>
                         <option value={ImageSortMode.MODIFIED_DATE_DESC}>Modified date - newest first</option>
+                        <option value={ImageSortMode.BY_PATIENT}>By patient</option>
                     </select>
                     {isDateSortActive && (
                         <button
@@ -383,6 +413,7 @@ class ImagesList extends React.Component<IProps, IState> {
     public render() {
         const { size, key } = this.state;
         const filteredIndices = this.getFilteredImages();
+        const patientGroups = this.getPatientGroups(filteredIndices);
 
         return(
             <div
@@ -400,6 +431,10 @@ class ImagesList extends React.Component<IProps, IState> {
                         childRender={this.renderImagePreview}
                         overScanHeight={200}
                         scrollToIndex={this.getScrollToIndex(filteredIndices)}
+                        sectionStarts={patientGroups.map((group: ImagePatientGroup) => group.start)}
+                        sectionHeaderHeight={PATIENT_HEADER_HEIGHT_PX}
+                        sectionHeaderRender={(sectionIndex: number, style: React.CSSProperties) =>
+                            this.renderPatientHeader(patientGroups[sectionIndex], style)}
                     />
                 )}
                 {filteredIndices.length === 0 && (

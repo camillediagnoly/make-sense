@@ -521,3 +521,64 @@ describe('ImageFilterUtil tag criteria', () => {
             .toBeNull();
     });
 });
+
+describe('ImageFilterUtil sorting by patient', () => {
+    const createNamedImage = (id: string, fileName: string): ImageData => ({
+        ...createImageData(id, []),
+        fileData: new File([''], fileName, { type: 'image/jpeg' }),
+    });
+
+    it('should read the patient from the file name', () => {
+        expect(ImageFilterUtil.getPatientKey('E0124_IMG_20200629_2_80.mp4_00191.jpg'))
+            .toEqual('E0124_IMG_20200629_2_80');
+        expect(ImageFilterUtil.getPatientKey('E0125_IMG_20200817_2_68.jpg'))
+            .toEqual('E0125_IMG_20200817_2_68');
+        expect(ImageFilterUtil.getPatientKey('MCS2020.XX.XX-Quarello_view_D.quality_good.dev_physio.00003088.jpg'))
+            .toEqual('MCS2020.XX.XX-Quarello_view_D.quality_good.dev_physio');
+        expect(ImageFilterUtil.getPatientKey('MCS2020.XX.XX-Quarello_view_D.quality_good.dev_physio.00003160.jpg'))
+            .toEqual('MCS2020.XX.XX-Quarello_view_D.quality_good.dev_physio');
+        expect(ImageFilterUtil.getPatientKey('E0007_IMG_20210101_1_2.MOV_00012.jpg'))
+            .toEqual('E0007_IMG_20210101_1_2');
+        expect(ImageFilterUtil.getPatientKey('J12_dvr_3_4.mp4_000422_split1.jpg'))
+            .toEqual('J12_dvr_3_4');
+        expect(ImageFilterUtil.getPatientKey('J12_dvr_3_4.mp4_000422_split2.jpg'))
+            .toEqual('J12_dvr_3_4');
+        expect(ImageFilterUtil.getPatientKey('T1598_1_00-f3.png')).toEqual('T1598_1_00-f3');
+        expect(ImageFilterUtil.getPatientKey('')).toEqual('');
+    });
+
+    const images = [
+        createNamedImage('image-0', 'E0125_IMG_20200817_2_68.jpg'),
+        createNamedImage('image-1', 'E0124_IMG_20200629_2_80.mp4_00200.jpg'),
+        createNamedImage('image-2', 'MCS2020.XX.XX-Quarello_view_D.quality_good.dev_physio.00003160.jpg'),
+        createNamedImage('image-3', 'E0124_IMG_20200629_2_80.mp4_00191.jpg'),
+        createNamedImage('image-4', 'MCS2020.XX.XX-Quarello_view_D.quality_good.dev_physio.00003088.jpg'),
+        createNamedImage('image-5', 'E0124_IMG_20200629_2_80.mp4_01000.jpg'),
+    ];
+
+    it('should order the patients alphabetically and their frames by number', () => {
+        expect(ImageFilterUtil.getFilteredImageIndices(images, LabelType.RECT, {
+            sortMode: ImageSortMode.BY_PATIENT,
+        })).toEqual([3, 1, 5, 0, 4, 2]);
+    });
+
+    it('should group the ordered images by patient', () => {
+        expect(ImageFilterUtil.getPatientGroups(images, [3, 1, 5, 0, 4, 2])).toEqual([
+            { start: 0, patient: 'E0124_IMG_20200629_2_80', count: 3 },
+            { start: 3, patient: 'E0125_IMG_20200817_2_68', count: 1 },
+            { start: 4, patient: 'MCS2020.XX.XX-Quarello_view_D.quality_good.dev_physio', count: 2 },
+        ]);
+        expect(ImageFilterUtil.getPatientGroups(images, [])).toEqual([]);
+    });
+
+    it('should only group the images left by the filters', () => {
+        const filtered = ImageFilterUtil.getFilteredImageIndices(images, LabelType.RECT, {
+            sortMode: ImageSortMode.BY_PATIENT,
+            searchText: 'E0124',
+        });
+        expect(filtered).toEqual([3, 1, 5]);
+        expect(ImageFilterUtil.getPatientGroups(images, filtered)).toEqual([
+            { start: 0, patient: 'E0124_IMG_20200629_2_80', count: 3 },
+        ]);
+    });
+});

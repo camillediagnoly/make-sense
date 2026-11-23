@@ -32,6 +32,13 @@ export type ImageListFilterOptions = {
     lockedImageSortOrderIds?: string[];
 };
 
+export type ImagePatientGroup = {
+    // Position of the group's first image in the ordered list
+    start: number;
+    patient: string;
+    count: number;
+};
+
 type CriteriaAstNode =
     | {
         type: "label";
@@ -587,6 +594,81 @@ export class ImageFilterUtil {
             : 0;
     }
 
+    private static readonly IMAGE_EXTENSION = /\.[A-Za-z][A-Za-z0-9]{1,4}$/;
+    // A half of a double screen ('..._split1.jpg'): both halves belong to the same frame
+    private static readonly SPLIT_HALF = /_split_?\d+$/i;
+    // A frame extracted from a video: '<patient>.mp4_00191'
+    private static readonly VIDEO_FRAME = /^(.+?)\.(?:mp4|avi|mov|wmv|mkv)(?:[._-]\d+)?$/i;
+    // A frame numbered after a dot: '<patient>.00003088'
+    private static readonly DOTTED_FRAME = /^(.+)\.\d+$/;
+
+    private static readonly NAME_COLLATOR = new Intl.Collator(undefined, {
+        numeric: true,
+        sensitivity: "base",
+    });
+
+    // The patient (video, sequence) an image file belongs to, read from its name:
+    // 'E0124_IMG_20200629_2_80.mp4_00191.jpg' -> 'E0124_IMG_20200629_2_80',
+    // 'MCS2020.XX.XX-Quarello_view_D.quality_good.dev_physio.00003088.jpg'
+    //   -> 'MCS2020.XX.XX-Quarello_view_D.quality_good.dev_physio',
+    // 'E0125_IMG_20200817_2_68.jpg' -> 'E0125_IMG_20200817_2_68' (a single image is its own patient).
+    public static getPatientKey(fileName: string): string {
+        const name = fileName || "";
+        let patient = ImageFilterUtil.patientKeyCache.get(name);
+        if (patient === undefined) {
+            patient = ImageFilterUtil.readPatientKey(name);
+            ImageFilterUtil.patientKeyCache.set(name, patient);
+        }
+        return patient;
+    }
+
+    // The list gets sorted on every render, so the key of each name is only read once
+    private static patientKeyCache = new Map<string, string>();
+
+    private static readPatientKey(fileName: string): string {
+        const stem = fileName
+            .trim()
+            .replace(ImageFilterUtil.IMAGE_EXTENSION, "")
+            .replace(ImageFilterUtil.SPLIT_HALF, "");
+
+        const videoFrame = stem.match(ImageFilterUtil.VIDEO_FRAME);
+        if (videoFrame) {
+            return videoFrame[1];
+        }
+
+        const dottedFrame = stem.match(ImageFilterUtil.DOTTED_FRAME);
+        if (dottedFrame) {
+            return dottedFrame[1];
+        }
+
+        return stem;
+    }
+
+    private static getImageName(imageData: ImageData): string {
+        return imageData?.fileData?.name || "";
+    }
+
+    // The runs of consecutive images sharing a patient in an already ordered list of indices:
+    // where each run starts in that list, its patient and its length.
+    public static getPatientGroups(
+        imagesData: ImageData[],
+        orderedIndices: number[]
+    ): ImagePatientGroup[] {
+        const groups: ImagePatientGroup[] = [];
+        orderedIndices.forEach((imageIndex: number, position: number) => {
+            const patient = ImageFilterUtil.getPatientKey(
+                ImageFilterUtil.getImageName(imagesData[imageIndex])
+            );
+            const lastGroup = groups[groups.length - 1];
+            if (lastGroup && lastGroup.patient === patient) {
+                lastGroup.count += 1;
+            } else {
+                groups.push({ start: position, patient, count: 1 });
+            }
+        });
+        return groups;
+    }
+
     // Negative when the image at indexA comes first in the requested order. Falls back to the
     // original upload order, which is also the whole ordering in DEFAULT mode.
     private static compareImageIndices(
@@ -595,6 +677,23 @@ export class ImageFilterUtil {
         indexB: number,
         sortMode: ImageSortMode
     ): number {
+        if (sortMode === ImageSortMode.BY_PATIENT) {
+            const nameA = ImageFilterUtil.getImageName(imagesData[indexA]);
+            const nameB = ImageFilterUtil.getImageName(imagesData[indexB]);
+            const patientDelta = ImageFilterUtil.NAME_COLLATOR.compare(
+                ImageFilterUtil.getPatientKey(nameA),
+                ImageFilterUtil.getPatientKey(nameB)
+            );
+            if (patientDelta !== 0) {
+                return patientDelta;
+            }
+
+            const nameDelta = ImageFilterUtil.NAME_COLLATOR.compare(nameA, nameB);
+            if (nameDelta !== 0) {
+                return nameDelta;
+            }
+        }
+
         if (sortMode === ImageSortMode.MODIFIED_DATE_ASC ||
             sortMode === ImageSortMode.MODIFIED_DATE_DESC) {
             const lastModifiedDelta =
