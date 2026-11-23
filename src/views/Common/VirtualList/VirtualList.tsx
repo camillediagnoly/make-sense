@@ -5,7 +5,6 @@ import Scrollbars from 'react-custom-scrollbars-2';
 import './VirtualList.scss';
 import {VirtualListUtil} from "../../../utils/VirtualListUtil";
 import {IPoint} from "../../../interfaces/IPoint";
-import {RectUtil} from "../../../utils/RectUtil";
 
 interface IProps {
     size: ISize;
@@ -164,40 +163,49 @@ export class VirtualList extends React.Component<IProps, IState> {
             height: viewportRect.height + 2 * overScan
         };
 
-        const {sectionHeaderHeight, sectionHeaderRender} = this.props;
-        const headers = sectionHeaderRender ? this.sectionHeaderTops.reduce((visibleHeaders, top: number, sectionIndex: number) => {
-            const headerRect: IRect = {x: 0, y: top, width: this.contentSize.width, height: sectionHeaderHeight || 0};
-            if (!RectUtil.intersect(viewportRectWithOverScan, headerRect)) {
-                return visibleHeaders;
-            }
-            return visibleHeaders.concat(sectionHeaderRender(sectionIndex, {
-                position: "absolute",
-                left: 0,
-                top,
-                width: this.contentSize.width,
-                height: sectionHeaderHeight || 0
-            }));
-        }, []) : [];
+        const viewportTop: number = viewportRectWithOverScan.y;
+        const viewportBottom: number = viewportRectWithOverScan.y + viewportRectWithOverScan.height;
+        const children = [];
 
-        return this.childAnchors.reduce((children, anchor: IPoint, index: number) => {
-            const childRect = Object.assign(anchor, childSize);
-            const isVisible = RectUtil.intersect(viewportRectWithOverScan, childRect);
-
-            if (isVisible) {
-                const childStyle: React.CSSProperties = {
+        const {sectionHeaderRender} = this.props;
+        const sectionHeaderHeight: number = this.props.sectionHeaderHeight || 0;
+        if (sectionHeaderRender) {
+            const headerRange = VirtualListUtil.findVisibleRange(
+                this.sectionHeaderTops.length,
+                (sectionIndex: number) => this.sectionHeaderTops[sectionIndex],
+                sectionHeaderHeight,
+                viewportTop,
+                viewportBottom
+            );
+            for (let sectionIndex = headerRange.first; sectionIndex < headerRange.end; sectionIndex++) {
+                children.push(sectionHeaderRender(sectionIndex, {
                     position: "absolute",
-                    left: anchor.x,
-                    top: anchor.y,
-                    width: childSize.width,
-                    height: childSize.height
-                };
+                    left: 0,
+                    top: this.sectionHeaderTops[sectionIndex],
+                    width: this.contentSize.width,
+                    height: sectionHeaderHeight
+                }));
+            }
+        }
 
-                return children.concat(this.props.childRender(index, isScrolling, isVisible, childStyle))
-            }
-            else {
-                return children;
-            }
-        }, headers)
+        const childRange = VirtualListUtil.findVisibleRange(
+            this.childAnchors.length,
+            (index: number) => this.childAnchors[index].y,
+            childSize.height,
+            viewportTop,
+            viewportBottom
+        );
+        for (let index = childRange.first; index < childRange.end; index++) {
+            const anchor: IPoint = this.childAnchors[index];
+            children.push(this.props.childRender(index, isScrolling, true, {
+                position: "absolute",
+                left: anchor.x,
+                top: anchor.y,
+                width: childSize.width,
+                height: childSize.height
+            }));
+        }
+        return children;
     };
 
     public render() {

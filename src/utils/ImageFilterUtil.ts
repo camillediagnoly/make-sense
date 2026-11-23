@@ -39,6 +39,14 @@ export type ImagePatientGroup = {
     count: number;
 };
 
+type PatientSortKey = {
+    patient: string;
+    // The patient and the file name made comparable as plain strings (see getPatientSortKey)
+    patientOrder: string;
+    nameOrder: string;
+    name: string;
+};
+
 type CriteriaAstNode =
     | {
         type: "label";
@@ -602,28 +610,43 @@ export class ImageFilterUtil {
     // A frame numbered after a dot: '<patient>.00003088'
     private static readonly DOTTED_FRAME = /^(.+)\.\d+$/;
 
-    private static readonly NAME_COLLATOR = new Intl.Collator(undefined, {
-        numeric: true,
-        sensitivity: "base",
-    });
-
     // The patient (video, sequence) an image file belongs to, read from its name:
     // 'E0124_IMG_20200629_2_80.mp4_00191.jpg' -> 'E0124_IMG_20200629_2_80',
     // 'MCS2020.XX.XX-Quarello_view_D.quality_good.dev_physio.00003088.jpg'
     //   -> 'MCS2020.XX.XX-Quarello_view_D.quality_good.dev_physio',
     // 'E0125_IMG_20200817_2_68.jpg' -> 'E0125_IMG_20200817_2_68' (a single image is its own patient).
     public static getPatientKey(fileName: string): string {
-        const name = fileName || "";
-        let patient = ImageFilterUtil.patientKeyCache.get(name);
-        if (patient === undefined) {
-            patient = ImageFilterUtil.readPatientKey(name);
-            ImageFilterUtil.patientKeyCache.set(name, patient);
-        }
-        return patient;
+        return ImageFilterUtil.getNameSortKey(fileName || "").patient;
     }
 
-    // The list gets sorted on every render, so the key of each name is only read once
-    private static patientKeyCache = new Map<string, string>();
+    // Each name is only read once: the list gets sorted again whenever an image changes
+    private static nameSortKeyCache = new Map<string, PatientSortKey>();
+
+    // Case insensitive, and numbers compared by value: every run of digits is padded to the
+    // same width, so that '00191' < '00200' < '01000' and 'E9' < 'E10' as plain strings - much
+    // faster to compare than with Intl.Collator.
+    private static toOrderString(text: string): string {
+        return text.toLowerCase().replace(/\d+/g, (digits: string) => digits.padStart(16, "0"));
+    }
+
+    private static getNameSortKey(name: string): PatientSortKey {
+        let sortKey = ImageFilterUtil.nameSortKeyCache.get(name);
+        if (sortKey === undefined) {
+            const patient = ImageFilterUtil.readPatientKey(name);
+            sortKey = {
+                patient,
+                patientOrder: ImageFilterUtil.toOrderString(patient),
+                nameOrder: ImageFilterUtil.toOrderString(name),
+                name,
+            };
+            ImageFilterUtil.nameSortKeyCache.set(name, sortKey);
+        }
+        return sortKey;
+    }
+
+    private static compareStrings(textA: string, textB: string): number {
+        return textA < textB ? -1 : textA > textB ? 1 : 0;
+    }
 
     private static readPatientKey(fileName: string): string {
         const stem = fileName
@@ -646,6 +669,10 @@ export class ImageFilterUtil {
 
     private static getImageName(imageData: ImageData): string {
         return imageData?.fileData?.name || "";
+    }
+
+    private static getPatientSortKey(imageData: ImageData): PatientSortKey {
+        return ImageFilterUtil.getNameSortKey(ImageFilterUtil.getImageName(imageData));
     }
 
     // The runs of consecutive images sharing a patient in an already ordered list of indices:
@@ -675,22 +702,22 @@ export class ImageFilterUtil {
         imagesData: ImageData[],
         indexA: number,
         indexB: number,
-        sortMode: ImageSortMode
+        sortMode: ImageSortMode,
+        patientSortKeys?: PatientSortKey[]
     ): number {
         if (sortMode === ImageSortMode.BY_PATIENT) {
-            const nameA = ImageFilterUtil.getImageName(imagesData[indexA]);
-            const nameB = ImageFilterUtil.getImageName(imagesData[indexB]);
-            const patientDelta = ImageFilterUtil.NAME_COLLATOR.compare(
-                ImageFilterUtil.getPatientKey(nameA),
-                ImageFilterUtil.getPatientKey(nameB)
-            );
-            if (patientDelta !== 0) {
-                return patientDelta;
-            }
-
-            const nameDelta = ImageFilterUtil.NAME_COLLATOR.compare(nameA, nameB);
-            if (nameDelta !== 0) {
-                return nameDelta;
+            const keyA = patientSortKeys?.[indexA] ??
+                ImageFilterUtil.getPatientSortKey(imagesData[indexA]);
+            const keyB = patientSortKeys?.[indexB] ??
+                ImageFilterUtil.getPatientSortKey(imagesData[indexB]);
+            const delta =
+                ImageFilterUtil.compareStrings(keyA.patientOrder, keyB.patientOrder) ||
+                // Two patients written alike but for case or zero padding must not get mixed up
+                ImageFilterUtil.compareStrings(keyA.patient, keyB.patient) ||
+                ImageFilterUtil.compareStrings(keyA.nameOrder, keyB.nameOrder) ||
+                ImageFilterUtil.compareStrings(keyA.name, keyB.name);
+            if (delta !== 0) {
+                return delta;
             }
         }
 
@@ -729,6 +756,11 @@ export class ImageFilterUtil {
         const getLockedRank = (index: number): number | undefined =>
             lockedRankByImageId.get(imagesData[index]?.id);
 
+        // Read once per image rather than at each of the n log n comparisons
+        const patientSortKeys: PatientSortKey[] | undefined = sortMode === ImageSortMode.BY_PATIENT
+            ? imagesData.map(ImageFilterUtil.getPatientSortKey)
+            : undefined;
+
         return (indexA: number, indexB: number): number => {
             const lockedRankA = getLockedRank(indexA);
             const lockedRankB = getLockedRank(indexB);
@@ -745,7 +777,9 @@ export class ImageFilterUtil {
                 return 1;
             }
 
-            return ImageFilterUtil.compareImageIndices(imagesData, indexA, indexB, sortMode);
+            return ImageFilterUtil.compareImageIndices(
+                imagesData, indexA, indexB, sortMode, patientSortKeys
+            );
         };
     }
 
@@ -816,7 +850,71 @@ export class ImageFilterUtil {
             .map((index: number) => imagesData[index].id);
     }
 
+    // The image list, the navigation, the bottom bar and the statistics all ask for the same list,
+    // and the list asks again for every thumbnail it draws: the last results are kept and given
+    // back as long as their inputs are the same. imagesData is always replaced, never changed in
+    // place, when an image changes - so the same reference means the same images.
+    // The returned array is shared: callers must not change it.
+    private static readonly FILTER_CACHE_SIZE = 4;
+    private static filterCache: {
+        imagesData: ImageData[];
+        labelType: LabelType;
+        options: unknown[];
+        result: number[];
+    }[] = [];
+
+    private static getFilterCacheOptions(options: ImageListFilterOptions): unknown[] {
+        return [
+            options.filterMode ?? ImageFilterMode.ALL,
+            options.searchText ?? "",
+            options.classCriteria ?? [],
+            options.classCriteriaLocked ?? false,
+            options.lockedClassCriteriaImageIds ?? [],
+            options.keepLabeledInUnlabeled ?? false,
+            options.keptUnlabeledImageIds ?? [],
+            options.sortMode ?? ImageSortMode.DEFAULT,
+            options.lockedImageSortOrderIds ?? [],
+        ];
+    }
+
+    private static isSameFilterOption(optionA: unknown, optionB: unknown): boolean {
+        if (optionA === optionB) {
+            return true;
+        }
+        // An empty list is often written as a new [] - any two of them are the same option
+        return Array.isArray(optionA) && Array.isArray(optionB) &&
+            optionA.length === 0 && optionB.length === 0;
+    }
+
     public static getFilteredImageIndices(
+        imagesData: ImageData[],
+        labelType: LabelType,
+        options: ImageListFilterOptions = {}
+    ): number[] {
+        const cacheOptions = ImageFilterUtil.getFilterCacheOptions(options);
+        const cacheIndex = ImageFilterUtil.filterCache.findIndex((entry) =>
+            entry.imagesData === imagesData &&
+            entry.labelType === labelType &&
+            entry.options.every((option: unknown, index: number) =>
+                ImageFilterUtil.isSameFilterOption(option, cacheOptions[index]))
+        );
+
+        if (cacheIndex !== -1) {
+            const [entry] = ImageFilterUtil.filterCache.splice(cacheIndex, 1);
+            ImageFilterUtil.filterCache.unshift(entry);
+            return entry.result;
+        }
+
+        const result = ImageFilterUtil.computeFilteredImageIndices(imagesData, labelType, options);
+        ImageFilterUtil.filterCache.unshift({ imagesData, labelType, options: cacheOptions, result });
+        ImageFilterUtil.filterCache.length = Math.min(
+            ImageFilterUtil.filterCache.length,
+            ImageFilterUtil.FILTER_CACHE_SIZE
+        );
+        return result;
+    }
+
+    private static computeFilteredImageIndices(
         imagesData: ImageData[],
         labelType: LabelType,
         {

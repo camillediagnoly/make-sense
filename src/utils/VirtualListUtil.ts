@@ -93,4 +93,31 @@ export class VirtualListUtil {
             }
         };
     }
+
+    // The range [first, end) of items intersecting [viewportTop, viewportBottom], given their tops
+    // sorted from top to bottom - found by a binary search rather than by testing every item.
+    public static findVisibleRange(
+        itemCount: number,
+        getItemTop: (index: number) => number,
+        itemHeight: number,
+        viewportTop: number,
+        viewportBottom: number
+    ): {first: number, end: number} {
+        let low: number = 0;
+        let high: number = itemCount;
+        while (low < high) {
+            const middle: number = (low + high) >> 1;
+            if (getItemTop(middle) + itemHeight < viewportTop) {
+                low = middle + 1;
+            } else {
+                high = middle;
+            }
+        }
+
+        let end: number = low;
+        while (end < itemCount && getItemTop(end) <= viewportBottom) {
+            end += 1;
+        }
+        return {first: low, end};
+    }
 }

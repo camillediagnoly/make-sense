@@ -582,3 +582,59 @@ describe('ImageFilterUtil sorting by patient', () => {
         ]);
     });
 });
+
+describe('ImageFilterUtil filter cache', () => {
+    const images = [
+        createImageData('image-0', ['label-a']),
+        createImageData('image-1', []),
+    ];
+
+    it('should give back the same list for the same inputs', () => {
+        const first = ImageFilterUtil.getFilteredImageIndices(images, LabelType.RECT, { lockedImageSortOrderIds: [] });
+        const second = ImageFilterUtil.getFilteredImageIndices(images, LabelType.RECT, { lockedImageSortOrderIds: [] });
+        expect(second).toBe(first);
+    });
+
+    it('should compute again when the images or the options change', () => {
+        const all = ImageFilterUtil.getFilteredImageIndices(images, LabelType.RECT, { searchText: '' });
+        expect(ImageFilterUtil.getFilteredImageIndices(images, LabelType.RECT, { searchText: 'image-1' }))
+            .toEqual([1]);
+
+        const updatedImages = [images[0], createImageData('image-2', [])];
+        expect(ImageFilterUtil.getFilteredImageIndices(updatedImages, LabelType.RECT, { searchText: 'image-2' }))
+            .toEqual([1]);
+        expect(ImageFilterUtil.getFilteredImageIndices(images, LabelType.RECT, { searchText: '' })).toBe(all);
+    });
+});
+
+describe('ImageFilterUtil patient order', () => {
+    const createNamedImage = (id: string, fileName: string): ImageData => ({
+        ...createImageData(id, []),
+        fileData: new File([''], fileName, { type: 'image/jpeg' }),
+    });
+
+    it('should compare numbers by value and ignore case', () => {
+        const images = [
+            createNamedImage('image-0', 'e10.mp4_2.jpg'),
+            createNamedImage('image-1', 'E9.mp4_10.jpg'),
+            createNamedImage('image-2', 'E9.mp4_9.jpg'),
+            createNamedImage('image-3', 'b1.jpg'),
+        ];
+        expect(ImageFilterUtil.getFilteredImageIndices(images, LabelType.RECT, {
+            sortMode: ImageSortMode.BY_PATIENT,
+        })).toEqual([3, 2, 1, 0]);
+    });
+
+    it('should keep apart patients written alike but for case', () => {
+        const images = [
+            createNamedImage('image-0', 'abc.mp4_2.jpg'),
+            createNamedImage('image-1', 'ABC.mp4_1.jpg'),
+            createNamedImage('image-2', 'abc.mp4_1.jpg'),
+            createNamedImage('image-3', 'ABC.mp4_2.jpg'),
+        ];
+        const sorted = ImageFilterUtil.getFilteredImageIndices(images, LabelType.RECT, {
+            sortMode: ImageSortMode.BY_PATIENT,
+        });
+        expect(ImageFilterUtil.getPatientGroups(images, sorted).map((group) => group.count)).toEqual([2, 2]);
+    });
+});

@@ -64,6 +64,10 @@ class ImagesList extends React.Component<IProps, IState> {
     private imagesListRef: HTMLDivElement;
     private controlsRef: HTMLDivElement;
     private lastFilteredIndices: number[];
+    // The list drawn by the last render: the thumbnails read it rather than filtering and sorting
+    // the whole list again for each of them, on every scroll frame.
+    private renderedFilteredIndices: number[] = [];
+    private patientGroupsCache: {filteredIndices: number[], groups: ImagePatientGroup[]} | null = null;
 
     constructor(props) {
         super(props);
@@ -205,8 +209,10 @@ class ImagesList extends React.Component<IProps, IState> {
 
         const currentFilteredIndices = this.getFilteredImages();
         const filteredImagesChanged =
-            this.lastFilteredIndices.length !== currentFilteredIndices.length ||
-            this.lastFilteredIndices.some((value, index) => value !== currentFilteredIndices[index]);
+            this.lastFilteredIndices !== currentFilteredIndices && (
+                this.lastFilteredIndices.length !== currentFilteredIndices.length ||
+                this.lastFilteredIndices.some((value, index) => value !== currentFilteredIndices[index])
+            );
 
         if (filterChanged || filteredImagesChanged) {
             ImageActions.syncActiveImageWithFilters();
@@ -226,7 +232,13 @@ class ImagesList extends React.Component<IProps, IState> {
         if (sortMode !== ImageSortMode.BY_PATIENT || isReviewingViolations) {
             return [];
         }
-        return ImageFilterUtil.getPatientGroups(this.props.imagesData, filteredIndices);
+        if (this.patientGroupsCache?.filteredIndices !== filteredIndices) {
+            this.patientGroupsCache = {
+                filteredIndices,
+                groups: ImageFilterUtil.getPatientGroups(this.props.imagesData, filteredIndices),
+            };
+        }
+        return this.patientGroupsCache.groups;
     };
 
     private renderPatientHeader = (group: ImagePatientGroup, style: React.CSSProperties) => {
@@ -243,8 +255,7 @@ class ImagesList extends React.Component<IProps, IState> {
     };
 
     private renderImagePreview = (index: number, isScrolling: boolean, isVisible: boolean, style: React.CSSProperties) => {
-        const filteredIndices = this.getFilteredImages();
-        const actualIndex = filteredIndices[index];
+        const actualIndex = this.renderedFilteredIndices[index];
 
         return <ImagePreview
             key={actualIndex}
@@ -413,6 +424,7 @@ class ImagesList extends React.Component<IProps, IState> {
     public render() {
         const { size, key } = this.state;
         const filteredIndices = this.getFilteredImages();
+        this.renderedFilteredIndices = filteredIndices;
         const patientGroups = this.getPatientGroups(filteredIndices);
 
         return(

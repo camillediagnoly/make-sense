@@ -36,3 +36,21 @@ describe('VirtualListUtil.calculateSectionedLayout', () => {
         expect(layout.contentSize).toEqual({ width: 330, height: 340 });
     });
 });
+
+describe('VirtualListUtil.findVisibleRange', () => {
+    // rows of height 100 starting at 0, 0, 100, 100, 200, 200, 300
+    const tops = [0, 0, 100, 100, 200, 200, 300];
+    const range = (viewportTop: number, viewportBottom: number) =>
+        VirtualListUtil.findVisibleRange(tops.length, (index) => tops[index], 100, viewportTop, viewportBottom);
+
+    it('keeps every item intersecting the viewport, edges included', () => {
+        expect(range(150, 250)).toEqual({ first: 2, end: 6 });
+        expect(range(100, 100)).toEqual({ first: 0, end: 4 });
+        expect(range(-50, 1000)).toEqual({ first: 0, end: 7 });
+    });
+
+    it('is empty past the last item and for an empty list', () => {
+        expect(range(500, 600)).toEqual({ first: 7, end: 7 });
+        expect(VirtualListUtil.findVisibleRange(0, () => 0, 100, 0, 100)).toEqual({ first: 0, end: 0 });
+    });
+});
