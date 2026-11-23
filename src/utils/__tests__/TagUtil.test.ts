@@ -233,3 +233,75 @@ describe('TagUtil getTagGroups method', () => {
         expect(TagUtil.getTagGroups(tagConfig)).toHaveLength(1);
     });
 });
+
+describe('TagUtil getShortcutTagNames method', () => {
+    const createTags = (count: number, disabledNames: string[] = []): TagName[] =>
+        Array.from({ length: count }, (_, index: number) => ({
+            name: `tag${index + 1}`,
+            color: '#ffffff',
+            ...(disabledNames.includes(`tag${index + 1}`) ? { isShortcutDisabled: true } : {})
+        }));
+
+    it('should give the first 9 tags when every shortcut is enabled', () => {
+        const tagConfig: TagConfig = { tags: createTags(12), groupNames: [] };
+        expect(TagUtil.getShortcutTagNames(tagConfig))
+            .toEqual(['tag1', 'tag2', 'tag3', 'tag4', 'tag5', 'tag6', 'tag7', 'tag8', 'tag9']);
+    });
+
+    it('should skip the disabled tags and hand their numbers to the next ones', () => {
+        const tagConfig: TagConfig = { tags: createTags(12, ['tag1', 'tag2', 'tag5']), groupNames: [] };
+        expect(TagUtil.getShortcutTagNames(tagConfig))
+            .toEqual(['tag3', 'tag4', 'tag6', 'tag7', 'tag8', 'tag9', 'tag10', 'tag11', 'tag12']);
+    });
+
+    it('should follow the group order of the tag config', () => {
+        const tagConfig: TagConfig = TagUtil.createTagConfig(
+            [
+                { name: 'Other', color: '#ffffff' },
+                { name: 'A1', color: '#ffffff', groupName: 'A', isShortcutDisabled: true },
+                { name: 'B1', color: '#ffffff', groupName: 'B' },
+                { name: 'A2', color: '#ffffff', groupName: 'A' },
+            ],
+            ['A', 'B']
+        );
+        expect(TagUtil.getShortcutTagNames(tagConfig)).toEqual(['A2', 'B1', 'Other']);
+    });
+});
+
+describe('TagUtil setTagsShortcutDisabled method', () => {
+    const tagConfig: TagConfig = {
+        tags: [
+            { name: 'A1', color: '#ffffff', groupName: 'A' },
+            { name: 'A2', color: '#ffffff', groupName: 'A', isShortcutDisabled: true },
+            { name: 'B1', color: '#ffffff' },
+        ],
+        groupNames: ['A']
+    };
+
+    it('should disable the given tags only', () => {
+        expect(TagUtil.setTagsShortcutDisabled(tagConfig, ['A1', 'A2'], true).tags).toEqual([
+            { name: 'A1', color: '#ffffff', groupName: 'A', isShortcutDisabled: true },
+            { name: 'A2', color: '#ffffff', groupName: 'A', isShortcutDisabled: true },
+            { name: 'B1', color: '#ffffff' },
+        ]);
+    });
+
+    it('should drop the flag when enabling again', () => {
+        expect(TagUtil.setTagsShortcutDisabled(tagConfig, ['A2'], false).tags[1])
+            .toEqual({ name: 'A2', color: '#ffffff', groupName: 'A' });
+    });
+
+    it('should leave the input config untouched', () => {
+        TagUtil.setTagsShortcutDisabled(tagConfig, ['A1'], true);
+        expect(tagConfig.tags[0]).toEqual({ name: 'A1', color: '#ffffff', groupName: 'A' });
+    });
+
+    it('should keep the flag when createTagConfig drops a deleted group', () => {
+        const disabledTagConfig: TagConfig = TagUtil.setTagsShortcutDisabled(tagConfig, ['A1'], true);
+        expect(TagUtil.createTagConfig(disabledTagConfig.tags, []).tags).toEqual([
+            { name: 'A1', color: '#ffffff', isShortcutDisabled: true },
+            { name: 'A2', color: '#ffffff', isShortcutDisabled: true },
+            { name: 'B1', color: '#ffffff' },
+        ]);
+    });
+});

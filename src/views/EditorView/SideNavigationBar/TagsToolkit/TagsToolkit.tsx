@@ -15,9 +15,6 @@ import { DrawUtil } from '../../../../utils/DrawUtil';
 import { Settings } from '../../../../settings/Settings';
 import './TagsToolkit.scss';
 
-// Shift+1...9 toggles the tag at that position in the project tag list
-const TAG_SHORTCUT_COUNT = 9;
-
 // Key of the tags without group in the collapsed groups list (no group can have an empty name)
 const UNGROUPED_TAGS_KEY = '';
 
@@ -43,6 +40,7 @@ const TagsToolkit: React.FC<IProps> = (
     const [collapsedGroups, setCollapsedGroups] = useState<string[]>(collapsedGroupKeys);
     const activeImageData: ImageData | null = activeImageIndex === null ? null : imagesData[activeImageIndex];
     const tagNames: string[] = TagUtil.getTagNames(tagConfig);
+    const shortcutTagNames: string[] = TagUtil.getShortcutTagNames(tagConfig);
 
     const openEditTagsPopup = () => updateActivePopupTypeAction(PopupWindowType.EDIT_TAGS);
 
@@ -57,22 +55,40 @@ const TagsToolkit: React.FC<IProps> = (
         setCollapsedGroups(collapsedGroupKeys);
     };
 
+    // The eye of a group only drives the Shift+1...9 shortcuts of its tags (one eye per tag lives
+    // in the Edit TAGs popup): a disabled tag stays shown and clickable. The click stops there,
+    // so it does not fold the group.
+    const renderGroupShortcutToggle = (isShortcutEnabled: boolean, title: string, onToggle: () => void) => {
+        return <img
+            draggable={false}
+            className='TagShortcutToggle'
+            src={isShortcutEnabled ? 'ico/eye.png' : 'ico/hide.png'}
+            alt={'shortcut_toggle'}
+            title={title}
+            onClick={(event: React.MouseEvent) => {
+                event.stopPropagation();
+                onToggle();
+            }}
+        />
+    };
+
     const renderTag = (tag: TagName, isActive: boolean) => {
-        const tagIndex: number = tagNames.indexOf(tag.name);
+        const shortcutIndex: number = shortcutTagNames.indexOf(tag.name);
+        const isShortcutEnabled: boolean = !tag.isShortcutDisabled;
         const tagStyle = {
             '--tag-color': tag.color,
             '--tag-active-background': DrawUtil.hexToRGB(tag.color, 0.35),
         } as React.CSSProperties;
 
         return <div
-            className={classNames('TagItem', {'active': isActive})}
+            className={classNames('TagItem', {'active': isActive, 'shortcutDisabled': !isShortcutEnabled})}
             style={tagStyle}
             onClick={() => TagActions.toggleTagOnActiveImage(tag.name)}
             title={isActive ? 'Remove this tag from the image' : 'Add this tag to the image'}
             key={tag.name}
         >
             <span className='TagColorDot'/>
-            {tagIndex < TAG_SHORTCUT_COUNT && <span className='TagIndex'>{tagIndex + 1}</span>}
+            {shortcutIndex !== -1 && <span className='TagIndex'>{shortcutIndex + 1}</span>}
             {tag.name}
         </div>
     };
@@ -109,6 +125,9 @@ const TagsToolkit: React.FC<IProps> = (
                 const isCollapsed: boolean = collapsedGroups.includes(groupKey);
                 const groupAvailableTags: TagName[] = tagGroup.tags
                     .filter((tag: TagName) => availableTags.includes(tag));
+                // The group eye covers every tag of the group, including the ones on the image
+                const isGroupShortcutEnabled: boolean = tagGroup.tags
+                    .some((tag: TagName) => !tag.isShortcutDisabled);
 
                 return <div className='TagGroup' key={groupKey}>
                     <div
@@ -122,6 +141,16 @@ const TagsToolkit: React.FC<IProps> = (
                             alt={'down_arrow'}
                         />
                         {`${tagGroup.groupName ?? 'Other tags'} (${groupAvailableTags.length})`}
+                        {renderGroupShortcutToggle(
+                            isGroupShortcutEnabled,
+                            isGroupShortcutEnabled
+                                ? 'Remove every tag of this group from the Shift+1...9 shortcuts'
+                                : 'Give every tag of this group a Shift+1...9 shortcut again',
+                            () => TagActions.setTagsShortcutDisabled(
+                                tagGroup.tags.map((tag: TagName) => tag.name),
+                                isGroupShortcutEnabled
+                            )
+                        )}
                     </div>
                     {!isCollapsed && groupAvailableTags.length > 0 &&
                         renderTagList(groupAvailableTags, false, '')}

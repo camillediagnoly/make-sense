@@ -48,6 +48,9 @@ export type TagName = {
     name: string;
     color: string;
     groupName?: string;
+    // Session only, never exported: a disabled tag keeps working on click but gets no Shift+1...9
+    // shortcut, which leaves its number to the next tags.
+    isShortcutDisabled?: boolean;
 }
 
 // The project tags, ordered group by group (in the order of groupNames), the ones without group last.
