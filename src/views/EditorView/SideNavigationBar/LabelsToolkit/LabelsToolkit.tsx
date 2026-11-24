@@ -46,14 +46,17 @@ class LabelsToolkit extends React.Component<IProps, IState> {
         };
     }
 
-    // A project works with rectangles or polygons: only the imported type once annotations were
-    // imported, both until then.
+    // A project works with rectangles or polygons: the imported type once annotations were imported,
+    // otherwise polygons, or rectangles while the rectangle mode of the editor bar is on.
     private getTabs(): LabelType[] {
-        const {projectType, annotationMode} = this.props;
+        const {projectType, annotationMode, activeLabelType} = this.props;
         if (projectType === ProjectType.IMAGE_RECOGNITION) {
             return [LabelType.IMAGE_RECOGNITION];
         }
-        return annotationMode ? [annotationMode] : [LabelType.RECT, LabelType.POLYGON];
+        if (annotationMode) {
+            return [annotationMode];
+        }
+        return [activeLabelType === LabelType.RECT ? LabelType.RECT : LabelType.POLYGON];
     }
 
     // The active label type is always one of the tabs shown

@@ -21,6 +21,9 @@ import { ImageActions } from '../../../logic/actions/ImageActions';
 import { ImageData } from '../../../store/labels/types';
 import { FileSystemAccessUtil } from '../../../utils/FileSystemAccessUtil';
 import { AnnotationClipboardActions } from '../../../logic/actions/AnnotationClipboardActions';
+import { AnnotationMode } from '../../../store/labels/types';
+import { updateActiveLabelId, updateActiveLabelType } from '../../../store/labels/actionCreators';
+import { ProjectType } from '../../../data/enums/ProjectType';
 const BUTTON_SIZE: ISize = { width: 30, height: 30 };
 const BUTTON_PADDING: number = 10;
 const POLYGON_LASSO_PRECISION_OPTIONS = [
@@ -88,12 +91,16 @@ interface IProps {
     updatePolygonLassoTargetVertexCountAction: (polygonLassoTargetVertexCount: number) => any;
     updateLineKeypointModeAction: (lineKeypointMode: boolean) => any;
     updateActivePopupTypeAction: (activePopupType: PopupWindowType) => any;
+    updateActiveLabelTypeAction: (activeLabelType: LabelType) => any;
+    updateActiveLabelIdAction: (activeLabelId: string | null) => any;
     imageDragMode: boolean;
     crossHairVisible: boolean;
     fixedZoom: boolean;
     ellipseDraw: boolean;
     movingAnnotation: boolean;
     activeLabelType: LabelType;
+    annotationMode: AnnotationMode | null;
+    projectType: ProjectType;
     polygonLassoMode: boolean;
     polygonLassoTargetVertexCount: number;
     lineKeypointMode: boolean;
@@ -116,12 +123,16 @@ const EditorTopNavigationBar: React.FC<IProps> = (
         updatePolygonLassoTargetVertexCountAction,
         updateLineKeypointModeAction,
         updateActivePopupTypeAction,
+        updateActiveLabelTypeAction,
+        updateActiveLabelIdAction,
         imageDragMode,
         crossHairVisible,
         fixedZoom,
         ellipseDraw,
         movingAnnotation,
         activeLabelType,
+        annotationMode,
+        projectType,
         polygonLassoMode,
         polygonLassoTargetVertexCount,
         lineKeypointMode,
@@ -174,6 +185,23 @@ const EditorTopNavigationBar: React.FC<IProps> = (
 
     const pasteAnnotationsOnClick = () => {
         AnnotationClipboardActions.pasteOnActiveImage();
+    };
+
+    // Polygons are drawn by default; rectangles while this mode is on. Annotations imported into the
+    // project fix the type, so the mode cannot be changed then.
+    const isRectangleMode = activeLabelType === LabelType.RECT;
+    const canSwitchRectangleMode = projectType === ProjectType.OBJECT_DETECTION && annotationMode === null;
+
+    const rectangleModeOnClick = () => {
+        updateActiveLabelTypeAction(isRectangleMode ? LabelType.POLYGON : LabelType.RECT);
+        updateActiveLabelIdAction(null);
+    };
+
+    const getRectangleModeTooltip = (): string => {
+        if (annotationMode !== null) {
+            return `the project works with the imported ${annotationMode === LabelType.RECT ? 'rectangles' : 'polygons'}`;
+        }
+        return isRectangleMode ? 'turn-off rectangle mode (draw polygons)' : 'turn-on rectangle mode (draw rectangles)';
     };
 
     const polygonModeOnClick = () => {
@@ -409,6 +437,18 @@ const EditorTopNavigationBar: React.FC<IProps> = (
                     )
                 }
                 {
+                    getButtonWithTooltip(
+                        'rectangle-mode',
+                        getRectangleModeTooltip(),
+                        'ico/rectangle.png',
+                        'rectangle-mode',
+                        isRectangleMode,
+                        undefined,
+                        rectangleModeOnClick,
+                        !canSwitchRectangleMode
+                    )
+                }
+                {
                     renderPolygonModeControl()
                 }
                 {
@@ -564,6 +604,8 @@ const mapDispatchToProps = {
     updatePolygonLassoTargetVertexCountAction: updatePolygonLassoTargetVertexCount,
     updateLineKeypointModeAction: updateLineKeypointMode,
     updateActivePopupTypeAction: updateActivePopupType,
+    updateActiveLabelTypeAction: updateActiveLabelType,
+    updateActiveLabelIdAction: updateActiveLabelId,
 };
 
 const mapStateToProps = (state: AppState) => {
@@ -581,6 +623,8 @@ const mapStateToProps = (state: AppState) => {
         ellipseDraw: state.general.ellipseDraw,
         movingAnnotation: state.general.movingAnnotation,
         activeLabelType: state.labels.activeLabelType,
+        annotationMode: state.labels.annotationMode,
+        projectType: state.general.projectData.type,
         polygonLassoMode: state.general.polygonLassoMode,
         polygonLassoTargetVertexCount: state.general.polygonLassoTargetVertexCount,
         lineKeypointMode: state.general.lineKeypointMode,

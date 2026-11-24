@@ -11,7 +11,8 @@ import {
 import {AppState} from '../../../../store';
 import {connect} from 'react-redux';
 import LabelInputField from '../LabelInputField/LabelInputField';
-import EmptyLabelList from '../EmptyLabelList/EmptyLabelList';
+import {LabelType} from '../../../../data/enums/LabelType';
+import AnnotationImportDropZone from '../AnnotationImportDropZone/AnnotationImportDropZone';
 import {LabelActions} from '../../../../logic/actions/LabelActions';
 import {findLast} from 'lodash';
 
@@ -105,10 +106,7 @@ const PolygonLabelsList: React.FC<IProps> = (
             onClickCapture={onClickHandler}
         >
             {imageData.labelPolygons.length === 0 ?
-                <EmptyLabelList
-                    labelBefore={'draw your first polygon'}
-                    labelAfter={'no labels created for this image yet'}
-                /> :
+                <AnnotationImportDropZone labelType={LabelType.POLYGON}/> :
                 <Scrollbars>
                     <div
                         className='PolygonLabelsListContent'

@@ -11,23 +11,10 @@ import {
 import { AnnotationExportActions } from '../../../../logic/actions/AnnotationExportActions';
 import { AppState } from '../../../../store';
 import { connect } from 'react-redux';
-
-const ACCEPTED_FILES_BY_LABEL_TYPE: Record<ImportableLabelType, Record<string, string[]>> = {
-    [LabelType.POLYGON]: {
-        'application/json': ['.json']
-    },
-    [LabelType.RECT]: {
-        'application/json': ['.json'],
-        'application/xml': ['.xml'],
-        'text/plain': ['.txt']
-    }
-};
-
-const IMPORT_TOOLTIPS: Record<ImportableLabelType, string> = {
-    [LabelType.POLYGON]: 'Drop a COCO JSON file here, or click to pick it',
-    [LabelType.RECT]: 'Drop VOC XML files, a COCO JSON file or YOLO files with their labels.txt here, ' +
-        'or click to pick them'
-};
+import {
+    ACCEPTED_ANNOTATION_FILES_BY_LABEL_TYPE,
+    ANNOTATION_IMPORT_TOOLTIPS
+} from '../../../../data/info/AnnotationImportFileData';
 
 interface IImportDropFieldProps {
     labelType: ImportableLabelType;
@@ -48,7 +35,7 @@ const ImportDropField: React.FC<IImportDropFieldProps> = ({ labelType }) => {
     };
 
     const { getRootProps, getInputProps, isDragActive } = useDropzone({
-        accept: ACCEPTED_FILES_BY_LABEL_TYPE[labelType],
+        accept: ACCEPTED_ANNOTATION_FILES_BY_LABEL_TYPE[labelType],
         multiple: labelType === LabelType.RECT,
         disabled: isImporting,
         onDrop
@@ -61,7 +48,7 @@ const ImportDropField: React.FC<IImportDropFieldProps> = ({ labelType }) => {
                 'dragActive': isDragActive,
                 'disabled': isImporting
             }),
-            title: IMPORT_TOOLTIPS[labelType]
+            title: ANNOTATION_IMPORT_TOOLTIPS[labelType]
         })}
     >
         <input {...getInputProps()} />
@@ -95,8 +82,8 @@ const ExportButton: React.FC<IExportButtonProps> = ({ labelType }) => {
 
 const AnnotationsMenu: React.FC<IAnnotationsMenuProps> = ({ exportedLabelType }) => {
     return <div className='AnnotationsMenu'>
-        <ImportDropField labelType={LabelType.POLYGON}/>
-        <ImportDropField labelType={LabelType.RECT}/>
+        {/* Only the type the project works with: polygons, or rectangles in the rectangle mode */}
+        <ImportDropField key={exportedLabelType} labelType={exportedLabelType}/>
         <div className='AnnotationsMenuSeparator'/>
         <ExportButton labelType={exportedLabelType}/>
     </div>;

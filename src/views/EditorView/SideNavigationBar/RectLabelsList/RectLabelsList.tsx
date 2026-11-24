@@ -11,7 +11,8 @@ import {
 import {AppState} from '../../../../store';
 import {connect} from 'react-redux';
 import LabelInputField from '../LabelInputField/LabelInputField';
-import EmptyLabelList from '../EmptyLabelList/EmptyLabelList';
+import {LabelType} from '../../../../data/enums/LabelType';
+import AnnotationImportDropZone from '../AnnotationImportDropZone/AnnotationImportDropZone';
 import {LabelActions} from '../../../../logic/actions/LabelActions';
 import {LabelStatus} from '../../../../data/enums/LabelStatus';
 import {findLast} from 'lodash';
@@ -111,10 +112,7 @@ const RectLabelsList: React.FC<IProps> = (
             onClickCapture={onClickHandler}
         >
             {imageData.labelRects.filter((labelRect: LabelRect) => labelRect.status === LabelStatus.ACCEPTED).length === 0 ?
-                <EmptyLabelList
-                    labelBefore={'draw your first bounding box'}
-                    labelAfter={'no labels created for this image yet'}
-                /> :
+                <AnnotationImportDropZone labelType={LabelType.RECT}/> :
                 <Scrollbars>
                     <div
                         className='RectLabelsListContent'
