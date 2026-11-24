@@ -22,7 +22,7 @@ export class AnnotationExportActions {
         AnnotationExportActions.warnAboutSanityCheckViolations();
     }
 
-    // The imported type, or before any import the type of the tab open in the sidebar
+    // The imported type, or before any import the type drawn (polygons unless in rectangle mode)
     public static getExportedLabelType(): AnnotationMode {
         return AnnotationExportActions.resolveExportedLabelType(
             LabelsSelector.getAnnotationMode(),
@@ -37,7 +37,8 @@ export class AnnotationExportActions {
         if (annotationMode) {
             return annotationMode;
         }
-        return activeLabelType === LabelType.POLYGON ? LabelType.POLYGON : LabelType.RECT;
+        // polygons are the default, rectangles only in the rectangle mode
+        return activeLabelType === LabelType.RECT ? LabelType.RECT : LabelType.POLYGON;
     }
 
     // The export goes ahead, but the user is told the images breaking the class presence rules

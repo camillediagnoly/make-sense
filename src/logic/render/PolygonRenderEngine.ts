@@ -734,26 +734,30 @@ export class PolygonRenderEngine extends BaseRenderEngine {
         const standardizedPoints: IPoint[] = this.activePath.map(
             (point: IPoint) => RenderEngineUtil.setPointBetweenPixels(point)
         );
-        const path = standardizedPoints.concat(
-            data.mousePositionOnViewPortContent
-        );
+        // The mouse position is unknown until the mouse first moves over the editor, as when the
+        // editor opens in polygon mode
+        const path = data.mousePositionOnViewPortContent
+            ? standardizedPoints.concat(data.mousePositionOnViewPortContent)
+            : standardizedPoints;
         const lineColor: string = BaseRenderEngine.resolveLabelLineColor(
             null,
             true
         );
-        DrawUtil.drawPolygonWithFill(
-            this.canvas,
-            path,
-            DrawUtil.hexToRGB(lineColor, 0.2)
-        );
-        DrawUtil.drawDashedPolygon(
-            this.canvas,
-            path,
-            lineColor,
-            RenderEngineSettings.LINE_THICKNESS,
-            [8, 4],
-            false
-        );
+        if (path.length > 0) {
+            DrawUtil.drawPolygonWithFill(
+                this.canvas,
+                path,
+                DrawUtil.hexToRGB(lineColor, 0.2)
+            );
+            DrawUtil.drawDashedPolygon(
+                this.canvas,
+                path,
+                lineColor,
+                RenderEngineSettings.LINE_THICKNESS,
+                [8, 4],
+                false
+            );
+        }
         if (this.isDrawingEllipse)
             this.surfaceAnnotator.processAnnotation(
                 this.canvas,

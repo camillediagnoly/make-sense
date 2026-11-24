@@ -11,17 +11,17 @@ jest.mock('../../../index', () => ({
 }));
 
 describe('AnnotationExportActions.resolveExportedLabelType', () => {
-    it('exports the imported type, whatever tab is open', () => {
+    it('exports the imported type, whatever type is drawn', () => {
         expect(AnnotationExportActions.resolveExportedLabelType(LabelType.POLYGON, LabelType.RECT))
             .toBe(LabelType.POLYGON);
         expect(AnnotationExportActions.resolveExportedLabelType(LabelType.RECT, LabelType.POLYGON))
             .toBe(LabelType.RECT);
     });
 
-    it('exports the open tab before any import, rectangles by default', () => {
+    it('exports the type drawn before any import, polygons by default', () => {
         expect(AnnotationExportActions.resolveExportedLabelType(null, LabelType.POLYGON)).toBe(LabelType.POLYGON);
         expect(AnnotationExportActions.resolveExportedLabelType(null, LabelType.RECT)).toBe(LabelType.RECT);
-        expect(AnnotationExportActions.resolveExportedLabelType(null, null)).toBe(LabelType.RECT);
+        expect(AnnotationExportActions.resolveExportedLabelType(null, null)).toBe(LabelType.POLYGON);
     });
 });
 
