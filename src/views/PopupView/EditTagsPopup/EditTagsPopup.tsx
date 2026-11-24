@@ -33,6 +33,7 @@ type TagEntry = {
     name: string;
     color: string;
     groupId: string | null;
+    isShortcutDisabled?: boolean;
 };
 
 const createEntries = (tagConfig: TagConfig) => {
@@ -45,7 +46,8 @@ const createEntries = (tagConfig: TagConfig) => {
         originalName: tag.name,
         name: tag.name,
         color: tag.color,
-        groupId: groupEntries.find((groupEntry: TagGroupEntry) => groupEntry.name === tag.groupName)?.id ?? null
+        groupId: groupEntries.find((groupEntry: TagGroupEntry) => groupEntry.name === tag.groupName)?.id ?? null,
+        isShortcutDisabled: tag.isShortcutDisabled
     }));
     return { groupEntries, tagEntries };
 };
@@ -163,6 +165,25 @@ const EditTagsPopup: React.FC<IProps> = (
         ));
     };
 
+    // Like the label eye of the Edit Labels popup, but for the Shift+1...9 shortcuts: a disabled
+    // tag keeps working on click and leaves its number to the next tags.
+    const toggleTagEntryShortcut = (tagEntry: TagEntry) => {
+        updateTagEntry(tagEntry.id, { isShortcutDisabled: !tagEntry.isShortcutDisabled });
+    };
+
+    const isGroupShortcutEnabled = (groupId: string): boolean => {
+        const groupTagEntries: TagEntry[] = tagEntries.filter((tagEntry: TagEntry) => tagEntry.groupId === groupId);
+        return groupTagEntries.length === 0 || groupTagEntries.some((tagEntry: TagEntry) => !tagEntry.isShortcutDisabled);
+    };
+
+    // Disables every tag of the group while one of them still has a shortcut, enables them all otherwise
+    const toggleGroupEntryShortcut = (groupId: string) => {
+        const isShortcutDisabled: boolean = isGroupShortcutEnabled(groupId);
+        setTagEntries(tagEntries.map((tagEntry: TagEntry) =>
+            tagEntry.groupId === groupId ? { ...tagEntry, isShortcutDisabled } : tagEntry
+        ));
+    };
+
     const updateGroupEntryName = (id: string, name: string) => {
         setGroupEntries(groupEntries.map((groupEntry: TagGroupEntry) =>
             groupEntry.id === id ? { ...groupEntry, name } : groupEntry
@@ -188,7 +209,8 @@ const EditTagsPopup: React.FC<IProps> = (
         const tags: TagName[] = tagEntries.map((tagEntry: TagEntry) => ({
             name: getEntryName(tagEntry),
             color: tagEntry.color,
-            groupName: groupNameById.get(tagEntry.groupId)
+            groupName: groupNameById.get(tagEntry.groupId),
+            ...(tagEntry.isShortcutDisabled ? { isShortcutDisabled: true } : {})
         }));
 
         TagActions.applyTagConfigChanges(
@@ -220,6 +242,12 @@ const EditTagsPopup: React.FC<IProps> = (
                 InputLabelProps={{
                     shrink: true,
                 }}
+            />
+            <ImageButton
+                image={isGroupShortcutEnabled(groupEntry.id) ? 'ico/eye.png' : 'ico/hide.png'}
+                imageAlt={'group_shortcuts'}
+                buttonSize={{ width: 30, height: 30 }}
+                onClick={() => toggleGroupEntryShortcut(groupEntry.id)}
             />
             <ImageButton
                 image={'ico/trash.png'}
@@ -265,6 +293,12 @@ const EditTagsPopup: React.FC<IProps> = (
                 )}
             </select>}
             <ImageButton
+                image={tagEntry.isShortcutDisabled ? 'ico/hide.png' : 'ico/eye.png'}
+                imageAlt={'tag_shortcut'}
+                buttonSize={{ width: 30, height: 30 }}
+                onClick={() => toggleTagEntryShortcut(tagEntry)}
+            />
+            <ImageButton
                 image={'ico/trash.png'}
                 imageAlt={'remove_tag'}
                 buttonSize={{ width: 30, height: 30 }}
@@ -297,7 +331,8 @@ const EditTagsPopup: React.FC<IProps> = (
                 <div className='Message'>
                     You can now edit the tags you put on whole images, like Physio or Patho. They are saved
                     apart from the labels, so they never become classes. Use the + button to add a new tag,
-                    and the folder button to add a group gathering several tags.
+                    and the folder button to add a group gathering several tags. The eye of a tag or a group
+                    takes it out of the Shift+1...9 shortcuts, so the next tags get their numbers.
                 </div>
                 {pendingRemoval.instancesCount > 0 && <div className='RemovedInstancesWarning'>
                     {`Accepting will also remove the ${pendingRemoval.instancesCount} `}

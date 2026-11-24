@@ -4,6 +4,9 @@ import { Settings } from '../settings/Settings';
 
 const TAG_FILTER_TOKEN_PREFIX = '__image_tag__:';
 
+// Shift+1...9 toggles the tag at that position among the tags whose shortcut is enabled
+export const TAG_SHORTCUT_COUNT = 9;
+
 // Maps the name a tag had when an edit started to the name it ends up with, or to null when the
 // tag gets deleted.
 export type TagNameChanges = Map<string, string | null>;
@@ -26,7 +29,7 @@ export class TagUtil {
 
     // Every tag config goes through here: a tag pointing at a group that does not exist loses it,
     // and the tags get sorted group by group, in the order of the groups, the ones without group
-    // last. That is the order they are shown in, exported in, and toggled in with Shift+1...9.
+    // last. That is the order they are shown in, exported in, and numbered in for Shift+1...9.
     public static createTagConfig(tags: TagName[], groupNames: string[]): TagConfig {
         const normalizedGroupNames: string[] = TagUtil.normalizeTagNames(groupNames);
         const getGroupIndex = (tag: TagName): number => normalizedGroupNames.includes(tag.groupName)
@@ -38,7 +41,11 @@ export class TagUtil {
             .sort((a, b) => getGroupIndex(a.tag) - getGroupIndex(b.tag) || a.index - b.index)
             .map(({ tag }) => normalizedGroupNames.includes(tag.groupName)
                 ? tag
-                : { name: tag.name, color: tag.color });
+                : {
+                    name: tag.name,
+                    color: tag.color,
+                    ...(tag.isShortcutDisabled ? { isShortcutDisabled: true } : {})
+                });
 
         return {
             tags: sortedTags,
@@ -61,6 +68,38 @@ export class TagUtil {
 
     public static getTagNames(tagConfig: TagConfig): string[] {
         return tagConfig.tags.map((tag: TagName) => tag.name);
+    }
+
+    // The tags reachable with Shift+1...9, in that order: the ones whose shortcut is enabled, in
+    // the tag config order.
+    public static getShortcutTagNames(tagConfig: TagConfig): string[] {
+        return tagConfig.tags
+            .filter((tag: TagName) => !tag.isShortcutDisabled)
+            .slice(0, TAG_SHORTCUT_COUNT)
+            .map((tag: TagName) => tag.name);
+    }
+
+    public static setTagsShortcutDisabled(
+        tagConfig: TagConfig,
+        tagNames: string[],
+        isShortcutDisabled: boolean
+    ): TagConfig {
+        const updatedTagNames = new Set<string>(tagNames);
+        return {
+            ...tagConfig,
+            tags: tagConfig.tags.map((tag: TagName) => {
+                if (!updatedTagNames.has(tag.name)) {
+                    return tag;
+                }
+                const updatedTag: TagName = { ...tag };
+                if (isShortcutDisabled) {
+                    updatedTag.isShortcutDisabled = true;
+                } else {
+                    delete updatedTag.isShortcutDisabled;
+                }
+                return updatedTag;
+            })
+        };
     }
 
     // Every group in order, even an empty one, followed by the tags without group if there are any

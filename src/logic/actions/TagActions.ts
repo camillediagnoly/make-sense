@@ -29,10 +29,16 @@ export class TagActions {
     }
 
     public static toggleTagByIndexOnActiveImage(index: number) {
-        const tagName: string | undefined = LabelsSelector.getTagNames()[index];
+        const tagName: string | undefined = TagUtil.getShortcutTagNames(LabelsSelector.getTagConfig())[index];
         if (tagName) {
             TagActions.toggleTagOnActiveImage(tagName);
         }
+    }
+
+    public static setTagsShortcutDisabled(tagNames: string[], isShortcutDisabled: boolean) {
+        store.dispatch(updateTagConfig(
+            TagUtil.setTagsShortcutDisabled(LabelsSelector.getTagConfig(), tagNames, isShortcutDisabled)
+        ));
     }
 
     // The images, the tag config and the filter expression are updated together, so nothing keeps

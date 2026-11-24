@@ -111,6 +111,10 @@
       transform: none;
     }
 
+    .TagShortcutToggle {
+      margin-left: auto;
+    }
+
     &:hover {
       background-color: rgba(0, 0, 0, 0.1);
     }
@@ -150,6 +154,10 @@
       opacity: 0.6;
     }
 
+    &.shortcutDisabled {
+      color: rgba(255, 255, 255, 0.6);
+    }
+
     &:hover {
       background-color: rgba(0, 0, 0, 0.4);
     }
@@ -161,6 +169,21 @@
       &:hover {
         filter: brightness(1.2);
       }
+    }
+  }
+
+  // Eye of a group: whether its tags get a Shift+1...9 shortcut
+  .TagShortcutToggle {
+    flex-shrink: 0;
+    width: 14px;
+    height: 14px;
+    object-fit: contain;
+    filter: brightness(0) invert(1);
+    opacity: 0.4;
+    cursor: pointer;
+
+    &:hover {
+      opacity: 1;
     }
   }
 
